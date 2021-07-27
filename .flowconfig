@@ -1,0 +1,13 @@
+[ignore]
+
+<PROJECT_ROOT>/src/components/withTimeSeries/.*
+<PROJECT_ROOT>/dist/.*
+
+[include]
+
+[libs]
+
+flow/
+
+[options]
+traces=3
