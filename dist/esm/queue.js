@@ -1,14 +1,12 @@
 import PQueue from 'p-queue';
-import { serializeError } from 'serialize-error';
-import EventEmitter from 'events'; // import { serializeError, deserializeError } from 'serialize-error';
-
+import errorObjectParser from 'serialize-error';
+import EventEmitter from 'events';
 import makeLogger from './logger';
-import { clearDatabase, dequeueFromDatabase, decrementAttemptsRemainingInDatabase, markOperationCompleteInDatabase, markOperationPendingInDatabase, markOperationErrorInDatabase, markOperationCleanupInDatabase, markOperationAbortedInDatabase, updateCleanupInDatabase, getCleanupFromDatabase, getOperationFromDatabase, removePathFromCleanupDataInDatabase, markQueueForCleanupInDatabase, removeCleanupFromDatabase, OPERATION_PENDING_STATUS, OPERATION_ABORTED_STATUS, OPERATION_ERROR_STATUS, OPERATION_CLEANUP_STATUS, OPERATION_COMPLETE_STATUS } from './database';
+import { clearDatabase, dequeueFromDatabase, decrementAttemptsRemainingInDatabase, markJobCompleteInDatabase, markJobPendingInDatabase, markJobErrorInDatabase, markJobCleanupInDatabase, markJobAbortedInDatabase, updateCleanupInDatabase, getCleanupFromDatabase, getJobFromDatabase, removePathFromCleanupDataInDatabase, markQueueForCleanupInDatabase, removeCleanupFromDatabase, JOB_PENDING_STATUS, JOB_ABORTED_STATUS, JOB_ERROR_STATUS, JOB_CLEANUP_STATUS, JOB_COMPLETE_STATUS } from './database';
 import { AbortError } from './errors';
 const PRIORITY_OFFSET = Math.floor(Number.MAX_SAFE_INTEGER / 2);
-const logger = makeLogger('BatteryQueue');
-export class BatteryQueue extends EventEmitter {
-  constructor() {
+export default class BatteryQueue extends EventEmitter {
+  constructor(options = {}) {
     super();
     this.dequeueQueue = new PQueue({
       concurrency: 1
@@ -17,10 +15,11 @@ export class BatteryQueue extends EventEmitter {
     this.cleanupMap = new Map();
     this.retryDelayMap = new Map();
     this.queueMap = new Map();
-    this.operationIds = new Set();
+    this.jobIds = new Set();
     this.abortControllerMap = new Map();
     this.isClearing = false;
     this.emitCallbacks = [];
+    this.logger = options.logger || makeLogger('Battery Queue');
   }
 
   emit(type, ...args) {
@@ -37,7 +36,7 @@ export class BatteryQueue extends EventEmitter {
     } else if (typeof delayOrFunction === 'function') {
       this.retryDelayMap.set(type, delayOrFunction);
     } else {
-      logger.error(`Unable to set retry delay for ${type}, unknown handler type ${typeof delayOrFunction}`);
+      this.logger.error(`Unable to set retry delay for ${type}, unknown handler type ${typeof delayOrFunction}`);
     }
   }
 
@@ -127,12 +126,12 @@ export class BatteryQueue extends EventEmitter {
   }
 
   async abortQueue(queueId) {
-    logger.info(`Aborting queue ${queueId}`); // Changes:
-    // * OPERATION_ERROR_STATUS -> OPERATION_CLEANUP_STATUS
-    // * OPERATION_COMPLETE_STATUS -> OPERATION_CLEANUP_STATUS
-    // * OPERATION_PENDING_STATUS -> OPERATION_ABORTED_STATUS
+    this.logger.info(`Aborting queue ${queueId}`); // Changes:
+    // * JOB_ERROR_STATUS -> JOB_CLEANUP_STATUS
+    // * JOB_COMPLETE_STATUS -> JOB_CLEANUP_STATUS
+    // * JOB_PENDING_STATUS -> JOB_ABORTED_STATUS
 
-    await markQueueForCleanupInDatabase(queueId); // Abort active operations
+    await markQueueForCleanupInDatabase(queueId); // Abort active jobs
 
     const queueAbortControllerMap = this.abortControllerMap.get(queueId);
 
@@ -156,7 +155,7 @@ export class BatteryQueue extends EventEmitter {
 
   async _dequeue() {
     // eslint-disable-line consistent-return
-    const operations = await dequeueFromDatabase();
+    const jobs = await dequeueFromDatabase();
     const queueIds = new Set();
 
     for (const {
@@ -167,7 +166,7 @@ export class BatteryQueue extends EventEmitter {
       status,
       attemptsRemaining,
       startAfter
-    } of operations) {
+    } of jobs) {
       // Pause queues before adding items into them to avoid starting things out of priority
       if (!queueIds.has(queueId)) {
         const queue = this.queueMap.get(queueId);
@@ -179,14 +178,14 @@ export class BatteryQueue extends EventEmitter {
         queueIds.add(queueId);
       }
 
-      if (status === OPERATION_PENDING_STATUS) {
-        this.startOperation(id, queueId, args, type, attemptsRemaining, startAfter);
-      } else if (status === OPERATION_ERROR_STATUS) {
+      if (status === JOB_PENDING_STATUS) {
+        this.startJob(id, queueId, args, type, attemptsRemaining, startAfter);
+      } else if (status === JOB_ERROR_STATUS) {
         this.startErrorHandler(id, queueId, args, type);
-      } else if (status === OPERATION_CLEANUP_STATUS) {
+      } else if (status === JOB_CLEANUP_STATUS) {
         this.startCleanup(id, queueId, args, type);
       } else {
-        throw new Error(`Unknown operation status ${status} in operation ${id} of queue ${queueId}`);
+        throw new Error(`Unknown job status ${status} in job ${id} of queue ${queueId}`);
       }
     }
 
@@ -196,7 +195,7 @@ export class BatteryQueue extends EventEmitter {
       if (typeof queue !== 'undefined') {
         queue.start();
       } else {
-        logger.error(`Unable to start queue ${queueId} after dequeue; queue does not exist`);
+        this.logger.error(`Unable to start queue ${queueId} after dequeue; queue does not exist`);
       }
     }
   }
@@ -208,7 +207,7 @@ export class BatteryQueue extends EventEmitter {
 
         while (true) {
           if (Date.now() > timeout) {
-            logger.warn(`Idle timeout after ${maxDuration}ms`);
+            this.logger.warn(`Idle timeout after ${maxDuration}ms`);
             break;
           }
 
@@ -216,21 +215,21 @@ export class BatteryQueue extends EventEmitter {
 
           for (const [queueId, queue] of this.queueMap) {
             const interval = setInterval(() => {
-              logger.info(`Waiting on queue ${queueId}`);
+              this.logger.info(`Waiting on queue ${queueId}`);
             }, 250);
             await queue.onIdle();
             clearInterval(interval);
           }
 
-          const operationsInterval = setInterval(() => {
-            logger.info('Waiting on operations');
+          const jobsInterval = setInterval(() => {
+            this.logger.info('Waiting on jobs');
           }, 250);
-          const operations = await dequeueFromDatabase();
-          clearInterval(operationsInterval);
+          const jobs = await dequeueFromDatabase();
+          clearInterval(jobsInterval);
 
-          if (operations.length > 0) {
+          if (jobs.length > 0) {
             const interval = setInterval(() => {
-              logger.info('Waiting on dequeue');
+              this.logger.info('Waiting on dequeue');
             }, 250);
             await this.dequeue();
             clearInterval(interval);
@@ -271,14 +270,14 @@ export class BatteryQueue extends EventEmitter {
     const queueAbortControllerMap = this.abortControllerMap.get(queueId);
 
     if (typeof queueAbortControllerMap === 'undefined') {
-      logger.warn(`Abort controller map for ${id} in queue ${queueId} does not exist`);
+      this.logger.warn(`Abort controller map for ${id} in queue ${queueId} does not exist`);
       return;
     }
 
     const abortController = queueAbortControllerMap.get(id);
 
     if (typeof abortController === 'undefined') {
-      logger.warn(`Abort controller for ${id} in queue ${queueId} does not exist`);
+      this.logger.warn(`Abort controller for ${id} in queue ${queueId} does not exist`);
       return;
     }
 
@@ -286,19 +285,19 @@ export class BatteryQueue extends EventEmitter {
   }
 
   startCleanup(id, queueId, args, type) {
-    if (this.operationIds.has(id)) {
-      logger.info(`Skipping active ${type} cleanup #${id} in queue ${queueId}`);
+    if (this.jobIds.has(id)) {
+      this.logger.info(`Skipping active ${type} cleanup #${id} in queue ${queueId}`);
       return;
     }
 
-    logger.info(`Adding ${type} cleanup operation #${id} to queue ${queueId}`);
-    this.operationIds.add(id);
+    this.logger.info(`Adding ${type} cleanup job #${id} to queue ${queueId}`);
+    this.jobIds.add(id);
     const priority = PRIORITY_OFFSET + id;
 
     const removePathFromCleanupData = path => removePathFromCleanupDataInDatabase(id, queueId, path);
 
     const run = async () => {
-      logger.info(`Starting ${type} cleanup operation #${id} in queue ${queueId}`);
+      this.logger.info(`Starting ${type} cleanup job #${id} in queue ${queueId}`);
       const cleanups = this.cleanupMap.get(type);
 
       if (Array.isArray(cleanups)) {
@@ -308,15 +307,15 @@ export class BatteryQueue extends EventEmitter {
           await cleanup(cleanupData, args, removePathFromCleanupData);
         }
       } else {
-        logger.warn(`No cleanup for operation type ${type}`);
+        this.logger.warn(`No cleanup for job type ${type}`);
       }
 
       await removeCleanupFromDatabase(id);
-      this.operationIds.delete(id);
+      this.jobIds.delete(id);
       this.emit('cleanup', {
         id
       });
-      await markOperationAbortedInDatabase(id);
+      await markJobAbortedInDatabase(id);
     };
 
     this.addToQueue(queueId, priority, run);
@@ -326,19 +325,19 @@ export class BatteryQueue extends EventEmitter {
   }
 
   startErrorHandler(id, queueId, args, type) {
-    if (this.operationIds.has(id)) {
-      logger.info(`Skipping active ${type} error handler operation #${id} in queue ${queueId}`);
+    if (this.jobIds.has(id)) {
+      this.logger.info(`Skipping active ${type} error handler job #${id} in queue ${queueId}`);
       return;
     }
 
-    logger.info(`Adding ${type} error handler operation #${id} to queue ${queueId}`);
-    this.operationIds.add(id);
+    this.logger.info(`Adding ${type} error handler job #${id} to queue ${queueId}`);
+    this.jobIds.add(id);
     const priority = PRIORITY_OFFSET + id;
 
     const removePathFromCleanupData = path => removePathFromCleanupDataInDatabase(id, queueId, path);
 
     const run = async () => {
-      logger.info(`Starting ${type} error handler operation #${id} in queue ${queueId}`);
+      this.logger.info(`Starting ${type} error handler job #${id} in queue ${queueId}`);
       const cleanups = this.cleanupMap.get(type);
 
       if (Array.isArray(cleanups)) {
@@ -348,26 +347,26 @@ export class BatteryQueue extends EventEmitter {
           await cleanup(cleanupData, args, removePathFromCleanupData);
         }
       } else {
-        logger.warn(`No cleanup for operation type ${type}`);
+        this.logger.warn(`No cleanup for job type ${type}`);
       }
 
       await removeCleanupFromDatabase(id);
-      this.operationIds.delete(id);
+      this.jobIds.delete(id);
       this.emit('cleanup', {
         id
       });
       const attemptsRemaining = await decrementAttemptsRemainingInDatabase(id);
 
       if (attemptsRemaining <= 0) {
-        logger.warn(`Not retrying ${type} operation #${id} in queue ${queueId} after maximum failed attempts, cleaning up queue`);
-        await markOperationAbortedInDatabase(id);
+        this.logger.warn(`Not retrying ${type} job #${id} in queue ${queueId} after maximum failed attempts, cleaning up queue`);
+        await markJobAbortedInDatabase(id);
         this.emit('fatalError', {
           queueId
         });
         await this.abortQueue(queueId);
       } else {
-        await markOperationPendingInDatabase(id);
-        logger.info(`Retrying ${type} operation #${id} in queue ${queueId}, ${attemptsRemaining} attempts remaining`);
+        await markJobPendingInDatabase(id);
+        this.logger.info(`Retrying ${type} job #${id} in queue ${queueId}, ${attemptsRemaining} attempts remaining`);
         this.emit('retry', {
           id
         });
@@ -386,7 +385,7 @@ export class BatteryQueue extends EventEmitter {
     const duration = startAfter - Date.now();
 
     if (duration > 0) {
-      logger.info(`Delaying start of ${type} operation #${id} in queue ${queueId} by ${duration}ms`);
+      this.logger.info(`Delaying start of ${type} job #${id} in queue ${queueId} by ${duration}ms`);
       await new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
           signal.removeEventListener('abort', handleAbort);
@@ -404,14 +403,14 @@ export class BatteryQueue extends EventEmitter {
     }
   }
 
-  startOperation(id, queueId, args, type, attemptsRemaining, startAfter) {
-    if (this.operationIds.has(id)) {
-      logger.info(`Skipping active ${type} operation #${id} in queue ${queueId}`);
+  startJob(id, queueId, args, type, attemptsRemaining, startAfter) {
+    if (this.jobIds.has(id)) {
+      this.logger.info(`Skipping active ${type} job #${id} in queue ${queueId}`);
       return;
     }
 
-    logger.info(`Adding ${type} operation #${id} to queue ${queueId}`);
-    this.operationIds.add(id);
+    this.logger.info(`Adding ${type} job #${id} to queue ${queueId}`);
+    this.jobIds.add(id);
     const priority = PRIORITY_OFFSET - id;
     const abortController = this.getAbortController(id, queueId);
 
@@ -419,7 +418,7 @@ export class BatteryQueue extends EventEmitter {
 
     const run = async () => {
       await this.delayStart(id, queueId, type, abortController.signal, startAfter);
-      logger.info(`Starting ${type} operation #${id} in queue ${queueId} with ${attemptsRemaining} ${attemptsRemaining === 1 ? 'attempt' : 'attempts'} remaining`);
+      this.logger.info(`Starting ${type} job #${id} in queue ${queueId} with ${attemptsRemaining} ${attemptsRemaining === 1 ? 'attempt' : 'attempts'} remaining`);
       const handlers = this.handlerMap.get(type);
       let hasError = false;
       let hasFatalError = false;
@@ -433,8 +432,8 @@ export class BatteryQueue extends EventEmitter {
               throw new AbortError('Aborted');
             }
           } catch (error) {
-            logger.error(`Error in ${type} operation #${id} in queue ${queueId} with ${attemptsRemaining} ${attemptsRemaining === 1 ? 'attempt' : 'attempts'} remaining`);
-            logger.errorStack(error);
+            this.logger.error(`Error in ${type} job #${id} in queue ${queueId} with ${attemptsRemaining} ${attemptsRemaining === 1 ? 'attempt' : 'attempts'} remaining`);
+            this.logger.errorStack(error);
             hasError = true;
 
             if (error.name === 'FatalQueueError') {
@@ -445,52 +444,52 @@ export class BatteryQueue extends EventEmitter {
           }
         }
       } else {
-        logger.warn(`No handler for operation type ${type}`);
+        this.logger.warn(`No handler for job type ${type}`);
       }
 
       this.removeAbortController(id, queueId);
-      this.operationIds.delete(id);
+      this.jobIds.delete(id);
 
       if (!hasError) {
         // Rely on AbortController to prevent items in aborted queues from being marked as complete
-        await markOperationCompleteInDatabase(id);
+        await markJobCompleteInDatabase(id);
         this.emit('complete', {
           id
         });
         return;
       }
 
-      const operation = await getOperationFromDatabase(id);
+      const job = await getJobFromDatabase(id);
 
-      if (typeof operation === 'undefined') {
-        logger.error(`Unable to get ${type} operation #${id} in queue ${queueId} following error`);
+      if (typeof job === 'undefined') {
+        this.logger.error(`Unable to get ${type} job #${id} in queue ${queueId} following error`);
         return;
       }
 
-      if (operation.status === OPERATION_CLEANUP_STATUS) {
-        throw new Error(`Found cleanup status for ${type} operation #${id} in queue ${queueId} following error, this should not happen`);
+      if (job.status === JOB_CLEANUP_STATUS) {
+        throw new Error(`Found cleanup status for ${type} job #${id} in queue ${queueId} following error, this should not happen`);
       }
 
-      if (operation.status === OPERATION_COMPLETE_STATUS) {
-        throw new Error(`Found complete status for ${type} operation #${id} in queue ${queueId} following error, this should not happen`);
+      if (job.status === JOB_COMPLETE_STATUS) {
+        throw new Error(`Found complete status for ${type} job #${id} in queue ${queueId} following error, this should not happen`);
       }
 
-      if (operation.status === OPERATION_ERROR_STATUS) {
-        throw new Error(`Found error status for ${type} operation #${id} in queue ${queueId} following error, this should not happen`);
+      if (job.status === JOB_ERROR_STATUS) {
+        throw new Error(`Found error status for ${type} job #${id} in queue ${queueId} following error, this should not happen`);
       }
 
-      if (operation.status === OPERATION_ABORTED_STATUS) {
-        // Operation was aborted while running
-        logger.error(`Found aborted status for ${type} operation #${id} in queue ${queueId} following error, starting cleanup`);
-        await markOperationErrorInDatabase(id);
+      if (job.status === JOB_ABORTED_STATUS) {
+        // Job was aborted while running
+        this.logger.error(`Found aborted status for ${type} job #${id} in queue ${queueId} following error, starting cleanup`);
+        await markJobErrorInDatabase(id);
       } else if (hasFatalError) {
-        await markOperationCleanupInDatabase(id);
+        await markJobCleanupInDatabase(id);
         this.emit('fatalError', {
           queueId
         });
         await this.abortQueue(queueId);
       } else {
-        await markOperationErrorInDatabase(id);
+        await markJobErrorInDatabase(id);
       }
 
       await this.dequeue();
@@ -536,7 +535,7 @@ export class BatteryQueue extends EventEmitter {
     port.postMessage({
       type: 'BATTERY_QUEUE_WORKER_CONFIRMATION'
     });
-    logger.info('Linked to interface');
+    this.logger.info('Linked to interface');
     port.onmessage = this.handlePortMessage.bind(this);
     this.emitCallbacks.push((t, args) => {
       port.postMessage({
@@ -556,8 +555,8 @@ export class BatteryQueue extends EventEmitter {
     } = event;
 
     if (!data || typeof data !== 'object') {
-      logger.warn('Invalid message data');
-      logger.warnObject(event);
+      this.logger.warn('Invalid message data');
+      this.logger.warnObject(event);
       return;
     }
 
@@ -567,8 +566,8 @@ export class BatteryQueue extends EventEmitter {
     } = data;
 
     if (typeof type !== 'string') {
-      logger.warn('Unknown message type');
-      logger.warnObject(event);
+      this.logger.warn('Unknown message type');
+      this.logger.warnObject(event);
       return;
     }
 
@@ -593,11 +592,11 @@ export class BatteryQueue extends EventEmitter {
           });
         } catch (error) {
           this.emit('clearError', {
-            errorObject: serializeError(error),
+            errorObject: errorObjectParser.serializeError(error),
             id
           });
-          logger.error('Unable to handle clear message');
-          logger.errorStack(error);
+          this.logger.error('Unable to handle clear message');
+          this.logger.errorStack(error);
         }
 
         break;
@@ -618,11 +617,11 @@ export class BatteryQueue extends EventEmitter {
           });
         } catch (error) {
           this.emit('abortQueueError', {
-            errorObject: serializeError(error),
+            errorObject: errorObjectParser.serializeError(error),
             id
           });
-          logger.error('Unable to handle abort queue message');
-          logger.errorStack(error);
+          this.logger.error('Unable to handle abort queue message');
+          this.logger.errorStack(error);
         }
 
         break;
@@ -635,11 +634,11 @@ export class BatteryQueue extends EventEmitter {
           });
         } catch (error) {
           this.emit('dequeueError', {
-            errorObject: serializeError(error),
+            errorObject: errorObjectParser.serializeError(error),
             id
           });
-          logger.error('Unable to handle dequeue message');
-          logger.errorStack(error);
+          this.logger.error('Unable to handle dequeue message');
+          this.logger.errorStack(error);
         }
 
         break;
@@ -665,17 +664,17 @@ export class BatteryQueue extends EventEmitter {
           });
         } catch (error) {
           this.emit('idleError', {
-            errorObject: serializeError(error),
+            errorObject: errorObjectParser.serializeError(error),
             id
           });
-          logger.error('Unable to handle idle message');
-          logger.errorStack(error);
+          this.logger.error('Unable to handle idle message');
+          this.logger.errorStack(error);
         }
 
         break;
 
       default:
-        logger.warn(`Unknown worker interface message type ${type}`);
+        this.logger.warn(`Unknown worker interface message type ${type}`);
     }
   }
 

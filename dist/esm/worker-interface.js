@@ -1,10 +1,10 @@
 import EventEmitter from 'events';
-import { deserializeError } from 'serialize-error';
+import errorObjectParser from 'serialize-error';
 import makeLogger from './logger';
-export class BatteryQueueServiceWorkerInterface extends EventEmitter {
-  constructor(logger = makeLogger('BatteryQueue Worker Interface')) {
+export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
+  constructor(options = {}) {
     super();
-    this.logger = logger;
+    this.logger = options.logger || makeLogger('Battery Queue Worker Interface');
   }
 
   getController() {
@@ -148,7 +148,7 @@ export class BatteryQueueServiceWorkerInterface extends EventEmitter {
         clearTimeout(timeout);
         this.removeListener('clearComplete', handleClearComplete);
         this.removeListener('clearError', handleClearError);
-        const error = deserializeError(errorObject);
+        const error = errorObjectParser.deserializeError(errorObject);
         reject(error);
       };
 
@@ -197,7 +197,7 @@ export class BatteryQueueServiceWorkerInterface extends EventEmitter {
         clearTimeout(timeout);
         this.removeListener('abortQueueComplete', handleAbortQueueComplete);
         this.removeListener('abortQueueError', handleAbortQueueError);
-        const error = deserializeError(errorObject);
+        const error = errorObjectParser.deserializeError(errorObject);
         reject(error);
       };
 
@@ -247,7 +247,7 @@ export class BatteryQueueServiceWorkerInterface extends EventEmitter {
         clearTimeout(timeout);
         this.removeListener('dequeueComplete', handleDequeueComplete);
         this.removeListener('dequeueError', handleDequeueError);
-        const error = deserializeError(errorObject);
+        const error = errorObjectParser.deserializeError(errorObject);
         reject(error);
       };
 
@@ -296,7 +296,7 @@ export class BatteryQueueServiceWorkerInterface extends EventEmitter {
         clearTimeout(timeout);
         this.removeListener('idleComplete', handleIdleComplete);
         this.removeListener('idleError', handleIdleError);
-        const error = deserializeError(errorObject);
+        const error = errorObjectParser.deserializeError(errorObject);
         reject(error);
       };
 

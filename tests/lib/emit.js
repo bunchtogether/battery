@@ -1,7 +1,7 @@
 // @flow
 
 import type EventEmitter from 'events';
-import { isEqual } from 'lodash';
+import isEqual from 'lodash/isEqual';
 
 export async function expectEmit(emitter:EventEmitter, name:string, ...values:Array<any>) {
   let lastValues;

@@ -1,6 +1,6 @@
 // @flow
 
-import { BatteryQueue } from '../../src/queue';
+import BatteryQueue from '../../src/queue';
 import {
   handler as echoHandler,
   cleanup as echoCleanup,

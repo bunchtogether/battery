@@ -3,10 +3,10 @@
 import { v4 as uuidv4 } from 'uuid';
 import {
   enqueueToDatabase,
-  getCompletedOperationsCountFromDatabase,
+  getCompletedJobsCountFromDatabase,
   removeCompletedExpiredItemsFromDatabase,
 } from '../src/database';
-import { BatteryQueue } from '../src/queue';
+import BatteryQueue from '../src/queue';
 import {
   TRIGGER_NO_ERROR,
   TRIGGER_ERROR,
@@ -88,7 +88,7 @@ describe('Queue', () => {
     queue.removeListener('retry', handleRetry);
   });
 
-  it('Cleans up operations in the reverse order that they were added', async () => {
+  it('Cleans up jobs in the reverse order that they were added', async () => {
     const queueId = uuidv4();
     const expectedCleanupValues = [];
     for (let i = 0; i < 10; i += 1) {
@@ -106,7 +106,7 @@ describe('Queue', () => {
     }
   });
 
-  it('Cleans up operations in the reverse order that they were added following a fatal error', async () => {
+  it('Cleans up jobs in the reverse order that they were added following a fatal error', async () => {
     const queueId = uuidv4();
     const valueA = uuidv4();
     const valueB = uuidv4();
@@ -117,7 +117,7 @@ describe('Queue', () => {
     await expectEmit(echoEmitter, 'echoCleanupComplete', { value: valueA, cleanupData: { value: valueA } });
   });
 
-  it('Cleans up operations in the reverse order that they were added following a maximum number of retries', async () => {
+  it('Cleans up jobs in the reverse order that they were added following a maximum number of retries', async () => {
     const queueId = uuidv4();
     const valueA = uuidv4();
     const valueB = uuidv4();
@@ -129,11 +129,11 @@ describe('Queue', () => {
     await expectEmit(echoEmitter, 'echoCleanupComplete', { value: valueA, cleanupData: { value: valueA } });
   });
 
-  xit('Retries operations after a delay if a DelayRetry error is thrown', async () => {
+  xit('Retries jobs after a delay if a DelayRetry error is thrown', async () => {
     throw new Error('Not implemented');
   });
 
-  xit('Retries operations with set retry delay', async () => {
+  xit('Retries jobs with set retry delay', async () => {
     // queue.setRetryDelay(type, () => 1000);
     throw new Error('Not implemented');
   });
@@ -146,17 +146,17 @@ describe('Queue', () => {
     const maxAttempts = 1;
     await enqueueToDatabase(queueId, 'echo', args, maxAttempts, 0);
 
-    expect(await getCompletedOperationsCountFromDatabase(queueId)).toEqual(0);
+    expect(await getCompletedJobsCountFromDatabase(queueId)).toEqual(0);
     await queue.dequeue();
     await queue.onIdle();
 
-    expect(await getCompletedOperationsCountFromDatabase(queueId)).toEqual(1);
+    expect(await getCompletedJobsCountFromDatabase(queueId)).toEqual(1);
     await removeCompletedExpiredItemsFromDatabase(60 * 1000);
 
-    expect(await getCompletedOperationsCountFromDatabase(queueId)).toEqual(1);
+    expect(await getCompletedJobsCountFromDatabase(queueId)).toEqual(1);
     await removeCompletedExpiredItemsFromDatabase(0);
 
-    expect(await getCompletedOperationsCountFromDatabase(queueId)).toEqual(0);
+    expect(await getCompletedJobsCountFromDatabase(queueId)).toEqual(0);
   });
 
 

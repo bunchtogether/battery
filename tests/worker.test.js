@@ -2,7 +2,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { serviceWorkerPromise } from './lib/worker-interface';
-import { BatteryQueueServiceWorkerInterface } from '../src/worker-interface';
+import BatteryQueueServiceWorkerInterface from '../src/worker-interface';
 import {
   enqueueToDatabase,
 } from '../src/database';

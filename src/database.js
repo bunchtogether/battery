@@ -1,11 +1,12 @@
 // @flow
 
-import { merge, unset } from 'lodash';
+import merge from 'lodash/merge';
+import unset from 'lodash/unset';
 import makeLogger from './logger';
 
-const logger = makeLogger('Operations Database');
+const logger = makeLogger('Jobs Database');
 
-type Operation = {
+type Job = {
   id: number,
   queueId:string,
   type:string,
@@ -16,18 +17,18 @@ type Operation = {
   startAfter: number
 }
 
-export const OPERATION_ABORTED_STATUS = 2;
-export const OPERATION_COMPLETE_STATUS = 1;
-export const OPERATION_PENDING_STATUS = 0;
-export const OPERATION_ERROR_STATUS = -1;
-export const OPERATION_CLEANUP_STATUS = -2;
+export const JOB_ABORTED_STATUS = 2;
+export const JOB_COMPLETE_STATUS = 1;
+export const JOB_PENDING_STATUS = 0;
+export const JOB_ERROR_STATUS = -1;
+export const JOB_CLEANUP_STATUS = -2;
 
 export const databasePromise = (async () => {
-  const request = self.indexedDB.open('operations-009', 1);
+  const request = self.indexedDB.open('battery-queue', 1);
 
   request.onupgradeneeded = function (e) {
     try {
-      const store = e.target.result.createObjectStore('operations', { keyPath: 'id', autoIncrement: true });
+      const store = e.target.result.createObjectStore('jobs', { keyPath: 'id', autoIncrement: true });
       store.createIndex('statusIndex', 'status', { unique: false });
       store.createIndex('queueIdIndex', 'queueId', { unique: false });
       store.createIndex('queueIdTypeIndex', ['queueId', 'type'], { unique: false });
@@ -134,31 +135,31 @@ async function getReadOnlyQueueDataObjectStore() {
   return objectStore;
 }
 
-async function getReadWriteOperationsObjectStore() {
+async function getReadWriteJobsObjectStore() {
   const database = await databasePromise;
-  const transaction = database.transaction(['operations'], 'readwrite');
-  const objectStore = transaction.objectStore('operations');
+  const transaction = database.transaction(['jobs'], 'readwrite');
+  const objectStore = transaction.objectStore('jobs');
   transaction.onabort = (event) => {
-    logger.error('Read-write operations transaction was aborted');
+    logger.error('Read-write jobs transaction was aborted');
     logger.errorObject(event);
   };
   transaction.onerror = (event) => {
-    logger.error('Error in read-write operations transaction');
+    logger.error('Error in read-write jobs transaction');
     logger.errorObject(event);
   };
   return objectStore;
 }
 
-async function getReadOnlyOperationsObjectStore() {
+async function getReadOnlyJobsObjectStore() {
   const database = await databasePromise;
-  const transaction = database.transaction(['operations'], 'readonly');
-  const objectStore = transaction.objectStore('operations');
+  const transaction = database.transaction(['jobs'], 'readonly');
+  const objectStore = transaction.objectStore('jobs');
   transaction.onabort = (event) => {
-    logger.error('Read-only operations transaction was aborted');
+    logger.error('Read-only jobs transaction was aborted');
     logger.errorObject(event);
   };
   transaction.onerror = (event) => {
-    logger.error('Error in read-only operations transaction');
+    logger.error('Error in read-only jobs transaction');
     logger.errorObject(event);
   };
   return objectStore;
@@ -209,17 +210,17 @@ async function clearQueueDataDatabase() {
   });
 }
 
-async function clearOperationsDatabase() {
-  const store = await getReadWriteOperationsObjectStore();
+async function clearJobsDatabase() {
+  const store = await getReadWriteJobsObjectStore();
   const request = store.clear();
   await new Promise((resolve, reject) => {
     request.onsuccess = function () {
       resolve();
     };
     request.onerror = function (event) {
-      logger.error('Error while clearing operations database');
+      logger.error('Error while clearing jobs database');
       logger.errorObject(event);
-      reject(new Error('Error while clearing operations database'));
+      reject(new Error('Error while clearing jobs database'));
     };
   });
 }
@@ -240,13 +241,13 @@ async function clearCleanupsDatabase() {
 }
 
 export async function clearDatabase() {
-  await clearOperationsDatabase();
+  await clearJobsDatabase();
   await clearCleanupsDatabase();
   await clearQueueDataDatabase();
 }
 
-export async function removeOperationsWithQueueIdAndTypeFromDatabase(queueId:string, type:string) {
-  const store = await getReadWriteOperationsObjectStore();
+export async function removeJobsWithQueueIdAndTypeFromDatabase(queueId:string, type:string) {
+  const store = await getReadWriteJobsObjectStore();
   const index = store.index('queueIdTypeIndex');
   // $FlowFixMe
   const request = index.openCursor(IDBKeyRange.only([queueId, type]));
@@ -261,15 +262,15 @@ export async function removeOperationsWithQueueIdAndTypeFromDatabase(queueId:str
       }
     };
     request.onerror = function (event) {
-      logger.error(`Request error while removing operations with queue ${queueId} and type ${type} from operations database`);
+      logger.error(`Request error while removing jobs with queue ${queueId} and type ${type} from jobs database`);
       logger.errorObject(event);
-      reject(new Error(`Request error while removing operations with queue ${queueId} and type ${type} from operations database`));
+      reject(new Error(`Request error while removing jobs with queue ${queueId} and type ${type} from jobs database`));
     };
   });
 }
 
-async function removeQueueIdFromOperationsDatabase(queueId:string) {
-  const store = await getReadWriteOperationsObjectStore();
+async function removeQueueIdFromJobsDatabase(queueId:string) {
+  const store = await getReadWriteJobsObjectStore();
   const index = store.index('queueIdIndex');
   // $FlowFixMe
   const request = index.openCursor(IDBKeyRange.only(queueId));
@@ -284,9 +285,9 @@ async function removeQueueIdFromOperationsDatabase(queueId:string) {
       }
     };
     request.onerror = function (event) {
-      logger.error(`Request error while removing queue ${queueId} from operations database`);
+      logger.error(`Request error while removing queue ${queueId} from jobs database`);
       logger.errorObject(event);
-      reject(new Error(`Request error while removing queue ${queueId} from operations database`));
+      reject(new Error(`Request error while removing queue ${queueId} from jobs database`));
     };
   });
 }
@@ -307,23 +308,23 @@ async function removeQueueIdFromCleanupsDatabase(queueId:string) {
       }
     };
     request.onerror = function (event) {
-      logger.error(`Request error while removing queue ${queueId} from operations database`);
+      logger.error(`Request error while removing queue ${queueId} from jobs database`);
       logger.errorObject(event);
-      reject(new Error(`Request error while removing queue ${queueId} from operations database`));
+      reject(new Error(`Request error while removing queue ${queueId} from jobs database`));
     };
   });
 }
 
 export async function removeQueueIdFromDatabase(queueId:string) {
-  await removeQueueIdFromOperationsDatabase(queueId);
+  await removeQueueIdFromJobsDatabase(queueId);
   await removeQueueIdFromCleanupsDatabase(queueId);
 }
 
 export async function removeCompletedExpiredItemsFromDatabase(maxAge:number) {
-  const store = await getReadWriteOperationsObjectStore();
+  const store = await getReadWriteJobsObjectStore();
   const index = store.index('statusCreatedIndex');
   // $FlowFixMe
-  const request = index.openCursor(IDBKeyRange.bound([OPERATION_COMPLETE_STATUS, 0], [OPERATION_COMPLETE_STATUS, Date.now() - maxAge]));
+  const request = index.openCursor(IDBKeyRange.bound([JOB_COMPLETE_STATUS, 0], [JOB_COMPLETE_STATUS, Date.now() - maxAge]));
   const queueIds = new Set();
   await new Promise((resolve, reject) => {
     request.onsuccess = function (event) {
@@ -337,9 +338,9 @@ export async function removeCompletedExpiredItemsFromDatabase(maxAge:number) {
       }
     };
     request.onerror = function (event) {
-      logger.error('Request error while removing completed exired items from operations database');
+      logger.error('Request error while removing completed exired items from jobs database');
       logger.errorObject(event);
-      reject(new Error('Request error while removing completed exired items from operations database'));
+      reject(new Error('Request error while removing completed exired items from jobs database'));
     };
   });
   for (const queueId of queueIds) {
@@ -347,8 +348,8 @@ export async function removeCompletedExpiredItemsFromDatabase(maxAge:number) {
   }
 }
 
-export async function getOperationFromDatabase(id:number):Promise<Operation | void> {
-  const store = await getReadOnlyOperationsObjectStore();
+export async function getJobFromDatabase(id:number):Promise<Job | void> {
+  const store = await getReadOnlyJobsObjectStore();
   const request = store.get(id);
   return new Promise((resolve, reject) => {
     request.onsuccess = function () {
@@ -468,13 +469,13 @@ export async function updateQueueDataInDatabase(queueId:string, data:Object) {
   });
 }
 
-export async function markOperationStatusInDatabase(id:number, status:number) {
-  const value = await getOperationFromDatabase(id);
+export async function markJobStatusInDatabase(id:number, status:number) {
+  const value = await getJobFromDatabase(id);
   if (typeof value === 'undefined') {
-    throw new Error(`Unable to mark ${id} as statys ${status} in database, operation does not exist`);
+    throw new Error(`Unable to mark ${id} as statys ${status} in database, job does not exist`);
   }
   value.status = status;
-  const store = await getReadWriteOperationsObjectStore();
+  const store = await getReadWriteJobsObjectStore();
   const request = store.put(value);
   return new Promise((resolve, reject) => {
     request.onsuccess = function () {
@@ -488,28 +489,28 @@ export async function markOperationStatusInDatabase(id:number, status:number) {
   });
 }
 
-export function markOperationCompleteInDatabase(id:number) {
-  return markOperationStatusInDatabase(id, OPERATION_COMPLETE_STATUS);
+export function markJobCompleteInDatabase(id:number) {
+  return markJobStatusInDatabase(id, JOB_COMPLETE_STATUS);
 }
 
-export function markOperationPendingInDatabase(id:number) {
-  return markOperationStatusInDatabase(id, OPERATION_PENDING_STATUS);
+export function markJobPendingInDatabase(id:number) {
+  return markJobStatusInDatabase(id, JOB_PENDING_STATUS);
 }
 
-export function markOperationErrorInDatabase(id:number) {
-  return markOperationStatusInDatabase(id, OPERATION_ERROR_STATUS);
+export function markJobErrorInDatabase(id:number) {
+  return markJobStatusInDatabase(id, JOB_ERROR_STATUS);
 }
 
-export function markOperationCleanupInDatabase(id:number) {
-  return markOperationStatusInDatabase(id, OPERATION_CLEANUP_STATUS);
+export function markJobCleanupInDatabase(id:number) {
+  return markJobStatusInDatabase(id, JOB_CLEANUP_STATUS);
 }
 
-export function markOperationAbortedInDatabase(id:number) {
-  return markOperationStatusInDatabase(id, OPERATION_ABORTED_STATUS);
+export function markJobAbortedInDatabase(id:number) {
+  return markJobStatusInDatabase(id, JOB_ABORTED_STATUS);
 }
 
 export async function markQueueForCleanupInDatabase(queueId:string) {
-  const store = await getReadWriteOperationsObjectStore();
+  const store = await getReadWriteJobsObjectStore();
   const index = store.index('queueIdIndex');
   // $FlowFixMe
   const request = index.openCursor(IDBKeyRange.only(queueId));
@@ -519,23 +520,23 @@ export async function markQueueForCleanupInDatabase(queueId:string) {
       if (cursor) {
         const value = Object.assign({}, cursor.value);
         switch (value.status) {
-          case OPERATION_ERROR_STATUS:
-            value.status = OPERATION_CLEANUP_STATUS;
+          case JOB_ERROR_STATUS:
+            value.status = JOB_CLEANUP_STATUS;
             break;
-          case OPERATION_COMPLETE_STATUS:
-            value.status = OPERATION_CLEANUP_STATUS;
+          case JOB_COMPLETE_STATUS:
+            value.status = JOB_CLEANUP_STATUS;
             break;
-          case OPERATION_PENDING_STATUS:
-            value.status = OPERATION_ABORTED_STATUS;
+          case JOB_PENDING_STATUS:
+            value.status = JOB_ABORTED_STATUS;
             break;
-          case OPERATION_CLEANUP_STATUS:
+          case JOB_CLEANUP_STATUS:
             cursor.continue();
             return;
-          case OPERATION_ABORTED_STATUS:
+          case JOB_ABORTED_STATUS:
             cursor.continue();
             return;
           default:
-            logger.warn(`Unhandled operation status ${value.status}`);
+            logger.warn(`Unhandled job status ${value.status}`);
             cursor.continue();
             return;
         }
@@ -560,36 +561,14 @@ export async function markQueueForCleanupInDatabase(queueId:string) {
   });
 }
 
-export async function incrementAttemptsRemainingInDatabase(id:number) {
-  const value = await getOperationFromDatabase(id);
-  if (typeof value === 'undefined') {
-    throw new Error(`Unable to increment attempts remaining for operation ${id} in database, operation does not exist`);
-  }
-  const attemptsRemaining = value.attemptsRemaining + 1;
-  value.attemptsRemaining = attemptsRemaining;
-  const store = await getReadWriteOperationsObjectStore();
-  const request = store.put(value);
-  await new Promise((resolve, reject) => {
-    request.onsuccess = function () {
-      resolve();
-    };
-    request.onerror = function (event) {
-      logger.error(`Request error while increment attempts remaining for ${id}`);
-      logger.errorObject(event);
-      reject(new Error(`Request error while increment attempts remaining for ${id}`));
-    };
-  });
-  return attemptsRemaining;
-}
-
 export async function decrementAttemptsRemainingInDatabase(id:number) {
-  const value = await getOperationFromDatabase(id);
+  const value = await getJobFromDatabase(id);
   if (typeof value === 'undefined') {
-    throw new Error(`Unable to decrement attempts remaining for operation ${id} in database, operation does not exist`);
+    throw new Error(`Unable to decrement attempts remaining for job ${id} in database, job does not exist`);
   }
   const attemptsRemaining = value.attemptsRemaining - 1;
   value.attemptsRemaining = attemptsRemaining;
-  const store = await getReadWriteOperationsObjectStore();
+  const store = await getReadWriteJobsObjectStore();
   const request = store.put(value);
   await new Promise((resolve, reject) => {
     request.onsuccess = function () {
@@ -605,7 +584,7 @@ export async function decrementAttemptsRemainingInDatabase(id:number) {
 }
 
 export async function bulkEnqueueToDatabase(queueId: string, items:Array<[string, Array<any>, number]>, delay: number) { // eslint-disable-line no-underscore-dangle
-  const store = await getReadWriteOperationsObjectStore();
+  const store = await getReadWriteJobsObjectStore();
   await new Promise((resolve, reject) => {
     for (let i = 0; i < items.length; i += 1) {
       const [type, args, maxAttempts] = items[i];
@@ -615,7 +594,7 @@ export async function bulkEnqueueToDatabase(queueId: string, items:Array<[string
         args,
         attemptsRemaining: maxAttempts,
         created: Date.now(),
-        status: OPERATION_PENDING_STATUS,
+        status: JOB_PENDING_STATUS,
         startAfter: Date.now() + delay,
       };
       const request = store.put(value);
@@ -624,9 +603,9 @@ export async function bulkEnqueueToDatabase(queueId: string, items:Array<[string
           resolve(request.result);
         };
         request.onerror = function (event) {
-          logger.error(`Request error while bulk enqueueing ${items.length} ${items.length === 1 ? 'operation' : 'operations'} in queue ${queueId}`);
+          logger.error(`Request error while bulk enqueueing ${items.length} ${items.length === 1 ? 'job' : 'jobs'} in queue ${queueId}`);
           logger.errorObject(event);
-          reject(new Error(`Request error while bulk enqueueing ${items.length} ${items.length === 1 ? 'operation' : 'operations'} in queue ${queueId}`));
+          reject(new Error(`Request error while bulk enqueueing ${items.length} ${items.length === 1 ? 'job' : 'jobs'} in queue ${queueId}`));
         };
       }
     }
@@ -640,35 +619,35 @@ export async function enqueueToDatabase(queueId: string, type: string, args: Arr
     args,
     attemptsRemaining: maxAttempts,
     created: Date.now(),
-    status: OPERATION_PENDING_STATUS,
+    status: JOB_PENDING_STATUS,
     startAfter: Date.now() + delay,
   };
-  const store = await getReadWriteOperationsObjectStore();
+  const store = await getReadWriteJobsObjectStore();
   const request = store.put(value);
   const id = await new Promise((resolve, reject) => {
     request.onsuccess = function () {
       resolve(request.result);
     };
     request.onerror = function (event) {
-      logger.error(`Request error while enqueueing ${type} operation`);
+      logger.error(`Request error while enqueueing ${type} job`);
       logger.errorObject(event);
-      reject(new Error(`Request error while enqueueing ${type} operation`));
+      reject(new Error(`Request error while enqueueing ${type} job`));
     };
   });
   return id;
 }
 
-export async function dequeueFromDatabase():Promise<Array<Operation>> { // eslint-disable-line no-underscore-dangle
-  const store = await getReadOnlyOperationsObjectStore();
+export async function dequeueFromDatabase():Promise<Array<Job>> { // eslint-disable-line no-underscore-dangle
+  const store = await getReadOnlyJobsObjectStore();
   const index = store.index('statusIndex');
   // $FlowFixMe
-  const request = index.openCursor(IDBKeyRange.bound(OPERATION_CLEANUP_STATUS, OPERATION_PENDING_STATUS));
-  const operations = [];
+  const request = index.openCursor(IDBKeyRange.bound(JOB_CLEANUP_STATUS, JOB_PENDING_STATUS));
+  const jobs = [];
   await new Promise((resolve, reject) => {
     request.onsuccess = function (event) {
       const cursor = event.target.result;
       if (cursor) {
-        operations.push(cursor.value);
+        jobs.push(cursor.value);
         cursor.continue();
       } else {
         resolve();
@@ -680,37 +659,37 @@ export async function dequeueFromDatabase():Promise<Array<Operation>> { // eslin
       reject(new Error('Request error while dequeing'));
     };
   });
-  return operations;
+  return jobs;
 }
 
-export async function getCompletedOperationsCountFromDatabase(queueId: string) { // eslint-disable-line no-underscore-dangle
-  const operations = await getCompletedOperationsFromDatabase(queueId);
-  return operations.length;
+export async function getCompletedJobsCountFromDatabase(queueId: string) { // eslint-disable-line no-underscore-dangle
+  const jobs = await getCompletedJobsFromDatabase(queueId);
+  return jobs.length;
 }
 
-export async function getCompletedOperationsFromDatabase(queueId: string):Promise<Array<Operation>> { // eslint-disable-line no-underscore-dangle
-  const store = await getReadOnlyOperationsObjectStore();
+export async function getCompletedJobsFromDatabase(queueId: string):Promise<Array<Job>> { // eslint-disable-line no-underscore-dangle
+  const store = await getReadOnlyJobsObjectStore();
   const index = store.index('statusQueueIdIndex');
   // $FlowFixMe
-  const request = index.openCursor(IDBKeyRange.only([queueId, OPERATION_COMPLETE_STATUS]));
-  const operations = [];
+  const request = index.openCursor(IDBKeyRange.only([queueId, JOB_COMPLETE_STATUS]));
+  const jobs = [];
   await new Promise((resolve, reject) => {
     request.onsuccess = function (event) {
       const cursor = event.target.result;
       if (cursor) {
-        operations.push(cursor.value);
+        jobs.push(cursor.value);
         cursor.continue();
       } else {
         resolve();
       }
     };
     request.onerror = function (event) {
-      logger.error(`Request error while getting completed operations for queue ${queueId}`);
+      logger.error(`Request error while getting completed jobs for queue ${queueId}`);
       logger.errorObject(event);
-      reject(new Error(`Request error while getting completed operations for queue ${queueId}`));
+      reject(new Error(`Request error while getting completed jobs for queue ${queueId}`));
     };
   });
-  return operations;
+  return jobs;
 }
 
 export async function storeAuthDataInDatabase(value: Object) { // eslint-disable-line no-underscore-dangle

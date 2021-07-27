@@ -1,22 +1,36 @@
-import { stringify } from 'flatted';
-const loggers = {};
+"use strict";
 
-const log = (color, name, value, ...args) => {
-  const label = `%c${name}: %c${value}`;
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+var _flatted = require("flatted");
+
+var loggers = {};
+
+var log = function log(color, name, value) {
+  var label = "%c".concat(name, ": %c").concat(value);
+
+  for (var _len = arguments.length, args = new Array(_len > 3 ? _len - 3 : 0), _key = 3; _key < _len; _key++) {
+    args[_key - 3] = arguments[_key];
+  }
 
   if (args.length === 0) {
-    console.log(label, 'color:#333; font-weight: bold', `color:${color}`); // eslint-disable-line
+    console.log(label, 'color:#333; font-weight: bold', "color:".concat(color)); // eslint-disable-line
 
     return;
   }
 
-  console.group(label, 'color:#333; font-weight: bold', `color:${color}`); // eslint-disable-line
+  console.group(label, 'color:#333; font-weight: bold', "color:".concat(color)); // eslint-disable-line
 
-  for (const arg of args) {
+  for (var _i = 0, _args = args; _i < _args.length; _i++) {
+    var arg = _args[_i];
+
     if (typeof arg === 'undefined') {
       continue;
     } else if (typeof arg === 'string') {
-      console.log(`%c${arg}`, 'color:#666'); // eslint-disable-line
+      console.log("%c".concat(arg), 'color:#666'); // eslint-disable-line
     } else {
       if (arg && arg.err) {
         console.error(arg.err); // eslint-disable-line
@@ -31,37 +45,57 @@ const log = (color, name, value, ...args) => {
   console.groupEnd(); // eslint-disable-line
 };
 
-export default (name => {
+var _default = function _default(name) {
   if (loggers[name]) {
     return loggers[name];
   }
 
-  const logger = {
-    debug: (value, ...args) => {
-      log('blue', name, value, ...args);
+  var logger = {
+    debug: function debug(value) {
+      for (var _len2 = arguments.length, args = new Array(_len2 > 1 ? _len2 - 1 : 0), _key2 = 1; _key2 < _len2; _key2++) {
+        args[_key2 - 1] = arguments[_key2];
+      }
+
+      log.apply(void 0, ['blue', name, value].concat(args));
     },
-    info: (value, ...args) => {
-      log('green', name, value, ...args);
+    info: function info(value) {
+      for (var _len3 = arguments.length, args = new Array(_len3 > 1 ? _len3 - 1 : 0), _key3 = 1; _key3 < _len3; _key3++) {
+        args[_key3 - 1] = arguments[_key3];
+      }
+
+      log.apply(void 0, ['green', name, value].concat(args));
     },
-    warn: (value, ...args) => {
-      log('orange', name, value, ...args);
+    warn: function warn(value) {
+      for (var _len4 = arguments.length, args = new Array(_len4 > 1 ? _len4 - 1 : 0), _key4 = 1; _key4 < _len4; _key4++) {
+        args[_key4 - 1] = arguments[_key4];
+      }
+
+      log.apply(void 0, ['orange', name, value].concat(args));
     },
-    error: (value, ...args) => {
-      log('red', name, value, ...args);
+    error: function error(value) {
+      for (var _len5 = arguments.length, args = new Array(_len5 > 1 ? _len5 - 1 : 0), _key5 = 1; _key5 < _len5; _key5++) {
+        args[_key5 - 1] = arguments[_key5];
+      }
+
+      log.apply(void 0, ['red', name, value].concat(args));
     },
-    debugObject: (obj = {}) => {
+    debugObject: function debugObject() {
+      var obj = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
       console.log(obj);
     },
-    infoObject: (obj = {}) => {
+    infoObject: function infoObject() {
+      var obj = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
       console.log(obj);
     },
-    warnObject: (obj = {}) => {
+    warnObject: function warnObject() {
+      var obj = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
       console.log(obj);
     },
-    errorObject: (obj = {}) => {
+    errorObject: function errorObject() {
+      var obj = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
       console.error(obj);
     },
-    errorStack: error => {
+    errorStack: function errorStack(error) {
       if (typeof error === 'string') {
         logger.error(error);
         return;
@@ -71,25 +105,26 @@ export default (name => {
         error = new Error('"undefined" passed to errorStack handler'); // eslint-disable-line no-param-reassign
       }
 
-      const obj = {};
-      Object.keys(error).forEach(key => {
+      var obj = {};
+      Object.keys(error).forEach(function (key) {
         if (key !== 'toString' && key !== 'message') {
           // $FlowFixMe
           obj[key] = error[key];
         }
       });
-      const hasValues = obj && Object.keys(obj).length > 0; // $FlowFixMe
+      var hasValues = obj && Object.keys(obj).length > 0; // $FlowFixMe
 
-      const {
-        stack
-      } = error;
+      var _error = error,
+          stack = _error.stack;
 
       if (typeof stack === 'string') {
         if (error.message) {
           log('red', name, error.message);
         }
 
-        stack.split('\n').forEach(line => log('red', name, `\t${line}`));
+        stack.split('\n').forEach(function (line) {
+          return log('red', name, "\t".concat(line));
+        });
       } else if (error.message) {
         log('red', name, error.message);
       } else if (!hasValues) {
@@ -97,11 +132,15 @@ export default (name => {
       }
 
       if (hasValues) {
-        stringify(obj, null, 2).split('\n').forEach(line => log('red', name, `\t${line}`));
+        (0, _flatted.stringify)(obj, null, 2).split('\n').forEach(function (line) {
+          return log('red', name, "\t".concat(line));
+        });
       }
     }
   };
   loggers[name] = logger;
   return logger;
-});
+};
+
+exports.default = _default;
 //# sourceMappingURL=logger.js.map

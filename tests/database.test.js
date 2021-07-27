@@ -6,13 +6,12 @@ import {
   enqueueToDatabase,
   bulkEnqueueToDatabase,
   dequeueFromDatabase,
-  markOperationCompleteInDatabase,
-  markOperationErrorInDatabase,
-  markOperationAbortedInDatabase,
-  markOperationCleanupInDatabase,
-  incrementAttemptsRemainingInDatabase,
+  markJobCompleteInDatabase,
+  markJobErrorInDatabase,
+  markJobAbortedInDatabase,
+  markJobCleanupInDatabase,
   decrementAttemptsRemainingInDatabase,
-  getOperationFromDatabase,
+  getJobFromDatabase,
   updateCleanupInDatabase,
   getCleanupFromDatabase,
   removeCleanupFromDatabase,
@@ -20,11 +19,11 @@ import {
   getQueueDataFromDatabase,
   clearDatabase,
   updateQueueDataInDatabase,
-  OPERATION_PENDING_STATUS,
-  OPERATION_COMPLETE_STATUS,
-  OPERATION_ERROR_STATUS,
-  OPERATION_CLEANUP_STATUS,
-  OPERATION_ABORTED_STATUS,
+  JOB_PENDING_STATUS,
+  JOB_COMPLETE_STATUS,
+  JOB_ERROR_STATUS,
+  JOB_CLEANUP_STATUS,
+  JOB_ABORTED_STATUS,
 } from '../src/database';
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
@@ -70,7 +69,7 @@ describe('IndexedDB Database', () => {
       args,
       attemptsRemaining: maxAttempts,
       created: jasmine.any(Number),
-      status: OPERATION_PENDING_STATUS,
+      status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
     })]);
   });
@@ -81,7 +80,7 @@ describe('IndexedDB Database', () => {
     const args = [uuidv4()];
     const maxAttempts = 1;
     const id = await enqueueToDatabase(queueId, type, args, maxAttempts, 0);
-    await markOperationErrorInDatabase(id);
+    await markJobErrorInDatabase(id);
 
     expect(await dequeueFromDatabase()).toEqual([jasmine.objectContaining({
       id,
@@ -90,7 +89,7 @@ describe('IndexedDB Database', () => {
       args,
       attemptsRemaining: maxAttempts,
       created: jasmine.any(Number),
-      status: OPERATION_ERROR_STATUS,
+      status: JOB_ERROR_STATUS,
       startAfter: jasmine.any(Number),
     })]);
   });
@@ -101,7 +100,7 @@ describe('IndexedDB Database', () => {
     const args = [uuidv4()];
     const maxAttempts = 1;
     const id = await enqueueToDatabase(queueId, type, args, maxAttempts, 0);
-    await markOperationCleanupInDatabase(id);
+    await markJobCleanupInDatabase(id);
 
     expect(await dequeueFromDatabase()).toEqual([jasmine.objectContaining({
       id,
@@ -110,7 +109,7 @@ describe('IndexedDB Database', () => {
       args,
       attemptsRemaining: maxAttempts,
       created: jasmine.any(Number),
-      status: OPERATION_CLEANUP_STATUS,
+      status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
     })]);
   });
@@ -121,7 +120,7 @@ describe('IndexedDB Database', () => {
     const args = [uuidv4()];
     const maxAttempts = 1;
     const id = await enqueueToDatabase(queueId, type, args, maxAttempts, 0);
-    await markOperationCompleteInDatabase(id);
+    await markJobCompleteInDatabase(id);
 
     expect(await dequeueFromDatabase()).toEqual([]);
   });
@@ -132,7 +131,7 @@ describe('IndexedDB Database', () => {
     const args = [uuidv4()];
     const maxAttempts = 1;
     const id = await enqueueToDatabase(queueId, type, args, maxAttempts, 0);
-    await markOperationAbortedInDatabase(id);
+    await markJobAbortedInDatabase(id);
 
     expect(await dequeueFromDatabase()).toEqual([]);
   });
@@ -145,129 +144,109 @@ describe('IndexedDB Database', () => {
     const id = await enqueueToDatabase(queueId, type, args, maxAttempts, 0);
     await decrementAttemptsRemainingInDatabase(id);
 
-    expect(await getOperationFromDatabase(id)).toEqual(jasmine.objectContaining({
+    expect(await getJobFromDatabase(id)).toEqual(jasmine.objectContaining({
       id,
       queueId,
       type,
       args,
       attemptsRemaining: maxAttempts - 1,
       created: jasmine.any(Number),
-      status: OPERATION_PENDING_STATUS,
+      status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
     }));
   });
 
-  it('Increments attempts remaining in database', async () => {
-    const queueId = uuidv4();
-    const type = uuidv4();
-    const args = [uuidv4()];
-    const maxAttempts = Math.round(1 + Math.random() * 10);
-    const id = await enqueueToDatabase(queueId, type, args, maxAttempts, 0);
-    await incrementAttemptsRemainingInDatabase(id);
-
-    expect(await getOperationFromDatabase(id)).toEqual(jasmine.objectContaining({
-      id,
-      queueId,
-      type,
-      args,
-      attemptsRemaining: maxAttempts + 1,
-      created: jasmine.any(Number),
-      status: OPERATION_PENDING_STATUS,
-      startAfter: jasmine.any(Number),
-    }));
-  });
-
-  it('Marks pending operations as aborted when marking queue for cleanup', async () => {
+  it('Marks pending jobs as aborted when marking queue for cleanup', async () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
     const maxAttempts = Math.round(1 + Math.random() * 10);
     const id = await enqueueToDatabase(queueId, type, args, maxAttempts, 0);
 
-    expect(await getOperationFromDatabase(id)).toEqual(jasmine.objectContaining({
+    expect(await getJobFromDatabase(id)).toEqual(jasmine.objectContaining({
       id,
       queueId,
       type,
       args,
       attemptsRemaining: maxAttempts,
       created: jasmine.any(Number),
-      status: OPERATION_PENDING_STATUS,
+      status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
     }));
     await markQueueForCleanupInDatabase(queueId);
 
-    expect(await getOperationFromDatabase(id)).toEqual(jasmine.objectContaining({
+    expect(await getJobFromDatabase(id)).toEqual(jasmine.objectContaining({
       id,
       queueId,
       type,
       args,
       attemptsRemaining: maxAttempts,
       created: jasmine.any(Number),
-      status: OPERATION_ABORTED_STATUS,
+      status: JOB_ABORTED_STATUS,
       startAfter: jasmine.any(Number),
     }));
   });
 
-  it('Marks completed operations for cleanup when marking queue for cleanup', async () => {
+  it('Marks completed jobs for cleanup when marking queue for cleanup', async () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
     const maxAttempts = Math.round(1 + Math.random() * 10);
     const id = await enqueueToDatabase(queueId, type, args, maxAttempts, 0);
-    await markOperationCompleteInDatabase(id);
+    await markJobCompleteInDatabase(id);
 
-    expect(await getOperationFromDatabase(id)).toEqual(jasmine.objectContaining({
+    expect(await getJobFromDatabase(id)).toEqual(jasmine.objectContaining({
       id,
       queueId,
       type,
       args,
       attemptsRemaining: maxAttempts,
       created: jasmine.any(Number),
-      status: OPERATION_COMPLETE_STATUS,
+      status: JOB_COMPLETE_STATUS,
       startAfter: jasmine.any(Number),
     }));
     await markQueueForCleanupInDatabase(queueId);
 
-    expect(await getOperationFromDatabase(id)).toEqual(jasmine.objectContaining({
+    expect(await getJobFromDatabase(id)).toEqual(jasmine.objectContaining({
       id,
       queueId,
       type,
       args,
       attemptsRemaining: maxAttempts,
       created: jasmine.any(Number),
-      status: OPERATION_CLEANUP_STATUS,
+      status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
     }));
   });
 
-  it('Marks errored operations for cleanup when marking queue for cleanup', async () => {
+  it('Marks errored jobs for cleanup when marking queue for cleanup', async () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
     const maxAttempts = Math.round(1 + Math.random() * 10);
     const id = await enqueueToDatabase(queueId, type, args, maxAttempts, 0);
-    await markOperationErrorInDatabase(id);
+    await markJobErrorInDatabase(id);
 
-    expect(await getOperationFromDatabase(id)).toEqual(jasmine.objectContaining({
+    expect(await getJobFromDatabase(id)).toEqual(jasmine.objectContaining({
       id,
       queueId,
       type,
       args,
       attemptsRemaining: maxAttempts,
       created: jasmine.any(Number),
-      status: OPERATION_ERROR_STATUS,
+      status: JOB_ERROR_STATUS,
       startAfter: jasmine.any(Number),
     }));
     await markQueueForCleanupInDatabase(queueId);
 
-    expect(await getOperationFromDatabase(id)).toEqual(jasmine.objectContaining({
+    expect(await getJobFromDatabase(id)).toEqual(jasmine.objectContaining({
       id,
       queueId,
       type,
       args,
       attemptsRemaining: maxAttempts,
       created: jasmine.any(Number),
-      status: OPERATION_CLEANUP_STATUS,
+      status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
     }));
   });
@@ -291,7 +270,7 @@ describe('IndexedDB Database', () => {
       args: [valueA],
       attemptsRemaining: maxAttempts,
       created: jasmine.any(Number),
-      status: OPERATION_PENDING_STATUS,
+      status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
     }), jasmine.objectContaining({
       id: jasmine.any(Number),
@@ -300,7 +279,7 @@ describe('IndexedDB Database', () => {
       args: [valueB],
       attemptsRemaining: maxAttempts,
       created: jasmine.any(Number),
-      status: OPERATION_PENDING_STATUS,
+      status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
     })]);
   });

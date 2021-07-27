@@ -1,6 +1,6 @@
 {
   "name": "@bunchtogether/battery",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "main": "dist/cjs/queue.js",
   "module": "dist/esm/queue.js",
   "exports": {
@@ -12,6 +12,10 @@
     "./queue": {
       "require": "./dist/cjs/queue.js",
       "import": "./dist/esm/queue.js"
+    },
+    "./database": {
+      "require": "./dist/cjs/database.js",
+      "import": "./dist/esm/database.js"
     },
     "./worker-interface": {
       "require": "./dist/cjs/worker-interface.js",
@@ -35,26 +39,23 @@
     "lint:js": "eslint --fix --cache ./src ./tests",
     "lint:flow": "flow --show-all-errors",
     "coverage": "codecov",
-    "documentation": "documentation readme src/index.js --section='API'",
     "prepare": "husky install"
   },
   "devDependencies": {
-    "@babel/cli": "^7.14.3",
-    "@babel/core": "^7.14.2",
-    "@babel/plugin-proposal-class-properties": "^7.13.0",
-    "@babel/plugin-transform-flow-strip-types": "^7.13.0",
-    "@babel/preset-env": "^7.14.2",
+    "@babel/cli": "^7.14.8",
+    "@babel/core": "^7.14.8",
+    "@babel/eslint-parser": "^7.14.7",
+    "@babel/plugin-proposal-class-properties": "^7.14.5",
+    "@babel/plugin-transform-flow-strip-types": "^7.14.5",
+    "@babel/preset-env": "^7.14.8",
     "@babel/preset-flow": "^7.14.5",
-    "@bunchtogether/vite-plugin-flow": "^1.0.0",
-    "@rollup/plugin-alias": "^3.1.4",
     "@rollup/plugin-babel": "^5.3.0",
-    "@rollup/plugin-commonjs": "^19.0.2",
     "@rollup/plugin-node-resolve": "^13.0.4",
     "@rollup/plugin-replace": "^3.0.0",
-    "babel-eslint": "^10.1.0",
+    "babel-plugin-istanbul": "^6.0.0",
+    "babel-plugin-transform-commonjs": "^1.1.6",
     "codecov": "^3.8.3",
     "cross-env": "^7.0.3",
-    "documentation": "^13.2.5",
     "eslint": "^7.31.0",
     "eslint-config-bunchtogether": "^1.1.6",
     "eslint-plugin-flowtype": "^5.8.2",
@@ -85,12 +86,13 @@
     "karma-spec-reporter": "^0.0.32",
     "karma-stacktrace": "^2.0.2",
     "karma-time-stats-reporter": "^0.1.0",
+    "rollup": "^2.55.0",
     "rollup-plugin-polyfill-node": "^0.7.0"
   },
   "dependencies": {
     "flatted": "^3.2.1",
     "lodash": "^4.17.21",
-    "p-queue": "^6.6.2",
+    "p-queue": "^7.1.0",
     "serialize-error": "^8.1.0",
     "uuid": "^8.3.2"
   }
