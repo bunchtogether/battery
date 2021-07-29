@@ -1,7 +1,7 @@
 // @flow
 
 import EventEmitter from 'events';
-import { FatalQueueError, AbortError } from '../../src/errors';
+import { FatalQueueError, AbortError, DelayRetryError } from '../../src/errors';
 import makeLogger from '../../src/logger';
 
 const logger = makeLogger('Echo Handler');
@@ -9,6 +9,7 @@ const logger = makeLogger('Echo Handler');
 export const TRIGGER_NO_ERROR = 0;
 export const TRIGGER_ERROR = 1;
 export const TRIGGER_FATAL_ERROR = 2;
+export const TRIGGER_DELAY_RETRY_ERROR = 3;
 
 export const emitter = new EventEmitter();
 
@@ -32,6 +33,10 @@ export async function handler(args:Array<any>, abortSignal: AbortSignal, updateC
   if (errorType === TRIGGER_FATAL_ERROR) {
     logger.info('Throwing fatal error');
     throw new FatalQueueError('Fatal echo error');
+  }
+  if (errorType === TRIGGER_DELAY_RETRY_ERROR) {
+    logger.info('Throwing delay retry error');
+    throw new DelayRetryError('Delay retry echo error', 100);
   }
   logger.info('Success');
   emitter.emit('echo', { value });

@@ -10,7 +10,8 @@ import {
   markJobErrorInDatabase,
   markJobAbortedInDatabase,
   markJobCleanupInDatabase,
-  decrementAttemptsRemainingInDatabase,
+  markJobStartAfterInDatabase,
+  incrementAttemptInDatabase,
   getJobFromDatabase,
   updateCleanupInDatabase,
   getCleanupFromDatabase,
@@ -67,7 +68,8 @@ describe('IndexedDB Database', () => {
       queueId,
       type,
       args,
-      attemptsRemaining: maxAttempts,
+      attempt: 0,
+      maxAttempts,
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
@@ -87,7 +89,8 @@ describe('IndexedDB Database', () => {
       queueId,
       type,
       args,
-      attemptsRemaining: maxAttempts,
+      attempt: 0,
+      maxAttempts,
       created: jasmine.any(Number),
       status: JOB_ERROR_STATUS,
       startAfter: jasmine.any(Number),
@@ -107,7 +110,8 @@ describe('IndexedDB Database', () => {
       queueId,
       type,
       args,
-      attemptsRemaining: maxAttempts,
+      attempt: 0,
+      maxAttempts,
       created: jasmine.any(Number),
       status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
@@ -136,20 +140,21 @@ describe('IndexedDB Database', () => {
     expect(await dequeueFromDatabase()).toEqual([]);
   });
 
-  it('Decrements attempts remaining in database', async () => {
+  it('Increments attempt in database', async () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
     const maxAttempts = Math.round(1 + Math.random() * 10);
     const id = await enqueueToDatabase(queueId, type, args, maxAttempts, 0);
-    await decrementAttemptsRemainingInDatabase(id);
+    await incrementAttemptInDatabase(id);
 
     expect(await getJobFromDatabase(id)).toEqual(jasmine.objectContaining({
       id,
       queueId,
       type,
       args,
-      attemptsRemaining: maxAttempts - 1,
+      attempt: 1,
+      maxAttempts,
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
@@ -168,7 +173,8 @@ describe('IndexedDB Database', () => {
       queueId,
       type,
       args,
-      attemptsRemaining: maxAttempts,
+      attempt: 0,
+      maxAttempts,
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
@@ -180,7 +186,8 @@ describe('IndexedDB Database', () => {
       queueId,
       type,
       args,
-      attemptsRemaining: maxAttempts,
+      attempt: 0,
+      maxAttempts,
       created: jasmine.any(Number),
       status: JOB_ABORTED_STATUS,
       startAfter: jasmine.any(Number),
@@ -200,7 +207,8 @@ describe('IndexedDB Database', () => {
       queueId,
       type,
       args,
-      attemptsRemaining: maxAttempts,
+      attempt: 0,
+      maxAttempts,
       created: jasmine.any(Number),
       status: JOB_COMPLETE_STATUS,
       startAfter: jasmine.any(Number),
@@ -212,11 +220,34 @@ describe('IndexedDB Database', () => {
       queueId,
       type,
       args,
-      attemptsRemaining: maxAttempts,
+      attempt: 0,
+      maxAttempts,
       created: jasmine.any(Number),
       status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
     }));
+  });
+
+  it('Marks job start-after time in database', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const args = [uuidv4()];
+    const maxAttempts = Math.round(1 + Math.random() * 10);
+    const id = await enqueueToDatabase(queueId, type, args, maxAttempts, 0);
+    await markJobCompleteInDatabase(id);
+    const jobBeforeUpdate = await getJobFromDatabase(id);
+    if (typeof jobBeforeUpdate === 'undefined') {
+      throw new Error('Job does not exist');
+    }
+
+    expect(jobBeforeUpdate.startAfter).toBeLessThan(Date.now());
+    await markJobStartAfterInDatabase(id, Date.now() + 1000);
+    const jobAfterUpdate = await getJobFromDatabase(id);
+    if (typeof jobAfterUpdate === 'undefined') {
+      throw new Error('Job does not exist');
+    }
+
+    expect(jobAfterUpdate.startAfter).toBeGreaterThan(Date.now());
   });
 
   it('Marks errored jobs for cleanup when marking queue for cleanup', async () => {
@@ -232,7 +263,8 @@ describe('IndexedDB Database', () => {
       queueId,
       type,
       args,
-      attemptsRemaining: maxAttempts,
+      attempt: 0,
+      maxAttempts,
       created: jasmine.any(Number),
       status: JOB_ERROR_STATUS,
       startAfter: jasmine.any(Number),
@@ -244,7 +276,8 @@ describe('IndexedDB Database', () => {
       queueId,
       type,
       args,
-      attemptsRemaining: maxAttempts,
+      attempt: 0,
+      maxAttempts,
       created: jasmine.any(Number),
       status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
@@ -268,7 +301,8 @@ describe('IndexedDB Database', () => {
       queueId,
       type,
       args: [valueA],
-      attemptsRemaining: maxAttempts,
+      attempt: 0,
+      maxAttempts,
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
@@ -277,7 +311,8 @@ describe('IndexedDB Database', () => {
       queueId,
       type,
       args: [valueB],
-      attemptsRemaining: maxAttempts,
+      attempt: 0,
+      maxAttempts,
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),

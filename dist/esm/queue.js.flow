@@ -8,12 +8,13 @@ import makeLogger from './logger';
 import {
   clearDatabase,
   dequeueFromDatabase,
-  decrementAttemptsRemainingInDatabase,
+  incrementAttemptInDatabase,
   markJobCompleteInDatabase,
   markJobPendingInDatabase,
   markJobErrorInDatabase,
   markJobCleanupInDatabase,
   markJobAbortedInDatabase,
+  markJobStartAfterInDatabase,
   updateCleanupInDatabase,
   getCleanupFromDatabase,
   getJobFromDatabase,
@@ -81,6 +82,10 @@ export default class BatteryQueue extends EventEmitter {
     } else {
       this.logger.error(`Unable to set retry delay for ${type}, unknown handler type ${typeof delayOrFunction}`);
     }
+  }
+
+  removeRetryDelay(type:string) {
+    this.retryDelayMap.delete(type);
   }
 
   addHandler(type:string, handler: HandlerFunction) {
@@ -181,7 +186,7 @@ export default class BatteryQueue extends EventEmitter {
   async _dequeue() { // eslint-disable-line consistent-return
     const jobs = await dequeueFromDatabase();
     const queueIds = new Set();
-    for (const { id, queueId, args, type, status, attemptsRemaining, startAfter } of jobs) {
+    for (const { id, queueId, args, type, status, attempt, maxAttempts, startAfter } of jobs) {
       // Pause queues before adding items into them to avoid starting things out of priority
       if (!queueIds.has(queueId)) {
         const queue = this.queueMap.get(queueId);
@@ -191,7 +196,7 @@ export default class BatteryQueue extends EventEmitter {
         queueIds.add(queueId);
       }
       if (status === JOB_PENDING_STATUS) {
-        this.startJob(id, queueId, args, type, attemptsRemaining, startAfter);
+        this.startJob(id, queueId, args, type, attempt, maxAttempts, startAfter);
       } else if (status === JOB_ERROR_STATUS) {
         this.startErrorHandler(id, queueId, args, type);
       } else if (status === JOB_CLEANUP_STATUS) {
@@ -330,15 +335,15 @@ export default class BatteryQueue extends EventEmitter {
       await removeCleanupFromDatabase(id);
       this.jobIds.delete(id);
       this.emit('cleanup', { id });
-      const attemptsRemaining = await decrementAttemptsRemainingInDatabase(id);
-      if (attemptsRemaining <= 0) {
-        this.logger.warn(`Not retrying ${type} job #${id} in queue ${queueId} after maximum failed attempts, cleaning up queue`);
+      const [attempt, maxAttempts] = await incrementAttemptInDatabase(id);
+      if (attempt >= maxAttempts) {
+        this.logger.warn(`Not retrying ${type} job #${id} in queue ${queueId} after ${maxAttempts} failed ${maxAttempts === 1 ? 'attempt' : 'attempts'}, cleaning up queue`);
         await markJobAbortedInDatabase(id);
         this.emit('fatalError', { queueId });
         await this.abortQueue(queueId);
       } else {
         await markJobPendingInDatabase(id);
-        this.logger.info(`Retrying ${type} job #${id} in queue ${queueId}, ${attemptsRemaining} attempts remaining`);
+        this.logger.info(`Retrying ${type} job #${id} in queue ${queueId}, ${maxAttempts - attempt} ${maxAttempts - attempt === 1 ? 'attempt' : 'attempts'} remaining`);
         this.emit('retry', { id });
       }
       await this.dequeue();
@@ -366,7 +371,7 @@ export default class BatteryQueue extends EventEmitter {
     }
   }
 
-  startJob(id:number, queueId:string, args:Array<any>, type:string, attemptsRemaining:number, startAfter: number) {
+  startJob(id:number, queueId:string, args:Array<any>, type:string, attempt:number, maxAttempts:number, startAfter: number) {
     if (this.jobIds.has(id)) {
       this.logger.info(`Skipping active ${type} job #${id} in queue ${queueId}`);
       return;
@@ -378,10 +383,11 @@ export default class BatteryQueue extends EventEmitter {
     const updateCleanupData = (data:Object) => updateCleanupInDatabase(id, queueId, data);
     const run = async () => {
       await this.delayStart(id, queueId, type, abortController.signal, startAfter);
-      this.logger.info(`Starting ${type} job #${id} in queue ${queueId} with ${attemptsRemaining} ${attemptsRemaining === 1 ? 'attempt' : 'attempts'} remaining`);
+      this.logger.info(`Starting ${type} job #${id} in queue ${queueId} attempt ${attempt + 1} with ${maxAttempts - attempt - 1} ${maxAttempts - attempt - 1 === 1 ? 'attempt' : 'attempts'} remaining`);
       const handlers = this.handlerMap.get(type);
       let hasError = false;
       let hasFatalError = false;
+      let delayRetryErrorMs = 0;
       if (Array.isArray(handlers)) {
         for (const handler of handlers) {
           try {
@@ -390,11 +396,14 @@ export default class BatteryQueue extends EventEmitter {
               throw new AbortError('Aborted');
             }
           } catch (error) {
-            this.logger.error(`Error in ${type} job #${id} in queue ${queueId} with ${attemptsRemaining} ${attemptsRemaining === 1 ? 'attempt' : 'attempts'} remaining`);
+            this.logger.error(`Error in ${type} job #${id} in queue ${queueId} attempt ${attempt + 1} with ${maxAttempts - attempt - 1} ${maxAttempts - attempt - 1 === 1 ? 'attempt' : 'attempts'} remaining`);
             this.logger.errorStack(error);
             hasError = true;
             if (error.name === 'FatalQueueError') {
               hasFatalError = true;
+            }
+            if (error.name === 'DelayRetryError') {
+              delayRetryErrorMs = error.delay || 0;
             }
             break;
           }
@@ -432,7 +441,23 @@ export default class BatteryQueue extends EventEmitter {
         await markJobCleanupInDatabase(id);
         this.emit('fatalError', { queueId });
         await this.abortQueue(queueId);
+      } else if (delayRetryErrorMs > 0) {
+        const newStartAfter = Date.now() + delayRetryErrorMs;
+        this.logger.warn(`Delaying retry of ${type} job #${id} in queue ${queueId} by ${delayRetryErrorMs}ms to ${new Date(newStartAfter).toLocaleString()} following DelayRetryError`);
+        this.emit('delayRetry', { id, queueId, delay: delayRetryErrorMs });
+        await markJobStartAfterInDatabase(id, newStartAfter);
+        await markJobErrorInDatabase(id);
       } else {
+        const retryDelayFunction = this.retryDelayMap.get(type);
+        if (typeof retryDelayFunction === 'function') {
+          const delayRetryMs = retryDelayFunction(attempt + 1);
+          if (delayRetryMs > 0) {
+            const newStartAfter = Date.now() + delayRetryMs;
+            this.logger.warn(`Delaying retry of ${type} job #${id} in queue ${queueId} by ${delayRetryMs}ms to ${new Date(newStartAfter).toLocaleString()}`);
+            this.emit('delayRetry', { id, queueId, delay: delayRetryMs });
+            await markJobStartAfterInDatabase(id, newStartAfter);
+          }
+        }
         await markJobErrorInDatabase(id);
       }
       await this.dequeue();

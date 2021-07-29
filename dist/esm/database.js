@@ -514,7 +514,7 @@ export async function markJobStatusInDatabase(id, status) {
   const value = await getJobFromDatabase(id);
 
   if (typeof value === 'undefined') {
-    throw new Error(`Unable to mark ${id} as statys ${status} in database, job does not exist`);
+    throw new Error(`Unable to mark job ${id} as status ${status} in database, job does not exist`);
   }
 
   value.status = status;
@@ -526,9 +526,9 @@ export async function markJobStatusInDatabase(id, status) {
     };
 
     request.onerror = function (event) {
-      logger.error(`Request error while marking ${id} complete`);
+      logger.error(`Request error while marking job ${id} as status ${status}`);
       logger.errorObject(event);
-      reject(new Error(`Request error while marking ${id} complete`));
+      reject(new Error(`Request error while marking job ${id} as status ${status}`));
     };
   });
 }
@@ -546,6 +546,28 @@ export function markJobCleanupInDatabase(id) {
 }
 export function markJobAbortedInDatabase(id) {
   return markJobStatusInDatabase(id, JOB_ABORTED_STATUS);
+}
+export async function markJobStartAfterInDatabase(id, startAfter) {
+  const value = await getJobFromDatabase(id);
+
+  if (typeof value === 'undefined') {
+    throw new Error(`Unable to mark job ${id} start-after time to ${new Date(startAfter).toLocaleString()} in database, job does not exist`);
+  }
+
+  value.startAfter = startAfter;
+  const store = await getReadWriteJobsObjectStore();
+  const request = store.put(value);
+  return new Promise((resolve, reject) => {
+    request.onsuccess = function () {
+      resolve();
+    };
+
+    request.onerror = function (event) {
+      logger.error(`Request error while marking job ${id} start-after time to ${new Date(startAfter).toLocaleString()}`);
+      logger.errorObject(event);
+      reject(new Error(`Request error while marking job ${id} start-after time to ${new Date(startAfter).toLocaleString()}`));
+    };
+  });
 }
 export async function markQueueForCleanupInDatabase(queueId) {
   const store = await getReadWriteJobsObjectStore();
@@ -609,15 +631,15 @@ export async function markQueueForCleanupInDatabase(queueId) {
     };
   });
 }
-export async function decrementAttemptsRemainingInDatabase(id) {
+export async function incrementAttemptInDatabase(id) {
   const value = await getJobFromDatabase(id);
 
   if (typeof value === 'undefined') {
     throw new Error(`Unable to decrement attempts remaining for job ${id} in database, job does not exist`);
   }
 
-  const attemptsRemaining = value.attemptsRemaining - 1;
-  value.attemptsRemaining = attemptsRemaining;
+  const attempt = value.attempt + 1;
+  value.attempt = attempt;
   const store = await getReadWriteJobsObjectStore();
   const request = store.put(value);
   await new Promise((resolve, reject) => {
@@ -626,12 +648,12 @@ export async function decrementAttemptsRemainingInDatabase(id) {
     };
 
     request.onerror = function (event) {
-      logger.error(`Request error while decrementing attempts remaining for ${id}`);
+      logger.error(`Request error while incrementing attempt to ${attempt} for ${id}`);
       logger.errorObject(event);
-      reject(new Error(`Request error while decrementing attempts remaining for ${id}`));
+      reject(new Error(`Request error while incrementing attempt to ${attempt} for ${id}`));
     };
   });
-  return attemptsRemaining;
+  return [attempt, value.maxAttempts];
 }
 export async function bulkEnqueueToDatabase(queueId, items, delay) {
   // eslint-disable-line no-underscore-dangle
@@ -643,7 +665,8 @@ export async function bulkEnqueueToDatabase(queueId, items, delay) {
         queueId,
         type,
         args,
-        attemptsRemaining: maxAttempts,
+        attempt: 0,
+        maxAttempts,
         created: Date.now(),
         status: JOB_PENDING_STATUS,
         startAfter: Date.now() + delay
@@ -670,7 +693,8 @@ export async function enqueueToDatabase(queueId, type, args, maxAttempts, delay)
     queueId,
     type,
     args,
-    attemptsRemaining: maxAttempts,
+    attempt: 0,
+    maxAttempts,
     created: Date.now(),
     status: JOB_PENDING_STATUS,
     startAfter: Date.now() + delay

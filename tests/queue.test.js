@@ -11,6 +11,7 @@ import {
   TRIGGER_NO_ERROR,
   TRIGGER_ERROR,
   TRIGGER_FATAL_ERROR,
+  TRIGGER_DELAY_RETRY_ERROR,
   handler as echoHandler,
   cleanup as echoCleanup,
   emitter as echoEmitter,
@@ -129,15 +130,55 @@ describe('Queue', () => {
     await expectEmit(echoEmitter, 'echoCleanupComplete', { value: valueA, cleanupData: { value: valueA } });
   });
 
-  xit('Retries jobs after a delay if a DelayRetry error is thrown', async () => {
-    throw new Error('Not implemented');
+  it('Retries jobs after specified delay if a DelayRetryError error is thrown', async () => {
+    const queueId = uuidv4();
+    const value = uuidv4();
+    const args = [TRIGGER_DELAY_RETRY_ERROR, value];
+    const maxAttempts = 1;
+    const id = await enqueueToDatabase(queueId, 'echo', args, maxAttempts, 0);
+    queue.dequeue();
+    await expectEmit(queue, 'delayRetry', { id, queueId, delay: 100 });
   });
 
-  xit('Retries jobs with set retry delay', async () => {
-    // queue.setRetryDelay(type, () => 1000);
-    throw new Error('Not implemented');
+  it('Retries jobs with a fixed retry delay handler', async () => {
+    try {
+      const queueId = uuidv4();
+      const value = uuidv4();
+      const args = [TRIGGER_ERROR, value];
+      const maxAttempts = 1;
+      const retryDelay = Math.round(Math.random() * 1000);
+      queue.setRetryDelay('echo', retryDelay);
+      const id = await enqueueToDatabase(queueId, 'echo', args, maxAttempts, 0);
+      queue.dequeue();
+      await expectEmit(queue, 'delayRetry', { id, queueId, delay: retryDelay });
+    } catch(error) {
+      throw error;
+    } finally {
+      queue.removeRetryDelay('echo');
+    }
   });
 
+  it('Retries jobs with a dynamic retry delay handler based on attempt', async () => {
+    try {
+      const queueId = uuidv4();
+      const value = uuidv4();
+      const args = [TRIGGER_ERROR, value];
+      const maxAttempts = 2;
+      const retryFactor = Math.round(Math.random() * 100);
+      queue.setRetryDelay('echo', (attempt:number) => {
+        console.log({ attempt });
+        return attempt * retryFactor;
+      });
+      const id = await enqueueToDatabase(queueId, 'echo', args, maxAttempts, 0);
+      queue.dequeue();
+      await expectEmit(queue, 'delayRetry', { id, queueId, delay: retryFactor });
+      await expectEmit(queue, 'delayRetry', { id, queueId, delay: retryFactor * 2 });
+    } catch(error) {
+      throw error;
+    } finally {
+      queue.removeRetryDelay('echo');
+    }
+  });
 
   it('Removes completed items older than a certain age', async () => {
     const queueId = uuidv4();
