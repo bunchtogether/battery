@@ -118,12 +118,8 @@ var _default = function _default(name) {
           stack = _error.stack;
 
       if (typeof stack === 'string') {
-        if (error.message) {
-          log('red', name, error.message);
-        }
-
         stack.split('\n').forEach(function (line) {
-          return log('red', name, "\t".concat(line));
+          return log('red', name, "".concat(line));
         });
       } else if (error.message) {
         log('red', name, error.message);
@@ -133,7 +129,7 @@ var _default = function _default(name) {
 
       if (hasValues) {
         (0, _flatted.stringify)(obj, null, 2).split('\n').forEach(function (line) {
-          return log('red', name, "\t".concat(line));
+          return log('red', name, "".concat(line));
         });
       }
     }

@@ -2,7 +2,7 @@ import PQueue from 'p-queue';
 import errorObjectParser from 'serialize-error';
 import EventEmitter from 'events';
 import makeLogger from './logger';
-import { clearDatabase, dequeueFromDatabase, incrementAttemptInDatabase, markJobCompleteInDatabase, markJobPendingInDatabase, markJobErrorInDatabase, markJobCleanupInDatabase, markJobAbortedInDatabase, markJobStartAfterInDatabase, updateCleanupInDatabase, getCleanupFromDatabase, getJobFromDatabase, removePathFromCleanupDataInDatabase, markQueueForCleanupInDatabase, removeCleanupFromDatabase, JOB_PENDING_STATUS, JOB_ABORTED_STATUS, JOB_ERROR_STATUS, JOB_CLEANUP_STATUS, JOB_COMPLETE_STATUS } from './database';
+import { clearDatabase, dequeueFromDatabase, incrementJobAttemptInDatabase, incrementCleanupAttemptInDatabase, markJobCompleteInDatabase, markJobPendingInDatabase, markJobErrorInDatabase, markJobCleanupInDatabase, markJobAbortedInDatabase, markJobStartAfterInDatabase, markCleanupStartAfterInDatabase, updateCleanupInDatabase, getCleanupFromDatabase, getJobFromDatabase, removePathFromCleanupDataInDatabase, markQueueForCleanupInDatabase, removeCleanupFromDatabase, JOB_PENDING_STATUS, JOB_ABORTED_STATUS, JOB_ERROR_STATUS, JOB_CLEANUP_STATUS, JOB_COMPLETE_STATUS } from './database';
 import { AbortError } from './errors';
 const PRIORITY_OFFSET = Math.floor(Number.MAX_SAFE_INTEGER / 2);
 export default class BatteryQueue extends EventEmitter {
@@ -172,7 +172,11 @@ export default class BatteryQueue extends EventEmitter {
       maxAttempts,
       startAfter
     } of jobs) {
-      // Pause queues before adding items into them to avoid starting things out of priority
+      if (this.jobIds.has(id)) {
+        continue;
+      } // Pause queues before adding items into them to avoid starting things out of priority
+
+
       if (!queueIds.has(queueId)) {
         const queue = this.queueMap.get(queueId);
 
@@ -289,37 +293,111 @@ export default class BatteryQueue extends EventEmitter {
     queueAbortControllerMap.delete(id);
   }
 
-  startCleanup(id, queueId, args, type) {
-    if (this.jobIds.has(id)) {
-      this.logger.info(`Skipping active ${type} cleanup #${id} in queue ${queueId}`);
+  async runCleanups(id, queueId, args, type) {
+    const removePathFromCleanupData = path => removePathFromCleanupDataInDatabase(id, path);
+
+    const cleanups = this.cleanupMap.get(type);
+    let hasFatalError = false;
+    let hasError = false;
+    let delayRetryErrorMs = 0;
+
+    if (Array.isArray(cleanups)) {
+      const cleanupJob = await getCleanupFromDatabase(id);
+
+      if (typeof cleanupJob === 'undefined') {
+        for (const cleanup of cleanups) {
+          try {
+            await cleanup({}, args, removePathFromCleanupData);
+          } catch (error) {
+            this.logger.error(`Error in ${type} job #${id} cleanup in queue ${queueId} attempt 1 with 0 attempts remaining, no cleanup data found`);
+            this.logger.errorStack(error);
+            hasFatalError = true;
+            hasError = true;
+          }
+        }
+      } else {
+        const {
+          data,
+          startAfter
+        } = cleanupJob;
+        const delay = startAfter - Date.now();
+
+        if (delay > 0) {
+          this.logger.warn(`Delaying retry of ${type} job #${id} cleanup in queue ${queueId} by ${delay}ms to ${new Date(startAfter).toLocaleString()}`);
+          this.emit('delayCleanupRetry', {
+            id,
+            queueId,
+            delay
+          });
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+
+        for (const cleanup of cleanups) {
+          try {
+            await cleanup(data, args, removePathFromCleanupData);
+          } catch (error) {
+            const [attempt, maxAttempts] = await incrementCleanupAttemptInDatabase(id);
+            hasError = true;
+
+            if (error.name === 'FatalCleanupError') {
+              hasFatalError = true;
+              this.logger.error(`Fatal error in ${type} job #${id} cleanup in queue ${queueId} attempt ${attempt}`);
+              this.logger.errorStack(error);
+            } else if (attempt >= maxAttempts) {
+              hasFatalError = true;
+              this.logger.error(`Error in ${type} job #${id} cleanup in queue ${queueId} attempt ${attempt} with no attempts remaining`);
+              this.logger.errorStack(error);
+            } else {
+              this.logger.error(`Error in ${type} job #${id} cleanup in queue ${queueId} attempt ${attempt} with ${maxAttempts - attempt} ${maxAttempts - attempt === 1 ? 'attempt' : 'attempts'} remaining`);
+              this.logger.errorStack(error);
+
+              if (error.name === 'DelayRetryError') {
+                delayRetryErrorMs = error.delay || 0;
+              }
+            }
+          }
+        }
+      }
+    } else {
+      this.logger.warn(`No cleanup for job type ${type}`);
+    }
+
+    if (hasFatalError) {
+      await removeCleanupFromDatabase(id);
+      this.jobIds.delete(id);
+      this.emit('fatalCleanupError', {
+        id,
+        queueId
+      });
+      return;
+    } else if (hasError) {
+      if (delayRetryErrorMs > 0) {
+        const newStartAfter = Date.now() + delayRetryErrorMs;
+        await markCleanupStartAfterInDatabase(id, newStartAfter);
+      }
+
+      this.emit('dequeueCleanup', {
+        id
+      });
+      await this.runCleanups(id, queueId, args, type);
       return;
     }
 
+    await removeCleanupFromDatabase(id);
+    this.jobIds.delete(id);
+    this.emit('cleanupComplete', {
+      id
+    });
+  }
+
+  startCleanup(id, queueId, args, type) {
     this.logger.info(`Adding ${type} cleanup job #${id} to queue ${queueId}`);
     this.jobIds.add(id);
     const priority = PRIORITY_OFFSET + id;
 
-    const removePathFromCleanupData = path => removePathFromCleanupDataInDatabase(id, queueId, path);
-
     const run = async () => {
       this.logger.info(`Starting ${type} cleanup job #${id} in queue ${queueId}`);
-      const cleanups = this.cleanupMap.get(type);
-
-      if (Array.isArray(cleanups)) {
-        const cleanupData = await getCleanupFromDatabase(id);
-
-        for (const cleanup of cleanups) {
-          await cleanup(cleanupData, args, removePathFromCleanupData);
-        }
-      } else {
-        this.logger.warn(`No cleanup for job type ${type}`);
-      }
-
-      await removeCleanupFromDatabase(id);
-      this.jobIds.delete(id);
-      this.emit('cleanup', {
-        id
-      });
+      await this.runCleanups(id, queueId, args, type);
       await markJobAbortedInDatabase(id);
     };
 
@@ -330,37 +408,14 @@ export default class BatteryQueue extends EventEmitter {
   }
 
   startErrorHandler(id, queueId, args, type) {
-    if (this.jobIds.has(id)) {
-      this.logger.info(`Skipping active ${type} error handler job #${id} in queue ${queueId}`);
-      return;
-    }
-
     this.logger.info(`Adding ${type} error handler job #${id} to queue ${queueId}`);
     this.jobIds.add(id);
     const priority = PRIORITY_OFFSET + id;
 
-    const removePathFromCleanupData = path => removePathFromCleanupDataInDatabase(id, queueId, path);
-
     const run = async () => {
       this.logger.info(`Starting ${type} error handler job #${id} in queue ${queueId}`);
-      const cleanups = this.cleanupMap.get(type);
-
-      if (Array.isArray(cleanups)) {
-        const cleanupData = await getCleanupFromDatabase(id);
-
-        for (const cleanup of cleanups) {
-          await cleanup(cleanupData, args, removePathFromCleanupData);
-        }
-      } else {
-        this.logger.warn(`No cleanup for job type ${type}`);
-      }
-
-      await removeCleanupFromDatabase(id);
-      this.jobIds.delete(id);
-      this.emit('cleanup', {
-        id
-      });
-      const [attempt, maxAttempts] = await incrementAttemptInDatabase(id);
+      await this.runCleanups(id, queueId, args, type);
+      const [attempt, maxAttempts] = await incrementJobAttemptInDatabase(id);
 
       if (attempt >= maxAttempts) {
         this.logger.warn(`Not retrying ${type} job #${id} in queue ${queueId} after ${maxAttempts} failed ${maxAttempts === 1 ? 'attempt' : 'attempts'}, cleaning up queue`);
@@ -386,7 +441,7 @@ export default class BatteryQueue extends EventEmitter {
     });
   }
 
-  async delayStart(id, queueId, type, signal, startAfter) {
+  async delayJobStart(id, queueId, type, signal, startAfter) {
     const duration = startAfter - Date.now();
 
     if (duration > 0) {
@@ -409,21 +464,23 @@ export default class BatteryQueue extends EventEmitter {
   }
 
   startJob(id, queueId, args, type, attempt, maxAttempts, startAfter) {
-    if (this.jobIds.has(id)) {
-      this.logger.info(`Skipping active ${type} job #${id} in queue ${queueId}`);
-      return;
-    }
-
     this.logger.info(`Adding ${type} job #${id} to queue ${queueId}`);
     this.jobIds.add(id);
     const priority = PRIORITY_OFFSET - id;
     const abortController = this.getAbortController(id, queueId);
 
-    const updateCleanupData = data => updateCleanupInDatabase(id, queueId, data);
+    const updateCleanupData = (data, maxCleanupAttempts) => updateCleanupInDatabase(id, queueId, data, maxCleanupAttempts);
 
     const run = async () => {
-      await this.delayStart(id, queueId, type, abortController.signal, startAfter);
-      this.logger.info(`Starting ${type} job #${id} in queue ${queueId} attempt ${attempt + 1} with ${maxAttempts - attempt - 1} ${maxAttempts - attempt - 1 === 1 ? 'attempt' : 'attempts'} remaining`);
+      await this.delayJobStart(id, queueId, type, abortController.signal, startAfter);
+      const attemptsRemaining = maxAttempts - attempt - 1;
+
+      if (attemptsRemaining > 0) {
+        this.logger.info(`Starting ${type} job #${id} in queue ${queueId} attempt ${attempt + 1} with ${attemptsRemaining} ${attemptsRemaining === 1 ? 'attempt' : 'attempts'} remaining`);
+      } else {
+        this.logger.info(`Starting ${type} job #${id} in queue ${queueId} attempt ${attempt + 1} with no attempts remaining`);
+      }
+
       const handlers = this.handlerMap.get(type);
       let hasError = false;
       let hasFatalError = false;
@@ -438,7 +495,12 @@ export default class BatteryQueue extends EventEmitter {
               throw new AbortError('Aborted');
             }
           } catch (error) {
-            this.logger.error(`Error in ${type} job #${id} in queue ${queueId} attempt ${attempt + 1} with ${maxAttempts - attempt - 1} ${maxAttempts - attempt - 1 === 1 ? 'attempt' : 'attempts'} remaining`);
+            if (attemptsRemaining > 0) {
+              this.logger.error(`Error in ${type} job #${id} in queue ${queueId} attempt ${attempt + 1} with ${attemptsRemaining} ${attemptsRemaining === 1 ? 'attempt' : 'attempts'} remaining`);
+            } else {
+              this.logger.error(`Error in ${type} job #${id} in queue ${queueId} attempt ${attempt + 1} with no attempts remaining`);
+            }
+
             this.logger.errorStack(error);
             hasError = true;
 

@@ -20,4 +20,11 @@ export class DelayRetryError extends Error {
   }
 
 }
+export class FatalCleanupError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'FatalCleanupError';
+  }
+
+}
 //# sourceMappingURL=errors.js.map

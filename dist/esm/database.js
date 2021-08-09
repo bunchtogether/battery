@@ -62,7 +62,7 @@ export const databasePromise = (async () => {
 
     try {
       e.target.result.createObjectStore('auth', {
-        keyPath: 'teamId'
+        keyPath: 'id'
       });
     } catch (error) {
       if (!(error.name === 'ConstraintError')) {
@@ -404,15 +404,31 @@ export async function getJobFromDatabase(id) {
     };
   });
 }
-export async function removePathFromCleanupDataInDatabase(id, queueId, path) {
+export async function removePathFromCleanupDataInDatabase(id, path) {
   const value = await getCleanupFromDatabase(id);
   const store = await getReadWriteCleanupsObjectStore();
+
+  if (typeof value === 'undefined') {
+    return;
+  }
+
+  const {
+    queueId,
+    attempt,
+    maxAttempts,
+    startAfter
+  } = value;
+  const data = Object.assign({}, value.data);
+  unset(data, path);
   const request = store.put({
     id,
     queueId,
-    data: unset(value || {}, path)
+    attempt,
+    maxAttempts,
+    startAfter,
+    data
   });
-  return new Promise((resolve, reject) => {
+  await new Promise((resolve, reject) => {
     request.onsuccess = function () {
       resolve();
     };
@@ -424,13 +440,17 @@ export async function removePathFromCleanupDataInDatabase(id, queueId, path) {
     };
   });
 }
-export async function updateCleanupInDatabase(id, queueId, data) {
+export async function updateCleanupInDatabase(id, queueId, data, maxAttempts) {
   const value = await getCleanupFromDatabase(id);
   const store = await getReadWriteCleanupsObjectStore();
+  const combinedData = typeof value === 'undefined' ? data : merge({}, value.data, data);
   const request = store.put({
     id,
     queueId,
-    data: merge({}, value, data)
+    attempt: 0,
+    startAfter: Date.now(),
+    maxAttempts,
+    data: combinedData
   });
   return new Promise((resolve, reject) => {
     request.onsuccess = function () {
@@ -462,7 +482,7 @@ export async function removeCleanupFromDatabase(id) {
 export async function getCleanupFromDatabase(id) {
   const store = await getReadOnlyCleanupsObjectStore();
   const request = store.get(id);
-  const cleanupData = await new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     request.onsuccess = function () {
       resolve(request.result);
     };
@@ -473,7 +493,6 @@ export async function getCleanupFromDatabase(id) {
       reject(new Error(`Request error while getting ${id}`));
     };
   });
-  return typeof cleanupData !== 'undefined' ? cleanupData.data : undefined;
 }
 export async function getQueueDataFromDatabase(queueId) {
   const store = await getReadOnlyQueueDataObjectStore();
@@ -569,6 +588,28 @@ export async function markJobStartAfterInDatabase(id, startAfter) {
     };
   });
 }
+export async function markCleanupStartAfterInDatabase(id, startAfter) {
+  const value = await getCleanupFromDatabase(id);
+
+  if (typeof value === 'undefined') {
+    throw new Error(`Unable to mark cleanup ${id} start-after time to ${new Date(startAfter).toLocaleString()} in database, cleanup does not exist`);
+  }
+
+  value.startAfter = startAfter;
+  const store = await getReadWriteCleanupsObjectStore();
+  const request = store.put(value);
+  return new Promise((resolve, reject) => {
+    request.onsuccess = function () {
+      resolve();
+    };
+
+    request.onerror = function (event) {
+      logger.error(`Request error while marking cleanup ${id} start-after time to ${new Date(startAfter).toLocaleString()}`);
+      logger.errorObject(event);
+      reject(new Error(`Request error while marking cleanup ${id} start-after time to ${new Date(startAfter).toLocaleString()}`));
+    };
+  });
+}
 export async function markQueueForCleanupInDatabase(queueId) {
   const store = await getReadWriteJobsObjectStore();
   const index = store.index('queueIdIndex'); // $FlowFixMe
@@ -631,11 +672,11 @@ export async function markQueueForCleanupInDatabase(queueId) {
     };
   });
 }
-export async function incrementAttemptInDatabase(id) {
+export async function incrementJobAttemptInDatabase(id) {
   const value = await getJobFromDatabase(id);
 
   if (typeof value === 'undefined') {
-    throw new Error(`Unable to decrement attempts remaining for job ${id} in database, job does not exist`);
+    throw new Error(`Unable to increment attempts for job ${id} in database, job does not exist`);
   }
 
   const attempt = value.attempt + 1;
@@ -648,9 +689,33 @@ export async function incrementAttemptInDatabase(id) {
     };
 
     request.onerror = function (event) {
-      logger.error(`Request error while incrementing attempt to ${attempt} for ${id}`);
+      logger.error(`Request error while incrementing attempt to ${attempt} for job ${id}`);
       logger.errorObject(event);
-      reject(new Error(`Request error while incrementing attempt to ${attempt} for ${id}`));
+      reject(new Error(`Request error while incrementing attempt to ${attempt} for job ${id}`));
+    };
+  });
+  return [attempt, value.maxAttempts];
+}
+export async function incrementCleanupAttemptInDatabase(id) {
+  const value = await getCleanupFromDatabase(id);
+
+  if (typeof value === 'undefined') {
+    throw new Error(`Unable to increment attempts for cleanup ${id} in database, cleanup does not exist`);
+  }
+
+  const attempt = value.attempt + 1;
+  value.attempt = attempt;
+  const store = await getReadWriteCleanupsObjectStore();
+  const request = store.put(value);
+  await new Promise((resolve, reject) => {
+    request.onsuccess = function () {
+      resolve();
+    };
+
+    request.onerror = function (event) {
+      logger.error(`Request error while incrementing attempt to ${attempt} for cleanup ${id}`);
+      logger.errorObject(event);
+      reject(new Error(`Request error while incrementing attempt to ${attempt} for cleanup ${id}`));
     };
   });
   return [attempt, value.maxAttempts];
@@ -773,49 +838,53 @@ export async function getCompletedJobsFromDatabase(queueId) {
   });
   return jobs;
 }
-export async function storeAuthDataInDatabase(value) {
+export async function storeAuthDataInDatabase(id, data) {
   // eslint-disable-line no-underscore-dangle
   const store = await getReadWriteAuthObjectStore();
-  const request = store.put(value);
+  const request = store.put({
+    id,
+    data
+  });
   await new Promise((resolve, reject) => {
     request.onsuccess = function () {
       resolve();
     };
 
     request.onerror = function (event) {
-      logger.error('Request error while storing auth data');
+      logger.error(`Request error while storing auth data for ${id}`);
       logger.errorObject(event);
-      reject(new Error('Request error while storing auth data'));
+      reject(new Error(`Request error while storing auth data for ${id}`));
     };
   });
 }
-export async function getAuthDataFromDatabase(teamId) {
+export async function getAuthDataFromDatabase(id) {
   const store = await getReadOnlyAuthObjectStore();
-  const request = store.get(teamId);
-  return new Promise((resolve, reject) => {
+  const request = store.get(id);
+  const authData = await new Promise((resolve, reject) => {
     request.onsuccess = function () {
       resolve(request.result);
     };
 
     request.onerror = function (event) {
-      logger.error(`Request error while getting auth data for team ${teamId}`);
+      logger.error(`Request error while getting auth data for ${id}`);
       logger.errorObject(event);
-      reject(new Error(`Request error while getting auth data for team ${teamId}`));
+      reject(new Error(`Request error while getting auth data for ${id}`));
     };
   });
+  return typeof authData !== 'undefined' ? authData.data : undefined;
 }
-export async function removeAuthDataFromDatabase(teamId) {
+export async function removeAuthDataFromDatabase(id) {
   const store = await getReadWriteAuthObjectStore();
-  const request = store.delete(teamId);
+  const request = store.delete(id);
   return new Promise((resolve, reject) => {
     request.onsuccess = function () {
       resolve();
     };
 
     request.onerror = function (event) {
-      logger.error(`Error while removing auth data for ${teamId}`);
+      logger.error(`Error while removing auth data for ${id}`);
       logger.errorObject(event);
-      reject(new Error(`Error while removing auth data for ${teamId}`));
+      reject(new Error(`Error while removing auth data for ${id}`));
     };
   });
 }

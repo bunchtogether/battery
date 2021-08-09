@@ -22,3 +22,10 @@ export class DelayRetryError extends Error {
     this.delay = delay;
   }
 }
+
+export class FatalCleanupError extends Error {
+  constructor(message:string) {
+    super(message);
+    this.name = 'FatalCleanupError';
+  }
+}

@@ -367,12 +367,20 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
               case 7:
                 if ((_step3 = _iterator3.n()).done) {
-                  _context4.next = 25;
+                  _context4.next = 27;
                   break;
                 }
 
                 _step3$value = _step3.value, id = _step3$value.id, queueId = _step3$value.queueId, args = _step3$value.args, type = _step3$value.type, status = _step3$value.status, attempt = _step3$value.attempt, maxAttempts = _step3$value.maxAttempts, startAfter = _step3$value.startAfter;
 
+                if (!this.jobIds.has(id)) {
+                  _context4.next = 11;
+                  break;
+                }
+
+                return _context4.abrupt("continue", 25);
+
+              case 11:
                 // Pause queues before adding items into them to avoid starting things out of priority
                 if (!queueIds.has(queueId)) {
                   queue = this.queueMap.get(queueId);
@@ -385,59 +393,59 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 }
 
                 if (!(status === _database.JOB_PENDING_STATUS)) {
-                  _context4.next = 14;
+                  _context4.next = 16;
                   break;
                 }
 
                 this.startJob(id, queueId, args, type, attempt, maxAttempts, startAfter);
-                _context4.next = 23;
+                _context4.next = 25;
                 break;
 
-              case 14:
+              case 16:
                 if (!(status === _database.JOB_ERROR_STATUS)) {
-                  _context4.next = 18;
+                  _context4.next = 20;
                   break;
                 }
 
                 this.startErrorHandler(id, queueId, args, type);
-                _context4.next = 23;
+                _context4.next = 25;
                 break;
 
-              case 18:
+              case 20:
                 if (!(status === _database.JOB_CLEANUP_STATUS)) {
-                  _context4.next = 22;
+                  _context4.next = 24;
                   break;
                 }
 
                 this.startCleanup(id, queueId, args, type);
-                _context4.next = 23;
+                _context4.next = 25;
                 break;
 
-              case 22:
+              case 24:
                 throw new Error("Unknown job status ".concat(status, " in job ").concat(id, " of queue ").concat(queueId));
 
-              case 23:
+              case 25:
                 _context4.next = 7;
                 break;
 
-              case 25:
-                _context4.next = 30;
+              case 27:
+                _context4.next = 32;
                 break;
 
-              case 27:
-                _context4.prev = 27;
+              case 29:
+                _context4.prev = 29;
                 _context4.t0 = _context4["catch"](5);
 
                 _iterator3.e(_context4.t0);
 
-              case 30:
-                _context4.prev = 30;
+              case 32:
+                _context4.prev = 32;
 
                 _iterator3.f();
 
-                return _context4.finish(30);
+                return _context4.finish(32);
 
-              case 33:
+              case 35:
                 _iterator4 = _createForOfIteratorHelper(queueIds);
 
                 try {
@@ -457,12 +465,12 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   _iterator4.f();
                 }
 
-              case 35:
+              case 37:
               case "end":
                 return _context4.stop();
             }
           }
-        }, _callee4, this, [[5, 27, 30, 33]]);
+        }, _callee4, this, [[5, 29, 32, 35]]);
       }));
 
       function _dequeue() {
@@ -673,108 +681,288 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
       queueAbortControllerMap.delete(id);
     }
   }, {
+    key: "runCleanups",
+    value: function () {
+      var _runCleanups = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee7(id, queueId, args, type) {
+        var removePathFromCleanupData, cleanups, hasFatalError, hasError, delayRetryErrorMs, cleanupJob, _iterator6, _step6, cleanup, data, startAfter, delay, _iterator7, _step7, _cleanup, _yield$incrementClean, _yield$incrementClean2, attempt, maxAttempts, newStartAfter;
+
+        return regeneratorRuntime.wrap(function _callee7$(_context8) {
+          while (1) {
+            switch (_context8.prev = _context8.next) {
+              case 0:
+                removePathFromCleanupData = function removePathFromCleanupData(path) {
+                  return (0, _database.removePathFromCleanupDataInDatabase)(id, path);
+                };
+
+                cleanups = this.cleanupMap.get(type);
+                hasFatalError = false;
+                hasError = false;
+                delayRetryErrorMs = 0;
+
+                if (!Array.isArray(cleanups)) {
+                  _context8.next = 77;
+                  break;
+                }
+
+                _context8.next = 8;
+                return (0, _database.getCleanupFromDatabase)(id);
+
+              case 8:
+                cleanupJob = _context8.sent;
+
+                if (!(typeof cleanupJob === 'undefined')) {
+                  _context8.next = 38;
+                  break;
+                }
+
+                _iterator6 = _createForOfIteratorHelper(cleanups);
+                _context8.prev = 11;
+
+                _iterator6.s();
+
+              case 13:
+                if ((_step6 = _iterator6.n()).done) {
+                  _context8.next = 28;
+                  break;
+                }
+
+                cleanup = _step6.value;
+                _context8.prev = 15;
+                _context8.next = 18;
+                return cleanup({}, args, removePathFromCleanupData);
+
+              case 18:
+                _context8.next = 26;
+                break;
+
+              case 20:
+                _context8.prev = 20;
+                _context8.t0 = _context8["catch"](15);
+                this.logger.error("Error in ".concat(type, " job #").concat(id, " cleanup in queue ").concat(queueId, " attempt 1 with 0 attempts remaining, no cleanup data found"));
+                this.logger.errorStack(_context8.t0);
+                hasFatalError = true;
+                hasError = true;
+
+              case 26:
+                _context8.next = 13;
+                break;
+
+              case 28:
+                _context8.next = 33;
+                break;
+
+              case 30:
+                _context8.prev = 30;
+                _context8.t1 = _context8["catch"](11);
+
+                _iterator6.e(_context8.t1);
+
+              case 33:
+                _context8.prev = 33;
+
+                _iterator6.f();
+
+                return _context8.finish(33);
+
+              case 36:
+                _context8.next = 75;
+                break;
+
+              case 38:
+                data = cleanupJob.data, startAfter = cleanupJob.startAfter;
+                delay = startAfter - Date.now();
+
+                if (!(delay > 0)) {
+                  _context8.next = 45;
+                  break;
+                }
+
+                this.logger.warn("Delaying retry of ".concat(type, " job #").concat(id, " cleanup in queue ").concat(queueId, " by ").concat(delay, "ms to ").concat(new Date(startAfter).toLocaleString()));
+                this.emit('delayCleanupRetry', {
+                  id: id,
+                  queueId: queueId,
+                  delay: delay
+                });
+                _context8.next = 45;
+                return new Promise(function (resolve) {
+                  return setTimeout(resolve, delay);
+                });
+
+              case 45:
+                _iterator7 = _createForOfIteratorHelper(cleanups);
+                _context8.prev = 46;
+
+                _iterator7.s();
+
+              case 48:
+                if ((_step7 = _iterator7.n()).done) {
+                  _context8.next = 67;
+                  break;
+                }
+
+                _cleanup = _step7.value;
+                _context8.prev = 50;
+                _context8.next = 53;
+                return _cleanup(data, args, removePathFromCleanupData);
+
+              case 53:
+                _context8.next = 65;
+                break;
+
+              case 55:
+                _context8.prev = 55;
+                _context8.t2 = _context8["catch"](50);
+                _context8.next = 59;
+                return (0, _database.incrementCleanupAttemptInDatabase)(id);
+
+              case 59:
+                _yield$incrementClean = _context8.sent;
+                _yield$incrementClean2 = _slicedToArray(_yield$incrementClean, 2);
+                attempt = _yield$incrementClean2[0];
+                maxAttempts = _yield$incrementClean2[1];
+                hasError = true;
+
+                if (_context8.t2.name === 'FatalCleanupError') {
+                  hasFatalError = true;
+                  this.logger.error("Fatal error in ".concat(type, " job #").concat(id, " cleanup in queue ").concat(queueId, " attempt ").concat(attempt));
+                  this.logger.errorStack(_context8.t2);
+                } else if (attempt >= maxAttempts) {
+                  hasFatalError = true;
+                  this.logger.error("Error in ".concat(type, " job #").concat(id, " cleanup in queue ").concat(queueId, " attempt ").concat(attempt, " with no attempts remaining"));
+                  this.logger.errorStack(_context8.t2);
+                } else {
+                  this.logger.error("Error in ".concat(type, " job #").concat(id, " cleanup in queue ").concat(queueId, " attempt ").concat(attempt, " with ").concat(maxAttempts - attempt, " ").concat(maxAttempts - attempt === 1 ? 'attempt' : 'attempts', " remaining"));
+                  this.logger.errorStack(_context8.t2);
+
+                  if (_context8.t2.name === 'DelayRetryError') {
+                    delayRetryErrorMs = _context8.t2.delay || 0;
+                  }
+                }
+
+              case 65:
+                _context8.next = 48;
+                break;
+
+              case 67:
+                _context8.next = 72;
+                break;
+
+              case 69:
+                _context8.prev = 69;
+                _context8.t3 = _context8["catch"](46);
+
+                _iterator7.e(_context8.t3);
+
+              case 72:
+                _context8.prev = 72;
+
+                _iterator7.f();
+
+                return _context8.finish(72);
+
+              case 75:
+                _context8.next = 78;
+                break;
+
+              case 77:
+                this.logger.warn("No cleanup for job type ".concat(type));
+
+              case 78:
+                if (!hasFatalError) {
+                  _context8.next = 86;
+                  break;
+                }
+
+                _context8.next = 81;
+                return (0, _database.removeCleanupFromDatabase)(id);
+
+              case 81:
+                this.jobIds.delete(id);
+                this.emit('fatalCleanupError', {
+                  id: id,
+                  queueId: queueId
+                });
+                return _context8.abrupt("return");
+
+              case 86:
+                if (!hasError) {
+                  _context8.next = 95;
+                  break;
+                }
+
+                if (!(delayRetryErrorMs > 0)) {
+                  _context8.next = 91;
+                  break;
+                }
+
+                newStartAfter = Date.now() + delayRetryErrorMs;
+                _context8.next = 91;
+                return (0, _database.markCleanupStartAfterInDatabase)(id, newStartAfter);
+
+              case 91:
+                this.emit('dequeueCleanup', {
+                  id: id
+                });
+                _context8.next = 94;
+                return this.runCleanups(id, queueId, args, type);
+
+              case 94:
+                return _context8.abrupt("return");
+
+              case 95:
+                _context8.next = 97;
+                return (0, _database.removeCleanupFromDatabase)(id);
+
+              case 97:
+                this.jobIds.delete(id);
+                this.emit('cleanupComplete', {
+                  id: id
+                });
+
+              case 99:
+              case "end":
+                return _context8.stop();
+            }
+          }
+        }, _callee7, this, [[11, 30, 33, 36], [15, 20], [46, 69, 72, 75], [50, 55]]);
+      }));
+
+      function runCleanups(_x2, _x3, _x4, _x5) {
+        return _runCleanups.apply(this, arguments);
+      }
+
+      return runCleanups;
+    }()
+  }, {
     key: "startCleanup",
     value: function startCleanup(id, queueId, args, type) {
       var _this4 = this;
-
-      if (this.jobIds.has(id)) {
-        this.logger.info("Skipping active ".concat(type, " cleanup #").concat(id, " in queue ").concat(queueId));
-        return;
-      }
 
       this.logger.info("Adding ".concat(type, " cleanup job #").concat(id, " to queue ").concat(queueId));
       this.jobIds.add(id);
       var priority = PRIORITY_OFFSET + id;
 
-      var removePathFromCleanupData = function removePathFromCleanupData(path) {
-        return (0, _database.removePathFromCleanupDataInDatabase)(id, queueId, path);
-      };
-
       var run = /*#__PURE__*/function () {
-        var _ref3 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee7() {
-          var cleanups, cleanupData, _iterator6, _step6, cleanup;
-
-          return regeneratorRuntime.wrap(function _callee7$(_context8) {
+        var _ref3 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee8() {
+          return regeneratorRuntime.wrap(function _callee8$(_context9) {
             while (1) {
-              switch (_context8.prev = _context8.next) {
+              switch (_context9.prev = _context9.next) {
                 case 0:
                   _this4.logger.info("Starting ".concat(type, " cleanup job #").concat(id, " in queue ").concat(queueId));
 
-                  cleanups = _this4.cleanupMap.get(type);
+                  _context9.next = 3;
+                  return _this4.runCleanups(id, queueId, args, type);
 
-                  if (!Array.isArray(cleanups)) {
-                    _context8.next = 25;
-                    break;
-                  }
-
-                  _context8.next = 5;
-                  return (0, _database.getCleanupFromDatabase)(id);
-
-                case 5:
-                  cleanupData = _context8.sent;
-                  _iterator6 = _createForOfIteratorHelper(cleanups);
-                  _context8.prev = 7;
-
-                  _iterator6.s();
-
-                case 9:
-                  if ((_step6 = _iterator6.n()).done) {
-                    _context8.next = 15;
-                    break;
-                  }
-
-                  cleanup = _step6.value;
-                  _context8.next = 13;
-                  return cleanup(cleanupData, args, removePathFromCleanupData);
-
-                case 13:
-                  _context8.next = 9;
-                  break;
-
-                case 15:
-                  _context8.next = 20;
-                  break;
-
-                case 17:
-                  _context8.prev = 17;
-                  _context8.t0 = _context8["catch"](7);
-
-                  _iterator6.e(_context8.t0);
-
-                case 20:
-                  _context8.prev = 20;
-
-                  _iterator6.f();
-
-                  return _context8.finish(20);
-
-                case 23:
-                  _context8.next = 26;
-                  break;
-
-                case 25:
-                  _this4.logger.warn("No cleanup for job type ".concat(type));
-
-                case 26:
-                  _context8.next = 28;
-                  return (0, _database.removeCleanupFromDatabase)(id);
-
-                case 28:
-                  _this4.jobIds.delete(id);
-
-                  _this4.emit('cleanup', {
-                    id: id
-                  });
-
-                  _context8.next = 32;
+                case 3:
+                  _context9.next = 5;
                   return (0, _database.markJobAbortedInDatabase)(id);
 
-                case 32:
+                case 5:
                 case "end":
-                  return _context8.stop();
+                  return _context9.stop();
               }
             }
-          }, _callee7, null, [[7, 17, 20, 23]]);
+          }, _callee8);
         }));
 
         return function run() {
@@ -792,147 +980,76 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
     value: function startErrorHandler(id, queueId, args, type) {
       var _this5 = this;
 
-      if (this.jobIds.has(id)) {
-        this.logger.info("Skipping active ".concat(type, " error handler job #").concat(id, " in queue ").concat(queueId));
-        return;
-      }
-
       this.logger.info("Adding ".concat(type, " error handler job #").concat(id, " to queue ").concat(queueId));
       this.jobIds.add(id);
       var priority = PRIORITY_OFFSET + id;
 
-      var removePathFromCleanupData = function removePathFromCleanupData(path) {
-        return (0, _database.removePathFromCleanupDataInDatabase)(id, queueId, path);
-      };
-
       var run = /*#__PURE__*/function () {
-        var _ref4 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee8() {
-          var cleanups, cleanupData, _iterator7, _step7, cleanup, _yield$incrementAttem, _yield$incrementAttem2, attempt, maxAttempts;
+        var _ref4 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee9() {
+          var _yield$incrementJobAt, _yield$incrementJobAt2, attempt, maxAttempts;
 
-          return regeneratorRuntime.wrap(function _callee8$(_context9) {
+          return regeneratorRuntime.wrap(function _callee9$(_context10) {
             while (1) {
-              switch (_context9.prev = _context9.next) {
+              switch (_context10.prev = _context10.next) {
                 case 0:
                   _this5.logger.info("Starting ".concat(type, " error handler job #").concat(id, " in queue ").concat(queueId));
 
-                  cleanups = _this5.cleanupMap.get(type);
+                  _context10.next = 3;
+                  return _this5.runCleanups(id, queueId, args, type);
 
-                  if (!Array.isArray(cleanups)) {
-                    _context9.next = 25;
-                    break;
-                  }
-
-                  _context9.next = 5;
-                  return (0, _database.getCleanupFromDatabase)(id);
+                case 3:
+                  _context10.next = 5;
+                  return (0, _database.incrementJobAttemptInDatabase)(id);
 
                 case 5:
-                  cleanupData = _context9.sent;
-                  _iterator7 = _createForOfIteratorHelper(cleanups);
-                  _context9.prev = 7;
-
-                  _iterator7.s();
-
-                case 9:
-                  if ((_step7 = _iterator7.n()).done) {
-                    _context9.next = 15;
-                    break;
-                  }
-
-                  cleanup = _step7.value;
-                  _context9.next = 13;
-                  return cleanup(cleanupData, args, removePathFromCleanupData);
-
-                case 13:
-                  _context9.next = 9;
-                  break;
-
-                case 15:
-                  _context9.next = 20;
-                  break;
-
-                case 17:
-                  _context9.prev = 17;
-                  _context9.t0 = _context9["catch"](7);
-
-                  _iterator7.e(_context9.t0);
-
-                case 20:
-                  _context9.prev = 20;
-
-                  _iterator7.f();
-
-                  return _context9.finish(20);
-
-                case 23:
-                  _context9.next = 26;
-                  break;
-
-                case 25:
-                  _this5.logger.warn("No cleanup for job type ".concat(type));
-
-                case 26:
-                  _context9.next = 28;
-                  return (0, _database.removeCleanupFromDatabase)(id);
-
-                case 28:
-                  _this5.jobIds.delete(id);
-
-                  _this5.emit('cleanup', {
-                    id: id
-                  });
-
-                  _context9.next = 32;
-                  return (0, _database.incrementAttemptInDatabase)(id);
-
-                case 32:
-                  _yield$incrementAttem = _context9.sent;
-                  _yield$incrementAttem2 = _slicedToArray(_yield$incrementAttem, 2);
-                  attempt = _yield$incrementAttem2[0];
-                  maxAttempts = _yield$incrementAttem2[1];
+                  _yield$incrementJobAt = _context10.sent;
+                  _yield$incrementJobAt2 = _slicedToArray(_yield$incrementJobAt, 2);
+                  attempt = _yield$incrementJobAt2[0];
+                  maxAttempts = _yield$incrementJobAt2[1];
 
                   if (!(attempt >= maxAttempts)) {
-                    _context9.next = 45;
+                    _context10.next = 18;
                     break;
                   }
 
                   _this5.logger.warn("Not retrying ".concat(type, " job #").concat(id, " in queue ").concat(queueId, " after ").concat(maxAttempts, " failed ").concat(maxAttempts === 1 ? 'attempt' : 'attempts', ", cleaning up queue"));
 
-                  _context9.next = 40;
+                  _context10.next = 13;
                   return (0, _database.markJobAbortedInDatabase)(id);
 
-                case 40:
+                case 13:
                   _this5.emit('fatalError', {
                     queueId: queueId
                   });
 
-                  _context9.next = 43;
+                  _context10.next = 16;
                   return _this5.abortQueue(queueId);
 
-                case 43:
-                  _context9.next = 49;
+                case 16:
+                  _context10.next = 22;
                   break;
 
-                case 45:
-                  _context9.next = 47;
+                case 18:
+                  _context10.next = 20;
                   return (0, _database.markJobPendingInDatabase)(id);
 
-                case 47:
+                case 20:
                   _this5.logger.info("Retrying ".concat(type, " job #").concat(id, " in queue ").concat(queueId, ", ").concat(maxAttempts - attempt, " ").concat(maxAttempts - attempt === 1 ? 'attempt' : 'attempts', " remaining"));
 
                   _this5.emit('retry', {
                     id: id
                   });
 
-                case 49:
-                  _context9.next = 51;
+                case 22:
+                  _context10.next = 24;
                   return _this5.dequeue();
 
-                case 51:
+                case 24:
                 case "end":
-                  return _context9.stop();
+                  return _context10.stop();
               }
             }
-          }, _callee8, null, [[7, 17, 20, 23]]);
+          }, _callee9);
         }));
 
         return function run() {
@@ -946,23 +1063,23 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
       });
     }
   }, {
-    key: "delayStart",
+    key: "delayJobStart",
     value: function () {
-      var _delayStart = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee9(id, queueId, type, signal, startAfter) {
+      var _delayJobStart = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee10(id, queueId, type, signal, startAfter) {
         var duration;
-        return regeneratorRuntime.wrap(function _callee9$(_context10) {
+        return regeneratorRuntime.wrap(function _callee10$(_context11) {
           while (1) {
-            switch (_context10.prev = _context10.next) {
+            switch (_context11.prev = _context11.next) {
               case 0:
                 duration = startAfter - Date.now();
 
                 if (!(duration > 0)) {
-                  _context10.next = 5;
+                  _context11.next = 5;
                   break;
                 }
 
                 this.logger.info("Delaying start of ".concat(type, " job #").concat(id, " in queue ").concat(queueId, " by ").concat(duration, "ms"));
-                _context10.next = 5;
+                _context11.next = 5;
                 return new Promise(function (resolve, reject) {
                   var timeout = setTimeout(function () {
                     signal.removeEventListener('abort', handleAbort);
@@ -980,50 +1097,51 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
               case 5:
               case "end":
-                return _context10.stop();
+                return _context11.stop();
             }
           }
-        }, _callee9, this);
+        }, _callee10, this);
       }));
 
-      function delayStart(_x2, _x3, _x4, _x5, _x6) {
-        return _delayStart.apply(this, arguments);
+      function delayJobStart(_x6, _x7, _x8, _x9, _x10) {
+        return _delayJobStart.apply(this, arguments);
       }
 
-      return delayStart;
+      return delayJobStart;
     }()
   }, {
     key: "startJob",
     value: function startJob(id, queueId, args, type, attempt, maxAttempts, startAfter) {
       var _this6 = this;
 
-      if (this.jobIds.has(id)) {
-        this.logger.info("Skipping active ".concat(type, " job #").concat(id, " in queue ").concat(queueId));
-        return;
-      }
-
       this.logger.info("Adding ".concat(type, " job #").concat(id, " to queue ").concat(queueId));
       this.jobIds.add(id);
       var priority = PRIORITY_OFFSET - id;
       var abortController = this.getAbortController(id, queueId);
 
-      var updateCleanupData = function updateCleanupData(data) {
-        return (0, _database.updateCleanupInDatabase)(id, queueId, data);
+      var updateCleanupData = function updateCleanupData(data, maxCleanupAttempts) {
+        return (0, _database.updateCleanupInDatabase)(id, queueId, data, maxCleanupAttempts);
       };
 
       var run = /*#__PURE__*/function () {
-        var _ref5 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee10() {
-          var handlers, hasError, hasFatalError, delayRetryErrorMs, _iterator8, _step8, handler, job, newStartAfter, retryDelayFunction, delayRetryMs, _newStartAfter;
+        var _ref5 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee11() {
+          var attemptsRemaining, handlers, hasError, hasFatalError, delayRetryErrorMs, _iterator8, _step8, handler, job, newStartAfter, retryDelayFunction, delayRetryMs, _newStartAfter;
 
-          return regeneratorRuntime.wrap(function _callee10$(_context11) {
+          return regeneratorRuntime.wrap(function _callee11$(_context12) {
             while (1) {
-              switch (_context11.prev = _context11.next) {
+              switch (_context12.prev = _context12.next) {
                 case 0:
-                  _context11.next = 2;
-                  return _this6.delayStart(id, queueId, type, abortController.signal, startAfter);
+                  _context12.next = 2;
+                  return _this6.delayJobStart(id, queueId, type, abortController.signal, startAfter);
 
                 case 2:
-                  _this6.logger.info("Starting ".concat(type, " job #").concat(id, " in queue ").concat(queueId, " attempt ").concat(attempt + 1, " with ").concat(maxAttempts - attempt - 1, " ").concat(maxAttempts - attempt - 1 === 1 ? 'attempt' : 'attempts', " remaining"));
+                  attemptsRemaining = maxAttempts - attempt - 1;
+
+                  if (attemptsRemaining > 0) {
+                    _this6.logger.info("Starting ".concat(type, " job #").concat(id, " in queue ").concat(queueId, " attempt ").concat(attempt + 1, " with ").concat(attemptsRemaining, " ").concat(attemptsRemaining === 1 ? 'attempt' : 'attempts', " remaining"));
+                  } else {
+                    _this6.logger.info("Starting ".concat(type, " job #").concat(id, " in queue ").concat(queueId, " attempt ").concat(attempt + 1, " with no attempts remaining"));
+                  }
 
                   handlers = _this6.handlerMap.get(type);
                   hasError = false;
@@ -1031,186 +1149,190 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   delayRetryErrorMs = 0;
 
                   if (!Array.isArray(handlers)) {
-                    _context11.next = 40;
+                    _context12.next = 41;
                     break;
                   }
 
                   _iterator8 = _createForOfIteratorHelper(handlers);
-                  _context11.prev = 9;
+                  _context12.prev = 10;
 
                   _iterator8.s();
 
-                case 11:
+                case 12:
                   if ((_step8 = _iterator8.n()).done) {
-                    _context11.next = 30;
+                    _context12.next = 31;
                     break;
                   }
 
                   handler = _step8.value;
-                  _context11.prev = 13;
-                  _context11.next = 16;
+                  _context12.prev = 14;
+                  _context12.next = 17;
                   return handler(args, abortController.signal, updateCleanupData);
 
-                case 16:
+                case 17:
                   if (!abortController.signal.aborted) {
-                    _context11.next = 18;
+                    _context12.next = 19;
                     break;
                   }
 
                   throw new _errors.AbortError('Aborted');
 
-                case 18:
-                  _context11.next = 28;
+                case 19:
+                  _context12.next = 29;
                   break;
 
-                case 20:
-                  _context11.prev = 20;
-                  _context11.t0 = _context11["catch"](13);
+                case 21:
+                  _context12.prev = 21;
+                  _context12.t0 = _context12["catch"](14);
 
-                  _this6.logger.error("Error in ".concat(type, " job #").concat(id, " in queue ").concat(queueId, " attempt ").concat(attempt + 1, " with ").concat(maxAttempts - attempt - 1, " ").concat(maxAttempts - attempt - 1 === 1 ? 'attempt' : 'attempts', " remaining"));
+                  if (attemptsRemaining > 0) {
+                    _this6.logger.error("Error in ".concat(type, " job #").concat(id, " in queue ").concat(queueId, " attempt ").concat(attempt + 1, " with ").concat(attemptsRemaining, " ").concat(attemptsRemaining === 1 ? 'attempt' : 'attempts', " remaining"));
+                  } else {
+                    _this6.logger.error("Error in ".concat(type, " job #").concat(id, " in queue ").concat(queueId, " attempt ").concat(attempt + 1, " with no attempts remaining"));
+                  }
 
-                  _this6.logger.errorStack(_context11.t0);
+                  _this6.logger.errorStack(_context12.t0);
 
                   hasError = true;
 
-                  if (_context11.t0.name === 'FatalQueueError') {
+                  if (_context12.t0.name === 'FatalQueueError') {
                     hasFatalError = true;
                   }
 
-                  if (_context11.t0.name === 'DelayRetryError') {
-                    delayRetryErrorMs = _context11.t0.delay || 0;
+                  if (_context12.t0.name === 'DelayRetryError') {
+                    delayRetryErrorMs = _context12.t0.delay || 0;
                   }
 
-                  return _context11.abrupt("break", 30);
+                  return _context12.abrupt("break", 31);
 
-                case 28:
-                  _context11.next = 11;
+                case 29:
+                  _context12.next = 12;
                   break;
 
-                case 30:
-                  _context11.next = 35;
+                case 31:
+                  _context12.next = 36;
                   break;
 
-                case 32:
-                  _context11.prev = 32;
-                  _context11.t1 = _context11["catch"](9);
+                case 33:
+                  _context12.prev = 33;
+                  _context12.t1 = _context12["catch"](10);
 
-                  _iterator8.e(_context11.t1);
+                  _iterator8.e(_context12.t1);
 
-                case 35:
-                  _context11.prev = 35;
+                case 36:
+                  _context12.prev = 36;
 
                   _iterator8.f();
 
-                  return _context11.finish(35);
+                  return _context12.finish(36);
 
-                case 38:
-                  _context11.next = 41;
+                case 39:
+                  _context12.next = 42;
                   break;
 
-                case 40:
+                case 41:
                   _this6.logger.warn("No handler for job type ".concat(type));
 
-                case 41:
+                case 42:
                   _this6.removeAbortController(id, queueId);
 
                   _this6.jobIds.delete(id);
 
                   if (hasError) {
-                    _context11.next = 48;
+                    _context12.next = 49;
                     break;
                   }
 
-                  _context11.next = 46;
+                  _context12.next = 47;
                   return (0, _database.markJobCompleteInDatabase)(id);
 
-                case 46:
+                case 47:
                   _this6.emit('complete', {
                     id: id
                   });
 
-                  return _context11.abrupt("return");
+                  return _context12.abrupt("return");
 
-                case 48:
-                  _context11.next = 50;
+                case 49:
+                  _context12.next = 51;
                   return (0, _database.getJobFromDatabase)(id);
 
-                case 50:
-                  job = _context11.sent;
+                case 51:
+                  job = _context12.sent;
 
                   if (!(typeof job === 'undefined')) {
-                    _context11.next = 54;
+                    _context12.next = 55;
                     break;
                   }
 
                   _this6.logger.error("Unable to get ".concat(type, " job #").concat(id, " in queue ").concat(queueId, " following error"));
 
-                  return _context11.abrupt("return");
+                  return _context12.abrupt("return");
 
-                case 54:
+                case 55:
                   if (!(job.status === _database.JOB_CLEANUP_STATUS)) {
-                    _context11.next = 56;
+                    _context12.next = 57;
                     break;
                   }
 
                   throw new Error("Found cleanup status for ".concat(type, " job #").concat(id, " in queue ").concat(queueId, " following error, this should not happen"));
 
-                case 56:
+                case 57:
                   if (!(job.status === _database.JOB_COMPLETE_STATUS)) {
-                    _context11.next = 58;
+                    _context12.next = 59;
                     break;
                   }
 
                   throw new Error("Found complete status for ".concat(type, " job #").concat(id, " in queue ").concat(queueId, " following error, this should not happen"));
 
-                case 58:
+                case 59:
                   if (!(job.status === _database.JOB_ERROR_STATUS)) {
-                    _context11.next = 60;
+                    _context12.next = 61;
                     break;
                   }
 
                   throw new Error("Found error status for ".concat(type, " job #").concat(id, " in queue ").concat(queueId, " following error, this should not happen"));
 
-                case 60:
+                case 61:
                   if (!(job.status === _database.JOB_ABORTED_STATUS)) {
-                    _context11.next = 66;
+                    _context12.next = 67;
                     break;
                   }
 
                   // Job was aborted while running
                   _this6.logger.error("Found aborted status for ".concat(type, " job #").concat(id, " in queue ").concat(queueId, " following error, starting cleanup"));
 
-                  _context11.next = 64;
+                  _context12.next = 65;
                   return (0, _database.markJobErrorInDatabase)(id);
 
-                case 64:
-                  _context11.next = 95;
+                case 65:
+                  _context12.next = 96;
                   break;
 
-                case 66:
+                case 67:
                   if (!hasFatalError) {
-                    _context11.next = 74;
+                    _context12.next = 75;
                     break;
                   }
 
-                  _context11.next = 69;
+                  _context12.next = 70;
                   return (0, _database.markJobCleanupInDatabase)(id);
 
-                case 69:
+                case 70:
                   _this6.emit('fatalError', {
                     queueId: queueId
                   });
 
-                  _context11.next = 72;
+                  _context12.next = 73;
                   return _this6.abortQueue(queueId);
 
-                case 72:
-                  _context11.next = 95;
+                case 73:
+                  _context12.next = 96;
                   break;
 
-                case 74:
+                case 75:
                   if (!(delayRetryErrorMs > 0)) {
-                    _context11.next = 84;
+                    _context12.next = 85;
                     break;
                   }
 
@@ -1224,29 +1346,29 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                     delay: delayRetryErrorMs
                   });
 
-                  _context11.next = 80;
+                  _context12.next = 81;
                   return (0, _database.markJobStartAfterInDatabase)(id, newStartAfter);
 
-                case 80:
-                  _context11.next = 82;
+                case 81:
+                  _context12.next = 83;
                   return (0, _database.markJobErrorInDatabase)(id);
 
-                case 82:
-                  _context11.next = 95;
+                case 83:
+                  _context12.next = 96;
                   break;
 
-                case 84:
+                case 85:
                   retryDelayFunction = _this6.retryDelayMap.get(type);
 
                   if (!(typeof retryDelayFunction === 'function')) {
-                    _context11.next = 93;
+                    _context12.next = 94;
                     break;
                   }
 
                   delayRetryMs = retryDelayFunction(attempt + 1);
 
                   if (!(delayRetryMs > 0)) {
-                    _context11.next = 93;
+                    _context12.next = 94;
                     break;
                   }
 
@@ -1260,23 +1382,23 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                     delay: delayRetryMs
                   });
 
-                  _context11.next = 93;
+                  _context12.next = 94;
                   return (0, _database.markJobStartAfterInDatabase)(id, _newStartAfter);
 
-                case 93:
-                  _context11.next = 95;
+                case 94:
+                  _context12.next = 96;
                   return (0, _database.markJobErrorInDatabase)(id);
 
-                case 95:
-                  _context11.next = 97;
+                case 96:
+                  _context12.next = 98;
                   return _this6.dequeue();
 
-                case 97:
+                case 98:
                 case "end":
-                  return _context11.stop();
+                  return _context12.stop();
               }
             }
-          }, _callee10, null, [[9, 32, 35, 38], [13, 20]]);
+          }, _callee11, null, [[10, 33, 36, 39], [14, 21]]);
         }));
 
         return function run() {
@@ -1333,46 +1455,46 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
   }, {
     key: "handlePortMessage",
     value: function () {
-      var _handlePortMessage = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee11(event) {
+      var _handlePortMessage = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee12(event) {
         var data, type, value, id, queueId, maxDuration, start;
-        return regeneratorRuntime.wrap(function _callee11$(_context12) {
+        return regeneratorRuntime.wrap(function _callee12$(_context13) {
           while (1) {
-            switch (_context12.prev = _context12.next) {
+            switch (_context13.prev = _context13.next) {
               case 0:
                 if (event instanceof MessageEvent) {
-                  _context12.next = 2;
+                  _context13.next = 2;
                   break;
                 }
 
-                return _context12.abrupt("return");
+                return _context13.abrupt("return");
 
               case 2:
                 data = event.data;
 
                 if (!(!data || _typeof(data) !== 'object')) {
-                  _context12.next = 7;
+                  _context13.next = 7;
                   break;
                 }
 
                 this.logger.warn('Invalid message data');
                 this.logger.warnObject(event);
-                return _context12.abrupt("return");
+                return _context13.abrupt("return");
 
               case 7:
                 type = data.type, value = data.value;
 
                 if (!(typeof type !== 'string')) {
-                  _context12.next = 12;
+                  _context13.next = 12;
                   break;
                 }
 
                 this.logger.warn('Unknown message type');
                 this.logger.warnObject(event);
-                return _context12.abrupt("return");
+                return _context13.abrupt("return");
 
               case 12:
                 if (!(value === null || _typeof(value) !== 'object')) {
-                  _context12.next = 14;
+                  _context13.next = 14;
                   break;
                 }
 
@@ -1382,108 +1504,108 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 id = value.id;
 
                 if (!(typeof id !== 'number')) {
-                  _context12.next = 17;
+                  _context13.next = 17;
                   break;
                 }
 
                 throw new Error('Message payload should include property id with type number');
 
               case 17:
-                _context12.t0 = type;
-                _context12.next = _context12.t0 === 'clear' ? 20 : _context12.t0 === 'abortQueue' ? 32 : _context12.t0 === 'dequeue' ? 47 : _context12.t0 === 'idle' ? 59 : 76;
+                _context13.t0 = type;
+                _context13.next = _context13.t0 === 'clear' ? 20 : _context13.t0 === 'abortQueue' ? 32 : _context13.t0 === 'dequeue' ? 47 : _context13.t0 === 'idle' ? 59 : 76;
                 break;
 
               case 20:
-                _context12.prev = 20;
-                _context12.next = 23;
+                _context13.prev = 20;
+                _context13.next = 23;
                 return this.clear();
 
               case 23:
                 this.emit('clearComplete', {
                   id: id
                 });
-                _context12.next = 31;
+                _context13.next = 31;
                 break;
 
               case 26:
-                _context12.prev = 26;
-                _context12.t1 = _context12["catch"](20);
+                _context13.prev = 26;
+                _context13.t1 = _context13["catch"](20);
                 this.emit('clearError', {
-                  errorObject: _serializeError.default.serializeError(_context12.t1),
+                  errorObject: _serializeError.default.serializeError(_context13.t1),
                   id: id
                 });
                 this.logger.error('Unable to handle clear message');
-                this.logger.errorStack(_context12.t1);
+                this.logger.errorStack(_context13.t1);
 
               case 31:
-                return _context12.abrupt("break", 77);
+                return _context13.abrupt("break", 77);
 
               case 32:
-                _context12.prev = 32;
+                _context13.prev = 32;
                 queueId = value.queueId;
 
                 if (!(typeof queueId !== 'string')) {
-                  _context12.next = 36;
+                  _context13.next = 36;
                   break;
                 }
 
                 throw new Error('Message abort queue payload should include property queueId with type string');
 
               case 36:
-                _context12.next = 38;
+                _context13.next = 38;
                 return this.abortQueue(queueId);
 
               case 38:
                 this.emit('abortQueueComplete', {
                   id: id
                 });
-                _context12.next = 46;
+                _context13.next = 46;
                 break;
 
               case 41:
-                _context12.prev = 41;
-                _context12.t2 = _context12["catch"](32);
+                _context13.prev = 41;
+                _context13.t2 = _context13["catch"](32);
                 this.emit('abortQueueError', {
-                  errorObject: _serializeError.default.serializeError(_context12.t2),
+                  errorObject: _serializeError.default.serializeError(_context13.t2),
                   id: id
                 });
                 this.logger.error('Unable to handle abort queue message');
-                this.logger.errorStack(_context12.t2);
+                this.logger.errorStack(_context13.t2);
 
               case 46:
-                return _context12.abrupt("break", 77);
+                return _context13.abrupt("break", 77);
 
               case 47:
-                _context12.prev = 47;
-                _context12.next = 50;
+                _context13.prev = 47;
+                _context13.next = 50;
                 return this.dequeue();
 
               case 50:
                 this.emit('dequeueComplete', {
                   id: id
                 });
-                _context12.next = 58;
+                _context13.next = 58;
                 break;
 
               case 53:
-                _context12.prev = 53;
-                _context12.t3 = _context12["catch"](47);
+                _context13.prev = 53;
+                _context13.t3 = _context13["catch"](47);
                 this.emit('dequeueError', {
-                  errorObject: _serializeError.default.serializeError(_context12.t3),
+                  errorObject: _serializeError.default.serializeError(_context13.t3),
                   id: id
                 });
                 this.logger.error('Unable to handle dequeue message');
-                this.logger.errorStack(_context12.t3);
+                this.logger.errorStack(_context13.t3);
 
               case 58:
-                return _context12.abrupt("break", 77);
+                return _context13.abrupt("break", 77);
 
               case 59:
-                _context12.prev = 59;
+                _context13.prev = 59;
                 maxDuration = value.maxDuration, start = value.start;
 
                 if (!(typeof maxDuration !== 'number')) {
-                  _context12.next = 63;
+                  _context13.next = 63;
                   break;
                 }
 
@@ -1491,48 +1613,48 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
               case 63:
                 if (!(typeof start !== 'number')) {
-                  _context12.next = 65;
+                  _context13.next = 65;
                   break;
                 }
 
                 throw new Error('Message idle payload should include property start with type number');
 
               case 65:
-                _context12.next = 67;
+                _context13.next = 67;
                 return this.onIdle(maxDuration - (Date.now() - start));
 
               case 67:
                 this.emit('idleComplete', {
                   id: id
                 });
-                _context12.next = 75;
+                _context13.next = 75;
                 break;
 
               case 70:
-                _context12.prev = 70;
-                _context12.t4 = _context12["catch"](59);
+                _context13.prev = 70;
+                _context13.t4 = _context13["catch"](59);
                 this.emit('idleError', {
-                  errorObject: _serializeError.default.serializeError(_context12.t4),
+                  errorObject: _serializeError.default.serializeError(_context13.t4),
                   id: id
                 });
                 this.logger.error('Unable to handle idle message');
-                this.logger.errorStack(_context12.t4);
+                this.logger.errorStack(_context13.t4);
 
               case 75:
-                return _context12.abrupt("break", 77);
+                return _context13.abrupt("break", 77);
 
               case 76:
                 this.logger.warn("Unknown worker interface message type ".concat(type));
 
               case 77:
               case "end":
-                return _context12.stop();
+                return _context13.stop();
             }
           }
-        }, _callee11, this, [[20, 26], [32, 41], [47, 53], [59, 70]]);
+        }, _callee12, this, [[20, 26], [32, 41], [47, 53], [59, 70]]);
       }));
 
-      function handlePortMessage(_x7) {
+      function handlePortMessage(_x11) {
         return _handlePortMessage.apply(this, arguments);
       }
 

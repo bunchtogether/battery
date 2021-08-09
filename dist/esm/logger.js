@@ -85,11 +85,7 @@ export default (name => {
       } = error;
 
       if (typeof stack === 'string') {
-        if (error.message) {
-          log('red', name, error.message);
-        }
-
-        stack.split('\n').forEach(line => log('red', name, `\t${line}`));
+        stack.split('\n').forEach(line => log('red', name, `${line}`));
       } else if (error.message) {
         log('red', name, error.message);
       } else if (!hasValues) {
@@ -97,7 +93,7 @@ export default (name => {
       }
 
       if (hasValues) {
-        stringify(obj, null, 2).split('\n').forEach(line => log('red', name, `\t${line}`));
+        stringify(obj, null, 2).split('\n').forEach(line => log('red', name, `${line}`));
       }
     }
   };

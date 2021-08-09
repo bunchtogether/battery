@@ -5,7 +5,7 @@ function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "functi
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.DelayRetryError = exports.FatalQueueError = exports.AbortError = void 0;
+exports.FatalCleanupError = exports.DelayRetryError = exports.FatalQueueError = exports.AbortError = void 0;
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -86,7 +86,28 @@ var _DelayRetryError = /*#__PURE__*/function (_Error2) {
 }( /*#__PURE__*/_wrapNativeSuper(Error));
 
 exports.DelayRetryError = _DelayRetryError;
+
+var _FatalCleanupError = /*#__PURE__*/function (_Error3) {
+  _inherits(FatalCleanupError, _Error3);
+
+  var _super4 = _createSuper(FatalCleanupError);
+
+  function FatalCleanupError(message) {
+    var _this3;
+
+    _classCallCheck(this, FatalCleanupError);
+
+    _this3 = _super4.call(this, message);
+    _this3.name = 'FatalCleanupError';
+    return _this3;
+  }
+
+  return FatalCleanupError;
+}( /*#__PURE__*/_wrapNativeSuper(Error));
+
+exports.FatalCleanupError = _FatalCleanupError;
 export var AbortError = exports.AbortError;
 export var FatalQueueError = exports.FatalQueueError;
 export var DelayRetryError = exports.DelayRetryError;
+export var FatalCleanupError = exports.FatalCleanupError;
 //# sourceMappingURL=errors.js.map

@@ -11,15 +11,21 @@ import {
   markJobAbortedInDatabase,
   markJobCleanupInDatabase,
   markJobStartAfterInDatabase,
-  incrementAttemptInDatabase,
+  incrementJobAttemptInDatabase,
   getJobFromDatabase,
   updateCleanupInDatabase,
   getCleanupFromDatabase,
+  incrementCleanupAttemptInDatabase,
+  removePathFromCleanupDataInDatabase,
   removeCleanupFromDatabase,
+  markCleanupStartAfterInDatabase,
   markQueueForCleanupInDatabase,
   getQueueDataFromDatabase,
   clearDatabase,
   updateQueueDataInDatabase,
+  storeAuthDataInDatabase,
+  getAuthDataFromDatabase,
+  removeAuthDataFromDatabase,
   JOB_PENDING_STATUS,
   JOB_COMPLETE_STATUS,
   JOB_ERROR_STATUS,
@@ -35,26 +41,110 @@ describe('IndexedDB Database', () => {
   });
 
 
+  it('Increments cleanup attempts', async () => {
+    const id = Math.round(1000 + Math.random() * 1000);
+    const queueId = uuidv4();
+    const data = {
+      [uuidv4()]: uuidv4(),
+    };
+    const maxAttempts = Math.ceil(Math.random() * 10);
+    await updateCleanupInDatabase(id, queueId, data, maxAttempts);
+
+    expect(await getCleanupFromDatabase(id)).toEqual(jasmine.objectContaining({
+      id,
+      queueId,
+      data,
+      attempt: 0,
+      maxAttempts,
+      startAfter: jasmine.any(Number),
+    }));
+    await incrementCleanupAttemptInDatabase(id);
+
+    expect(await getCleanupFromDatabase(id)).toEqual(jasmine.objectContaining({
+      id,
+      queueId,
+      data,
+      attempt: 1,
+      maxAttempts,
+      startAfter: jasmine.any(Number),
+    }));
+  });
+
   it('Adds and removes cleanup data', async () => {
     const id = Math.round(1000 + Math.random() * 1000);
     const queueId = uuidv4();
     const data1 = {
       a: uuidv4(),
     };
+    const maxAttempts1 = Math.ceil(Math.random() * 10);
     const data2 = {
       b: uuidv4(),
     };
-    await updateCleanupInDatabase(id, queueId, data1);
+    const maxAttempts2 = Math.ceil(Math.random() * 10);
 
-    expect(await getCleanupFromDatabase(id)).toEqual(jasmine.objectContaining(data1));
-    await updateCleanupInDatabase(id, queueId, data2);
+    await updateCleanupInDatabase(id, queueId, data1, maxAttempts1);
 
-    expect(await getCleanupFromDatabase(id)).toEqual(jasmine.objectContaining(Object.assign({}, data1, data2)));
+    expect(await getCleanupFromDatabase(id)).toEqual(jasmine.objectContaining({
+      id,
+      queueId,
+      data: data1,
+      attempt: 0,
+      maxAttempts: maxAttempts1,
+      startAfter: jasmine.any(Number),
+    }));
+
+    await updateCleanupInDatabase(id, queueId, data2, maxAttempts2);
+
+    expect(await getCleanupFromDatabase(id)).toEqual(jasmine.objectContaining({
+      id,
+      queueId,
+      data: Object.assign({}, data1, data2),
+      attempt: 0,
+      maxAttempts: maxAttempts2,
+      startAfter: jasmine.any(Number),
+    }));
+
+    await removePathFromCleanupDataInDatabase(id, ['a']);
+
+    expect(await getCleanupFromDatabase(id)).toEqual(jasmine.objectContaining({
+      id,
+      queueId,
+      data: data2,
+      attempt: 0,
+      maxAttempts: maxAttempts2,
+      startAfter: jasmine.any(Number),
+    }));
+
     await removeCleanupFromDatabase(id);
 
     expect(await getCleanupFromDatabase(id)).toBeUndefined();
   });
 
+  it('Marks cleanup start-after time in database', async () => {
+    const id = Math.round(1000 + Math.random() * 1000);
+    const queueId = uuidv4();
+    const data = {
+      [uuidv4()]: uuidv4(),
+    };
+    const maxAttempts = Math.ceil(Math.random() * 10);
+    await updateCleanupInDatabase(id, queueId, data, maxAttempts);
+
+    const cleanupBeforeDatabase = await getCleanupFromDatabase(id);
+    if (typeof cleanupBeforeDatabase === 'undefined') {
+      throw new Error('Cleanup does not exist');
+    }
+
+    expect(cleanupBeforeDatabase.startAfter).toBeLessThan(Date.now());
+
+    await markCleanupStartAfterInDatabase(id, Date.now() + 1000);
+
+    const cleanupAfterDatabase = await getCleanupFromDatabase(id);
+    if (typeof cleanupAfterDatabase === 'undefined') {
+      throw new Error('Cleanup does not exist');
+    }
+
+    expect(cleanupAfterDatabase.startAfter).toBeGreaterThan(Date.now());
+  });
 
   it('Dequeues items in pending state', async () => {
     const queueId = uuidv4();
@@ -146,7 +236,7 @@ describe('IndexedDB Database', () => {
     const args = [uuidv4()];
     const maxAttempts = Math.round(1 + Math.random() * 10);
     const id = await enqueueToDatabase(queueId, type, args, maxAttempts, 0);
-    await incrementAttemptInDatabase(id);
+    await incrementJobAttemptInDatabase(id);
 
     expect(await getJobFromDatabase(id)).toEqual(jasmine.objectContaining({
       id,
@@ -328,5 +418,20 @@ describe('IndexedDB Database', () => {
     await updateQueueDataInDatabase(queueId, { [key]: value });
 
     expect(await getQueueDataFromDatabase(queueId)).toEqual({ [key]: value });
+  });
+
+  it('Gets and sets auth data in database', async () => {
+    const id = uuidv4();
+    const data = {
+      [uuidv4()]: uuidv4(),
+    };
+
+    expect(await getAuthDataFromDatabase(id)).toBeUndefined();
+    await storeAuthDataInDatabase(id, data);
+
+    expect(await getAuthDataFromDatabase(id)).toEqual(data);
+    await removeAuthDataFromDatabase(id);
+
+    expect(await getAuthDataFromDatabase(id)).toBeUndefined();
   });
 });

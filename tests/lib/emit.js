@@ -33,3 +33,18 @@ export async function expectEmit(emitter:EventEmitter, name:string, ...values:Ar
     emitter.addListener(name, handle);
   });
 }
+
+export function getNextEmit(emitter:EventEmitter, name:string, duration?:number = 5000):Promise<any> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      emitter.removeListener(name, handle);
+      reject(new Error(`Timeout waiting for emit of ${name}`));
+    }, duration);
+    const handle = (value:any) => {
+      clearTimeout(timeout);
+      emitter.removeListener(name, handle);
+      resolve(value);
+    };
+    emitter.addListener(name, handle);
+  });
+}
