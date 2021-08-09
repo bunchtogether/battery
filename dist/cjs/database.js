@@ -83,7 +83,7 @@ var _databasePromise = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(f
     while (1) {
       switch (_context.prev = _context.next) {
         case 0:
-          request = self.indexedDB.open('battery-queue', 1);
+          request = self.indexedDB.open('battery-queue', 2);
 
           request.onupgradeneeded = function (e) {
             try {
@@ -137,7 +137,7 @@ var _databasePromise = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(f
             }
 
             try {
-              e.target.result.createObjectStore('auth', {
+              e.target.result.createObjectStore('auth-data', {
                 keyPath: 'id'
               });
             } catch (error) {
@@ -188,8 +188,8 @@ function _getReadWriteAuthObjectStore() {
 
           case 2:
             database = _context2.sent;
-            transaction = database.transaction(['auth'], 'readwrite');
-            objectStore = transaction.objectStore('auth');
+            transaction = database.transaction(['auth-data'], 'readwrite');
+            objectStore = transaction.objectStore('auth-data');
 
             transaction.onabort = function (event) {
               logger.error('Read-write auth transaction was aborted');
@@ -229,8 +229,8 @@ function _getReadOnlyAuthObjectStore() {
 
           case 2:
             database = _context3.sent;
-            transaction = database.transaction(['auth'], 'readonly');
-            objectStore = transaction.objectStore('auth');
+            transaction = database.transaction(['auth-data'], 'readonly');
+            objectStore = transaction.objectStore('auth-data');
 
             transaction.onabort = function (event) {
               logger.error('Read-only auth transaction was aborted');

@@ -8,7 +8,7 @@ export const JOB_PENDING_STATUS = 0;
 export const JOB_ERROR_STATUS = -1;
 export const JOB_CLEANUP_STATUS = -2;
 export const databasePromise = (async () => {
-  const request = self.indexedDB.open('battery-queue', 1);
+  const request = self.indexedDB.open('battery-queue', 2);
 
   request.onupgradeneeded = function (e) {
     try {
@@ -61,7 +61,7 @@ export const databasePromise = (async () => {
     }
 
     try {
-      e.target.result.createObjectStore('auth', {
+      e.target.result.createObjectStore('auth-data', {
         keyPath: 'id'
       });
     } catch (error) {
@@ -85,8 +85,8 @@ export const databasePromise = (async () => {
 
 async function getReadWriteAuthObjectStore() {
   const database = await databasePromise;
-  const transaction = database.transaction(['auth'], 'readwrite');
-  const objectStore = transaction.objectStore('auth');
+  const transaction = database.transaction(['auth-data'], 'readwrite');
+  const objectStore = transaction.objectStore('auth-data');
 
   transaction.onabort = event => {
     logger.error('Read-write auth transaction was aborted');
@@ -103,8 +103,8 @@ async function getReadWriteAuthObjectStore() {
 
 async function getReadOnlyAuthObjectStore() {
   const database = await databasePromise;
-  const transaction = database.transaction(['auth'], 'readonly');
-  const objectStore = transaction.objectStore('auth');
+  const transaction = database.transaction(['auth-data'], 'readonly');
+  const objectStore = transaction.objectStore('auth-data');
 
   transaction.onabort = event => {
     logger.error('Read-only auth transaction was aborted');

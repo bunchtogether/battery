@@ -358,7 +358,7 @@ export default class BatteryQueue extends EventEmitter {
     }
     await removeCleanupFromDatabase(id);
     this.jobIds.delete(id);
-    this.emit('cleanupComplete', { id });
+    this.emit('cleanup', { id });
   }
 
   startCleanup(id:number, queueId:string, args:Array<any>, type:string) {

@@ -915,7 +915,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
               case 97:
                 this.jobIds.delete(id);
-                this.emit('cleanupComplete', {
+                this.emit('cleanup', {
                   id: id
                 });
 
