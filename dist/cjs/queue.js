@@ -729,7 +729,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 cleanup = _step6.value;
                 _context8.prev = 15;
                 _context8.next = 18;
-                return cleanup({}, args, removePathFromCleanupData);
+                return cleanup(undefined, args, removePathFromCleanupData);
 
               case 18:
                 _context8.next = 26;

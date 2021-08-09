@@ -307,7 +307,7 @@ export default class BatteryQueue extends EventEmitter {
       if (typeof cleanupJob === 'undefined') {
         for (const cleanup of cleanups) {
           try {
-            await cleanup({}, args, removePathFromCleanupData);
+            await cleanup(undefined, args, removePathFromCleanupData);
           } catch (error) {
             this.logger.error(`Error in ${type} job #${id} cleanup in queue ${queueId} attempt 1 with 0 attempts remaining, no cleanup data found`);
             this.logger.errorStack(error);
