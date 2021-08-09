@@ -215,6 +215,7 @@ export default class BatteryQueue extends EventEmitter {
         const timeout = Date.now() + maxDuration;
 
         while (true) {
+          // eslint-disable-line no-constant-condition
           if (Date.now() > timeout) {
             this.logger.warn(`Idle timeout after ${maxDuration}ms`);
             break;

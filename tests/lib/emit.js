@@ -27,7 +27,7 @@ export async function expectEmit(emitter:EventEmitter, name:string, ...values:Ar
         emitter.removeListener(name, handle);
         resolve();
       } catch (error) {
-        console.error(error);
+        console.error(error); // eslint-disable-line no-console
       }
     };
     emitter.addListener(name, handle);

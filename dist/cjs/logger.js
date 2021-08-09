@@ -30,19 +30,19 @@ var log = function log(color, name, value) {
     if (typeof arg === 'undefined') {
       continue;
     } else if (typeof arg === 'string') {
-      console.log("%c".concat(arg), 'color:#666'); // eslint-disable-line
+      console.log("%c".concat(arg), 'color:#666'); // eslint-disable-line no-console
     } else {
       if (arg && arg.err) {
-        console.error(arg.err); // eslint-disable-line
+        console.error(arg.err); // eslint-disable-line no-console
       } else if (arg && arg.error) {
-        console.error(arg.error); // eslint-disable-line
+        console.error(arg.error); // eslint-disable-line no-console
       }
 
-      console.dir(arg); // eslint-disable-line
+      console.dir(arg); // eslint-disable-line no-console
     }
   }
 
-  console.groupEnd(); // eslint-disable-line
+  console.groupEnd(); // eslint-disable-line no-console
 };
 
 var _default = function _default(name) {
@@ -81,19 +81,19 @@ var _default = function _default(name) {
     },
     debugObject: function debugObject() {
       var obj = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-      console.log(obj);
+      console.log(obj); // eslint-disable-line no-console
     },
     infoObject: function infoObject() {
       var obj = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-      console.log(obj);
+      console.log(obj); // eslint-disable-line no-console
     },
     warnObject: function warnObject() {
       var obj = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-      console.log(obj);
+      console.log(obj); // eslint-disable-line no-console
     },
     errorObject: function errorObject() {
       var obj = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-      console.error(obj);
+      console.error(obj); // eslint-disable-line no-console
     },
     errorStack: function errorStack(error) {
       if (typeof error === 'string') {

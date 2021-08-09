@@ -16,19 +16,19 @@ const log = (color, name, value, ...args) => {
     if (typeof arg === 'undefined') {
       continue;
     } else if (typeof arg === 'string') {
-      console.log(`%c${arg}`, 'color:#666'); // eslint-disable-line
+      console.log(`%c${arg}`, 'color:#666'); // eslint-disable-line no-console
     } else {
       if (arg && arg.err) {
-        console.error(arg.err); // eslint-disable-line
+        console.error(arg.err); // eslint-disable-line no-console
       } else if (arg && arg.error) {
-        console.error(arg.error); // eslint-disable-line
+        console.error(arg.error); // eslint-disable-line no-console
       }
 
-      console.dir(arg); // eslint-disable-line
+      console.dir(arg); // eslint-disable-line no-console
     }
   }
 
-  console.groupEnd(); // eslint-disable-line
+  console.groupEnd(); // eslint-disable-line no-console
 };
 
 export default (name => {
@@ -50,16 +50,16 @@ export default (name => {
       log('red', name, value, ...args);
     },
     debugObject: (obj = {}) => {
-      console.log(obj);
+      console.log(obj); // eslint-disable-line no-console
     },
     infoObject: (obj = {}) => {
-      console.log(obj);
+      console.log(obj); // eslint-disable-line no-console
     },
     warnObject: (obj = {}) => {
-      console.log(obj);
+      console.log(obj); // eslint-disable-line no-console
     },
     errorObject: (obj = {}) => {
-      console.error(obj);
+      console.error(obj); // eslint-disable-line no-console
     },
     errorStack: error => {
       if (typeof error === 'string') {
