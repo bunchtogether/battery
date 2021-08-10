@@ -7,7 +7,6 @@ import {
   removeCompletedExpiredItemsFromDatabase,
   markCleanupStartAfterInDatabase,
 } from '../src/database';
-import BatteryQueue from '../src/queue';
 import {
   TRIGGER_NO_ERROR,
   TRIGGER_ERROR,
@@ -17,16 +16,10 @@ import {
   TRIGGER_ERROR_IN_HANDLER_AND_IN_CLEANUP,
   TRIGGER_FATAL_ERROR_IN_CLEANUP,
   TRIGGER_DELAY_RETRY_ERROR_IN_CLEANUP,
-  handler as echoHandler,
-  cleanup as echoCleanup,
   emitter as echoEmitter,
 } from './lib/echo-handler';
 import { expectEmit, getNextEmit } from './lib/emit';
-
-const queue = new BatteryQueue();
-
-queue.addHandler('echo', echoHandler);
-queue.addCleanup('echo', echoCleanup);
+import { queue } from './lib/queue';
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
 

@@ -405,6 +405,18 @@ export async function removePathFromCleanupDataInDatabase(id:number, path:Array<
 }
 
 export async function updateCleanupInDatabase(id:number, queueId:string, data:Object, maxAttempts: number) {
+  if (typeof id !== 'number') {
+    throw new TypeError(`Unable to update cleanup in database, received invalid "id" argument type "${typeof id}"`);
+  }
+  if (typeof queueId !== 'string') {
+    throw new TypeError(`Unable to update cleanup in database, received invalid "queueId" argument type "${typeof queueId}"`);
+  }
+  if (typeof data !== 'object') {
+    throw new TypeError(`Unable to update cleanup in database, received invalid "data" argument type "${typeof data}"`);
+  }
+  if (typeof maxAttempts !== 'number') {
+    throw new TypeError(`Unable to update cleanup in database, received invalid "maxAttempts" argument type "${typeof maxAttempts}"`);
+  }
   const value = await getCleanupFromDatabase(id);
   const store = await getReadWriteCleanupsObjectStore();
   const combinedData = typeof value === 'undefined' ? data : merge({}, value.data, data);
@@ -670,6 +682,27 @@ export async function incrementCleanupAttemptInDatabase(id:number) {
 }
 
 export async function bulkEnqueueToDatabase(queueId: string, items:Array<[string, Array<any>, number]>, delay: number) { // eslint-disable-line no-underscore-dangle
+  if (typeof queueId !== 'string') {
+    throw new TypeError(`Unable to bulk enqueue in database, received invalid "queueId" argument type "${typeof queueId}"`);
+  }
+  if (!Array.isArray(items)) {
+    throw new TypeError(`Unable to bulk enqueue in database, received invalid "items" argument type "${typeof items}"`);
+  }
+  for (let i = 0; i < items.length; i += 1) {
+    const [type, args, maxAttempts] = items[i];
+    if (typeof type !== 'string') {
+      throw new TypeError(`Unable to bulk enqueue in database, received invalid items[${i}] "type" argument type "${typeof type}"`);
+    }
+    if (!Array.isArray(args)) {
+      throw new TypeError(`Unable to bulk enqueue in database, received invalid items[${i}] "args" argument type "${typeof args}"`);
+    }
+    if (typeof maxAttempts !== 'number') {
+      throw new TypeError(`Unable to bulk enqueue in database, received invalid items[${i}] "maxAttempts" argument type "${typeof maxAttempts}"`);
+    }
+  }
+  if (typeof delay !== 'number') {
+    throw new TypeError(`Unable to bulk enqueue in database, received invalid "delay" argument type "${typeof delay}"`);
+  }
   const store = await getReadWriteJobsObjectStore();
   await new Promise((resolve, reject) => {
     for (let i = 0; i < items.length; i += 1) {
@@ -700,6 +733,21 @@ export async function bulkEnqueueToDatabase(queueId: string, items:Array<[string
 }
 
 export async function enqueueToDatabase(queueId: string, type: string, args: Array<any>, maxAttempts: number, delay: number) { // eslint-disable-line no-underscore-dangle
+  if (typeof queueId !== 'string') {
+    throw new TypeError(`Unable to enqueue in database, received invalid "queueId" argument type "${typeof queueId}"`);
+  }
+  if (typeof type !== 'string') {
+    throw new TypeError(`Unable to enqueue in database, received invalid "type" argument type "${typeof type}"`);
+  }
+  if (!Array.isArray(args)) {
+    throw new TypeError(`Unable to enqueue in database, received invalid "args" argument type "${typeof args}"`);
+  }
+  if (typeof maxAttempts !== 'number') {
+    throw new TypeError(`Unable to enqueue in database, received invalid "maxAttempts" argument type "${typeof maxAttempts}"`);
+  }
+  if (typeof delay !== 'number') {
+    throw new TypeError(`Unable to enqueue in database, received invalid "delay" argument type "${typeof delay}"`);
+  }
   const value = {
     queueId,
     type,
@@ -756,6 +804,9 @@ export async function getCompletedJobsCountFromDatabase(queueId: string) { // es
 }
 
 export async function getCompletedJobsFromDatabase(queueId: string):Promise<Array<Job>> { // eslint-disable-line no-underscore-dangle
+  if (typeof queueId !== 'string') {
+    throw new TypeError(`Unable to get completed jobs database, received invalid "queueId" argument type "${typeof queueId}"`);
+  }
   const store = await getReadOnlyJobsObjectStore();
   const index = store.index('statusQueueIdIndex');
   // $FlowFixMe
@@ -781,6 +832,12 @@ export async function getCompletedJobsFromDatabase(queueId: string):Promise<Arra
 }
 
 export async function storeAuthDataInDatabase(id:string, data: Object) { // eslint-disable-line no-underscore-dangle
+  if (typeof id !== 'string') {
+    throw new TypeError(`Unable to store auth data in database, received invalid "id" argument type "${typeof id}"`);
+  }
+  if (typeof data !== 'object') {
+    throw new TypeError(`Unable to store auth data in database, received invalid "data" argument type "${typeof data}"`);
+  }
   const store = await getReadWriteAuthObjectStore();
   const request = store.put({ id, data });
   await new Promise((resolve, reject) => {
@@ -796,6 +853,9 @@ export async function storeAuthDataInDatabase(id:string, data: Object) { // esli
 }
 
 export async function getAuthDataFromDatabase(id:string) {
+  if (typeof id !== 'string') {
+    throw new TypeError(`Unable to store auth data in database, received invalid "id" argument type "${typeof id}"`);
+  }
   const store = await getReadOnlyAuthObjectStore();
   const request = store.get(id);
   const authData = await new Promise((resolve, reject) => {
@@ -812,6 +872,9 @@ export async function getAuthDataFromDatabase(id:string) {
 }
 
 export async function removeAuthDataFromDatabase(id:string) {
+  if (typeof id !== 'string') {
+    throw new TypeError(`Unable to store auth data in database, received invalid "id" argument type "${typeof id}"`);
+  }
   const store = await getReadWriteAuthObjectStore();
   const request = store.delete(id);
   return new Promise((resolve, reject) => {

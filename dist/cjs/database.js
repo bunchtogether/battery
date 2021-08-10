@@ -51,6 +51,8 @@ function _iterableToArrayLimit(arr, i) { var _i = arr == null ? null : typeof Sy
 
 function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
 
+function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
 function _createForOfIteratorHelper(o, allowArrayLike) { var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"]; if (!it) { if (Array.isArray(o) || (it = _unsupportedIterableToArray(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e2) { throw _e2; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = it.call(o); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e3) { didErr = true; err = _e3; }, f: function f() { try { if (!normalCompletion && it.return != null) it.return(); } finally { if (didErr) throw err; } } }; }
 
 function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
@@ -1028,15 +1030,47 @@ function _updateCleanupInDatabase() {
       while (1) {
         switch (_context21.prev = _context21.next) {
           case 0:
-            _context21.next = 2;
-            return _getCleanupFromDatabase2(id);
+            if (!(typeof id !== 'number')) {
+              _context21.next = 2;
+              break;
+            }
+
+            throw new TypeError("Unable to update cleanup in database, received invalid \"id\" argument type \"".concat(_typeof(id), "\""));
 
           case 2:
+            if (!(typeof queueId !== 'string')) {
+              _context21.next = 4;
+              break;
+            }
+
+            throw new TypeError("Unable to update cleanup in database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\""));
+
+          case 4:
+            if (!(_typeof(data) !== 'object')) {
+              _context21.next = 6;
+              break;
+            }
+
+            throw new TypeError("Unable to update cleanup in database, received invalid \"data\" argument type \"".concat(_typeof(data), "\""));
+
+          case 6:
+            if (!(typeof maxAttempts !== 'number')) {
+              _context21.next = 8;
+              break;
+            }
+
+            throw new TypeError("Unable to update cleanup in database, received invalid \"maxAttempts\" argument type \"".concat(_typeof(maxAttempts), "\""));
+
+          case 8:
+            _context21.next = 10;
+            return _getCleanupFromDatabase2(id);
+
+          case 10:
             value = _context21.sent;
-            _context21.next = 5;
+            _context21.next = 13;
             return getReadWriteCleanupsObjectStore();
 
-          case 5:
+          case 13:
             store = _context21.sent;
             combinedData = typeof value === 'undefined' ? data : (0, _merge.default)({}, value.data, data);
             request = store.put({
@@ -1059,7 +1093,7 @@ function _updateCleanupInDatabase() {
               };
             }));
 
-          case 9:
+          case 17:
           case "end":
             return _context21.stop();
         }
@@ -1631,23 +1665,87 @@ function _bulkEnqueueToDatabase2(_x28, _x29, _x30) {
 
 function _bulkEnqueueToDatabase() {
   _bulkEnqueueToDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee32(queueId, items, delay) {
-    var store;
+    var i, _items$i, type, args, maxAttempts, store;
+
     return regeneratorRuntime.wrap(function _callee32$(_context32) {
       while (1) {
         switch (_context32.prev = _context32.next) {
           case 0:
-            _context32.next = 2;
-            return getReadWriteJobsObjectStore();
+            if (!(typeof queueId !== 'string')) {
+              _context32.next = 2;
+              break;
+            }
+
+            throw new TypeError("Unable to bulk enqueue in database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\""));
 
           case 2:
-            store = _context32.sent;
+            if (Array.isArray(items)) {
+              _context32.next = 4;
+              break;
+            }
+
+            throw new TypeError("Unable to bulk enqueue in database, received invalid \"items\" argument type \"".concat(_typeof(items), "\""));
+
+          case 4:
+            i = 0;
+
+          case 5:
+            if (!(i < items.length)) {
+              _context32.next = 16;
+              break;
+            }
+
+            _items$i = _slicedToArray(items[i], 3), type = _items$i[0], args = _items$i[1], maxAttempts = _items$i[2];
+
+            if (!(typeof type !== 'string')) {
+              _context32.next = 9;
+              break;
+            }
+
+            throw new TypeError("Unable to bulk enqueue in database, received invalid items[".concat(i, "] \"type\" argument type \"").concat(_typeof(type), "\""));
+
+          case 9:
+            if (Array.isArray(args)) {
+              _context32.next = 11;
+              break;
+            }
+
+            throw new TypeError("Unable to bulk enqueue in database, received invalid items[".concat(i, "] \"args\" argument type \"").concat(_typeof(args), "\""));
+
+          case 11:
+            if (!(typeof maxAttempts !== 'number')) {
+              _context32.next = 13;
+              break;
+            }
+
+            throw new TypeError("Unable to bulk enqueue in database, received invalid items[".concat(i, "] \"maxAttempts\" argument type \"").concat(_typeof(maxAttempts), "\""));
+
+          case 13:
+            i += 1;
             _context32.next = 5;
+            break;
+
+          case 16:
+            if (!(typeof delay !== 'number')) {
+              _context32.next = 18;
+              break;
+            }
+
+            throw new TypeError("Unable to bulk enqueue in database, received invalid \"delay\" argument type \"".concat(_typeof(delay), "\""));
+
+          case 18:
+            _context32.next = 20;
+            return getReadWriteJobsObjectStore();
+
+          case 20:
+            store = _context32.sent;
+            _context32.next = 23;
             return new Promise(function (resolve, reject) {
-              var _loop = function _loop(i) {
-                var _items$i = _slicedToArray(items[i], 3),
-                    type = _items$i[0],
-                    args = _items$i[1],
-                    maxAttempts = _items$i[2];
+              var _loop = function _loop(_i2) {
+                var _items$_i = _slicedToArray(items[_i2], 3),
+                    type = _items$_i[0],
+                    args = _items$_i[1],
+                    maxAttempts = _items$_i[2];
 
                 var value = {
                   queueId: queueId,
@@ -1661,7 +1759,7 @@ function _bulkEnqueueToDatabase() {
                 };
                 var request = store.put(value);
 
-                if (i === items.length - 1) {
+                if (_i2 === items.length - 1) {
                   request.onsuccess = function () {
                     resolve(request.result);
                   };
@@ -1674,12 +1772,12 @@ function _bulkEnqueueToDatabase() {
                 }
               };
 
-              for (var i = 0; i < items.length; i += 1) {
-                _loop(i);
+              for (var _i2 = 0; _i2 < items.length; _i2 += 1) {
+                _loop(_i2);
               }
             });
 
-          case 5:
+          case 23:
           case "end":
             return _context32.stop();
         }
@@ -1700,7 +1798,46 @@ function _enqueueToDatabase() {
       while (1) {
         switch (_context33.prev = _context33.next) {
           case 0:
-            // eslint-disable-line no-underscore-dangle
+            if (!(typeof queueId !== 'string')) {
+              _context33.next = 2;
+              break;
+            }
+
+            throw new TypeError("Unable to enqueue in database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\""));
+
+          case 2:
+            if (!(typeof type !== 'string')) {
+              _context33.next = 4;
+              break;
+            }
+
+            throw new TypeError("Unable to enqueue in database, received invalid \"type\" argument type \"".concat(_typeof(type), "\""));
+
+          case 4:
+            if (Array.isArray(args)) {
+              _context33.next = 6;
+              break;
+            }
+
+            throw new TypeError("Unable to enqueue in database, received invalid \"args\" argument type \"".concat(_typeof(args), "\""));
+
+          case 6:
+            if (!(typeof maxAttempts !== 'number')) {
+              _context33.next = 8;
+              break;
+            }
+
+            throw new TypeError("Unable to enqueue in database, received invalid \"maxAttempts\" argument type \"".concat(_typeof(maxAttempts), "\""));
+
+          case 8:
+            if (!(typeof delay !== 'number')) {
+              _context33.next = 10;
+              break;
+            }
+
+            throw new TypeError("Unable to enqueue in database, received invalid \"delay\" argument type \"".concat(_typeof(delay), "\""));
+
+          case 10:
             value = {
               queueId: queueId,
               type: type,
@@ -1711,13 +1848,13 @@ function _enqueueToDatabase() {
               status: _JOB_PENDING_STATUS,
               startAfter: Date.now() + delay
             };
-            _context33.next = 3;
+            _context33.next = 13;
             return getReadWriteJobsObjectStore();
 
-          case 3:
+          case 13:
             store = _context33.sent;
             request = store.put(value);
-            _context33.next = 7;
+            _context33.next = 17;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve(request.result);
@@ -1730,11 +1867,11 @@ function _enqueueToDatabase() {
               };
             });
 
-          case 7:
+          case 17:
             id = _context33.sent;
             return _context33.abrupt("return", id);
 
-          case 9:
+          case 19:
           case "end":
             return _context33.stop();
         }
@@ -1836,16 +1973,24 @@ function _getCompletedJobsFromDatabase() {
       while (1) {
         switch (_context36.prev = _context36.next) {
           case 0:
-            _context36.next = 2;
-            return getReadOnlyJobsObjectStore();
+            if (!(typeof queueId !== 'string')) {
+              _context36.next = 2;
+              break;
+            }
+
+            throw new TypeError("Unable to get completed jobs database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\""));
 
           case 2:
+            _context36.next = 4;
+            return getReadOnlyJobsObjectStore();
+
+          case 4:
             store = _context36.sent;
             index = store.index('statusQueueIdIndex'); // $FlowFixMe
 
             request = index.openCursor(IDBKeyRange.only([queueId, _JOB_COMPLETE_STATUS]));
             jobs = [];
-            _context36.next = 8;
+            _context36.next = 10;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function (event) {
                 var cursor = event.target.result;
@@ -1865,10 +2010,10 @@ function _getCompletedJobsFromDatabase() {
               };
             });
 
-          case 8:
+          case 10:
             return _context36.abrupt("return", jobs);
 
-          case 9:
+          case 11:
           case "end":
             return _context36.stop();
         }
@@ -1889,16 +2034,32 @@ function _storeAuthDataInDatabase() {
       while (1) {
         switch (_context37.prev = _context37.next) {
           case 0:
-            _context37.next = 2;
-            return getReadWriteAuthObjectStore();
+            if (!(typeof id !== 'string')) {
+              _context37.next = 2;
+              break;
+            }
+
+            throw new TypeError("Unable to store auth data in database, received invalid \"id\" argument type \"".concat(_typeof(id), "\""));
 
           case 2:
+            if (!(_typeof(data) !== 'object')) {
+              _context37.next = 4;
+              break;
+            }
+
+            throw new TypeError("Unable to store auth data in database, received invalid \"data\" argument type \"".concat(_typeof(data), "\""));
+
+          case 4:
+            _context37.next = 6;
+            return getReadWriteAuthObjectStore();
+
+          case 6:
             store = _context37.sent;
             request = store.put({
               id: id,
               data: data
             });
-            _context37.next = 6;
+            _context37.next = 10;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve();
@@ -1911,7 +2072,7 @@ function _storeAuthDataInDatabase() {
               };
             });
 
-          case 6:
+          case 10:
           case "end":
             return _context37.stop();
         }
@@ -1932,13 +2093,21 @@ function _getAuthDataFromDatabase() {
       while (1) {
         switch (_context38.prev = _context38.next) {
           case 0:
-            _context38.next = 2;
-            return getReadOnlyAuthObjectStore();
+            if (!(typeof id !== 'string')) {
+              _context38.next = 2;
+              break;
+            }
+
+            throw new TypeError("Unable to store auth data in database, received invalid \"id\" argument type \"".concat(_typeof(id), "\""));
 
           case 2:
+            _context38.next = 4;
+            return getReadOnlyAuthObjectStore();
+
+          case 4:
             store = _context38.sent;
             request = store.get(id);
-            _context38.next = 6;
+            _context38.next = 8;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve(request.result);
@@ -1951,11 +2120,11 @@ function _getAuthDataFromDatabase() {
               };
             });
 
-          case 6:
+          case 8:
             authData = _context38.sent;
             return _context38.abrupt("return", typeof authData !== 'undefined' ? authData.data : undefined);
 
-          case 8:
+          case 10:
           case "end":
             return _context38.stop();
         }
@@ -1976,10 +2145,18 @@ function _removeAuthDataFromDatabase() {
       while (1) {
         switch (_context39.prev = _context39.next) {
           case 0:
-            _context39.next = 2;
-            return getReadWriteAuthObjectStore();
+            if (!(typeof id !== 'string')) {
+              _context39.next = 2;
+              break;
+            }
+
+            throw new TypeError("Unable to store auth data in database, received invalid \"id\" argument type \"".concat(_typeof(id), "\""));
 
           case 2:
+            _context39.next = 4;
+            return getReadWriteAuthObjectStore();
+
+          case 4:
             store = _context39.sent;
             request = store.delete(id);
             return _context39.abrupt("return", new Promise(function (resolve, reject) {
@@ -1994,7 +2171,7 @@ function _removeAuthDataFromDatabase() {
               };
             }));
 
-          case 5:
+          case 7:
           case "end":
             return _context39.stop();
         }

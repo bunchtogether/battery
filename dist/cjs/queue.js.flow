@@ -54,6 +54,7 @@ export default class BatteryQueue extends EventEmitter {
   declare onIdlePromise: Promise<void> | void;
   declare jobIds: Set<number>;
   declare emitCallbacks: Array<EmitCallback>;
+  declare port: MessagePort;
 
   constructor(options?: Options = {}) {
     super();
@@ -462,17 +463,20 @@ export default class BatteryQueue extends EventEmitter {
       } else {
         this.logger.warn(`No handler for job type ${type}`);
       }
-      this.removeAbortController(id, queueId);
-      this.jobIds.delete(id);
+
       if (!hasError) {
         // Rely on AbortController to prevent items in aborted queues from being marked as complete
         await markJobCompleteInDatabase(id);
+        this.removeAbortController(id, queueId);
+        this.jobIds.delete(id);
         this.emit('complete', { id });
         return;
       }
       const job = await getJobFromDatabase(id);
       if (typeof job === 'undefined') {
         this.logger.error(`Unable to get ${type} job #${id} in queue ${queueId} following error`);
+        this.removeAbortController(id, queueId);
+        this.jobIds.delete(id);
         return;
       }
       if (job.status === JOB_CLEANUP_STATUS) {
@@ -511,6 +515,8 @@ export default class BatteryQueue extends EventEmitter {
         }
         await markJobErrorInDatabase(id);
       }
+      this.removeAbortController(id, queueId);
+      this.jobIds.delete(id);
       await this.dequeue();
     };
     this.addToQueue(queueId, priority, run);
@@ -542,6 +548,7 @@ export default class BatteryQueue extends EventEmitter {
     this.emitCallbacks.push((t:string, args:Array<any>) => {
       port.postMessage({ type: t, args });
     });
+    this.port = port;
   }
 
   async handlePortMessage(event:MessageEvent) {

@@ -1,15 +1,6 @@
 // @flow
 
-import BatteryQueue from '../../src/queue';
-import {
-  handler as echoHandler,
-  cleanup as echoCleanup,
-} from './echo-handler';
-
-const queue = new BatteryQueue();
-
-queue.addHandler('echo', echoHandler);
-queue.addCleanup('echo', echoCleanup);
+import { queue } from './queue';
 
 queue.listenForServiceWorkerInterface();
 
@@ -19,4 +10,20 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener('message', (event:ExtendableMessageEvent) => {
+  if (!(event instanceof ExtendableMessageEvent)) {
+    return;
+  }
+  const { data } = event;
+  if (!data || typeof data !== 'object') {
+    return;
+  }
+  const { type } = data;
+  if (type === 'throw') {
+    setTimeout(() => {
+      throw new Error('Test error');
+    }, 0);
+  }
 });

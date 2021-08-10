@@ -100,7 +100,6 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
       }
       this.emit(type, ...args);
     };
-
     this.port = messageChannel.port1;
     return messageChannel.port1;
   }
