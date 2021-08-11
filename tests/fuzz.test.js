@@ -7,8 +7,10 @@ import {
 import { queue } from './lib/queue';
 import { oneOutOf } from './lib/fuzz';
 
-const QUEUE_COUNT = 2;
-const JOB_COUNT = 10;
+const QUEUE_COUNT = 4;
+const JOB_COUNT = 40;
+
+jasmine.DEFAULT_TIMEOUT_INTERVAL = 30000;
 
 describe('Fuzz', () => {
   afterEach(async () => {
@@ -23,11 +25,10 @@ describe('Fuzz', () => {
     for (let i = 0; i < JOB_COUNT; i += 1) {
       const queueId = queueIds[Math.floor(Math.random() * queueIds.length)];
       const args = [];
-      const maxAttempts = 1;
       if (oneOutOf(2)) {
-        enqueueToDatabase(queueId, 'fuzz', args, maxAttempts, 0);
+        enqueueToDatabase(queueId, 'fuzz', args, 0);
       } else {
-        await enqueueToDatabase(queueId, 'fuzz', args, maxAttempts, 0);
+        await enqueueToDatabase(queueId, 'fuzz', args, 0);
       }
       if (oneOutOf(JOB_COUNT / 3)) {
         if (oneOutOf(2)) {
@@ -55,8 +56,7 @@ describe('Fuzz', () => {
     for (let i = 0; i < JOB_COUNT; i += 1) {
       const queueId = queueIds[Math.floor(Math.random() * queueIds.length)];
       const args = [];
-      const maxAttempts = 1;
-      enqueueToDatabase(queueId, 'fuzz', args, maxAttempts, 0);
+      enqueueToDatabase(queueId, 'fuzz', args, 0);
       if (oneOutOf(JOB_COUNT / 3)) {
         queue.dequeue();
       }
@@ -75,8 +75,7 @@ describe('Fuzz', () => {
     for (let i = 0; i < JOB_COUNT; i += 1) {
       const queueId = queueIds[Math.floor(Math.random() * queueIds.length)];
       const args = [];
-      const maxAttempts = 1;
-      await enqueueToDatabase(queueId, 'fuzz', args, maxAttempts, 0);
+      await enqueueToDatabase(queueId, 'fuzz', args, 0);
       if (oneOutOf(JOB_COUNT / 3)) {
         await queue.dequeue();
       }

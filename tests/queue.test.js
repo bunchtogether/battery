@@ -11,14 +11,11 @@ import {
   TRIGGER_NO_ERROR,
   TRIGGER_ERROR,
   TRIGGER_FATAL_ERROR,
-  TRIGGER_DELAY_RETRY_ERROR,
   TRIGGER_ERROR_IN_CLEANUP,
-  TRIGGER_ERROR_IN_HANDLER_AND_IN_CLEANUP,
   TRIGGER_FATAL_ERROR_IN_CLEANUP,
-  TRIGGER_DELAY_RETRY_ERROR_IN_CLEANUP,
   emitter as echoEmitter,
 } from './lib/echo-handler';
-import { expectEmit, getNextEmit } from './lib/emit';
+import { expectEmit } from './lib/emit';
 import { queue } from './lib/queue';
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
@@ -32,58 +29,164 @@ describe('Queue', () => {
   it('Enqueues to the database and is handled', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
-    const maxCleanupAttempts = Math.ceil(Math.random() * 10);
-    const args = [TRIGGER_NO_ERROR, value, maxCleanupAttempts];
-    const maxAttempts = Math.round(2 + Math.random() * 10);
-    const id = await enqueueToDatabase(queueId, 'echo', args, maxAttempts, 0);
-    const dequeuePromise = expectEmit(queue, 'dequeue', { id });
-    const echoPromise = expectEmit(echoEmitter, 'echo', { value });
+    const args = [TRIGGER_NO_ERROR, value];
+    const id = await enqueueToDatabase(queueId, 'echo', args, 0);
     queue.dequeue();
-    await dequeuePromise;
-    await echoPromise;
+    await expectEmit(queue, 'dequeue', { id });
+    await expectEmit(echoEmitter, 'echo', { value });
   });
 
-  it('Enqueues to the database and is cleaned up after an error', async () => {
+  it('Enqueues to the database and is cleaned up after an error without retrying', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
-    const maxCleanupAttempts = Math.ceil(Math.random() * 10);
-    const maxAttempts = Math.round(2 + Math.random() * 10);
     let retries = 0;
-    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value, maxCleanupAttempts], maxAttempts, 0);
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value], 0);
     const handleRetry = ({ id: retryId }) => {
       if (retryId === id) {
         retries += 1;
       }
     };
     queue.addListener('retry', handleRetry);
-    const echoCleanupErrorPromise = expectEmit(echoEmitter, 'echoCleanupComplete', { value, cleanupData: { value } });
-    const fatalErrorPromise = expectEmit(queue, 'fatalError', { queueId });
     queue.dequeue();
-    await echoCleanupErrorPromise;
-    await fatalErrorPromise;
+    await expectEmit(queue, 'fatalError', { queueId });
+    await expectEmit(echoEmitter, 'echoCleanupComplete', { value, cleanupData: { value } });
 
-    expect(retries).toBeGreaterThan(1);
+    expect(retries).toEqual(0);
     queue.removeListener('retry', handleRetry);
+  });
+
+  it('Enqueues to the database and is cleaned up after an error without retrying if the retry delay function returns false', async () => {
+    const queueId = uuidv4();
+    const value = uuidv4();
+    let retries = 0;
+    queue.setRetryJobDelay('echo', (attempt, error) => {
+      expect(attempt).toEqual(1);
+      expect(error).toBeInstanceOf(Error);
+      return false;
+    });
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value], 0);
+    const handleRetry = ({ id: retryId }) => {
+      if (retryId === id) {
+        retries += 1;
+      }
+    };
+    queue.addListener('retry', handleRetry);
+    queue.dequeue();
+    await expectEmit(queue, 'fatalError', { queueId });
+    await expectEmit(echoEmitter, 'echoCleanupComplete', { value, cleanupData: { value } });
+
+    expect(retries).toEqual(0);
+    queue.removeListener('retry', handleRetry);
+    queue.removeRetryJobDelay('echo');
+  });
+
+  it('Enqueues to the database and is cleaned up after an error, retrying once if the retry delay function returns 0', async () => {
+    const queueId = uuidv4();
+    const value = uuidv4();
+    let retries = 0;
+    let didRequestRetry = false;
+    queue.setRetryJobDelay('echo', (attempt, error) => {
+      if (!didRequestRetry) {
+        expect(attempt).toEqual(1);
+        expect(error).toBeInstanceOf(Error);
+        didRequestRetry = true;
+        return 0;
+      }
+
+      expect(attempt).toEqual(2);
+      expect(error).toBeInstanceOf(Error);
+      return false;
+    });
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value], 0);
+    const handleRetry = ({ id: retryId }) => {
+      if (retryId === id) {
+        retries += 1;
+      }
+    };
+    queue.addListener('retry', handleRetry);
+    queue.dequeue();
+    await expectEmit(queue, 'fatalError', { queueId });
+    await expectEmit(echoEmitter, 'echoCleanupComplete', { value, cleanupData: { value } });
+
+    expect(retries).toEqual(1);
+    queue.removeListener('retry', handleRetry);
+    queue.removeRetryJobDelay('echo');
+  });
+
+  it('Enqueues to the database and is cleaned up after an error without retrying if the asynchronous retry delay function returns false', async () => {
+    const queueId = uuidv4();
+    const value = uuidv4();
+    let retries = 0;
+    queue.setRetryJobDelay('echo', async (attempt, error) => {
+      expect(attempt).toEqual(1);
+      expect(error).toBeInstanceOf(Error);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      return false;
+    });
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value], 0);
+    const handleRetry = ({ id: retryId }) => {
+      if (retryId === id) {
+        retries += 1;
+      }
+    };
+    queue.addListener('retry', handleRetry);
+    queue.dequeue();
+    await expectEmit(queue, 'fatalError', { queueId });
+    await expectEmit(echoEmitter, 'echoCleanupComplete', { value, cleanupData: { value } });
+
+    expect(retries).toEqual(0);
+    queue.removeListener('retry', handleRetry);
+    queue.removeRetryJobDelay('echo');
+  });
+
+  it('Enqueues to the database and is cleaned up after an error, retrying once if the asynchronous retry delay function returns 0', async () => {
+    const queueId = uuidv4();
+    const value = uuidv4();
+    let retries = 0;
+    let didRequestRetry = false;
+    queue.setRetryJobDelay('echo', async (attempt, error) => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      if (!didRequestRetry) {
+        expect(attempt).toEqual(1);
+        expect(error).toBeInstanceOf(Error);
+        didRequestRetry = true;
+        return 0;
+      }
+
+      expect(attempt).toEqual(2);
+      expect(error).toBeInstanceOf(Error);
+      return false;
+    });
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value], 0);
+    const handleRetry = ({ id: retryId }) => {
+      if (retryId === id) {
+        retries += 1;
+      }
+    };
+    queue.addListener('retry', handleRetry);
+    queue.dequeue();
+    await expectEmit(queue, 'fatalError', { queueId });
+    await expectEmit(echoEmitter, 'echoCleanupComplete', { value, cleanupData: { value } });
+
+    expect(retries).toEqual(1);
+    queue.removeListener('retry', handleRetry);
+    queue.removeRetryJobDelay('echo');
   });
 
   it('Enqueues to the database and is cleaned up after a fatal error without retrying', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
-    const maxCleanupAttempts = Math.ceil(Math.random() * 10);
-    const maxAttempts = Math.round(2 + Math.random() * 10);
     let retries = 0;
-    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_FATAL_ERROR, value, maxCleanupAttempts], maxAttempts, 0);
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_FATAL_ERROR, value], 0);
     const handleRetry = ({ id: retryId }) => {
       if (retryId === id) {
         retries += 1;
       }
     };
     queue.addListener('retry', handleRetry);
-    const echoCleanupErrorPromise = expectEmit(echoEmitter, 'echoCleanupComplete', { value, cleanupData: { value } });
-    const fatalErrorPromise = expectEmit(queue, 'fatalError', { queueId });
     queue.dequeue();
-    await echoCleanupErrorPromise;
-    await fatalErrorPromise;
+    await expectEmit(queue, 'fatalError', { queueId });
+    await expectEmit(echoEmitter, 'echoCleanupComplete', { value, cleanupData: { value } });
 
     expect(retries).toEqual(0);
     queue.removeListener('retry', handleRetry);
@@ -91,11 +194,10 @@ describe('Queue', () => {
 
   it('Cleans up jobs in the reverse order that they were added', async () => {
     const queueId = uuidv4();
-    const maxCleanupAttempts = Math.ceil(Math.random() * 10);
     const expectedCleanupValues = [];
     for (let i = 0; i < 10; i += 1) {
       const value = uuidv4();
-      await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, value, maxCleanupAttempts], 0, 0);
+      await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, value], 0);
       expectedCleanupValues.push(value);
     }
     await queue.dequeue();
@@ -110,86 +212,55 @@ describe('Queue', () => {
 
   it('Cleans up jobs in the reverse order that they were added following a fatal error', async () => {
     const queueId = uuidv4();
-    const maxCleanupAttempts = Math.ceil(Math.random() * 10);
     const valueA = uuidv4();
     const valueB = uuidv4();
-    await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueA, maxCleanupAttempts], 0, 0);
-    await enqueueToDatabase(queueId, 'echo', [TRIGGER_FATAL_ERROR, valueB, maxCleanupAttempts], 0, 0);
+    await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueA], 0);
+    await enqueueToDatabase(queueId, 'echo', [TRIGGER_FATAL_ERROR, valueB], 0);
     queue.dequeue();
     await expectEmit(echoEmitter, 'echoCleanupComplete', { value: valueB, cleanupData: { value: valueB } });
     await expectEmit(echoEmitter, 'echoCleanupComplete', { value: valueA, cleanupData: { value: valueA } });
   });
 
-  it('Cleans up jobs in the reverse order that they were added following a maximum number of retries', async () => {
+  it('Enqueues to the database and is cleaned up after an error, retrying once after a 100ms delay if the retry delay function returns 100', async () => {
     const queueId = uuidv4();
-    const maxCleanupAttempts = Math.ceil(Math.random() * 10);
-    const valueA = uuidv4();
-    const valueB = uuidv4();
-    const maxAttempts = Math.round(2 + Math.random() * 10);
-    await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueA, maxCleanupAttempts], maxAttempts, 0);
-    await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, valueB, maxCleanupAttempts], maxAttempts, 0);
-    queue.dequeue();
-    await expectEmit(echoEmitter, 'echoCleanupComplete', { value: valueB, cleanupData: { value: valueB } });
-    await expectEmit(echoEmitter, 'echoCleanupComplete', { value: valueA, cleanupData: { value: valueA } });
-  });
-
-  it('Retries jobs after specified delay if a DelayRetryError error is thrown', async () => {
-    const queueId = uuidv4();
-    const maxCleanupAttempts = Math.ceil(Math.random() * 10);
     const value = uuidv4();
-    const args = [TRIGGER_DELAY_RETRY_ERROR, value, maxCleanupAttempts];
-    const maxAttempts = 1;
-    const id = await enqueueToDatabase(queueId, 'echo', args, maxAttempts, 0);
+    let retries = 0;
+    let didRequestRetry = false;
+    queue.setRetryJobDelay('echo', (attempt, error) => {
+      if (!didRequestRetry) {
+        expect(attempt).toEqual(1);
+        expect(error).toBeInstanceOf(Error);
+        didRequestRetry = true;
+        return 100;
+      }
+
+      expect(attempt).toEqual(2);
+      expect(error).toBeInstanceOf(Error);
+      return false;
+    });
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value], 0);
+    const handleRetry = ({ id: retryId }) => {
+      if (retryId === id) {
+        retries += 1;
+      }
+    };
+    queue.addListener('retry', handleRetry);
     queue.dequeue();
-    await expectEmit(queue, 'delayRetry', { id, queueId, delay: 100 });
-  });
+    await expectEmit(queue, 'retryDelay', { id, queueId, retryDelay: 100 });
+    await expectEmit(echoEmitter, 'echoCleanupComplete', { value, cleanupData: { value } });
+    await expectEmit(queue, 'fatalError', { queueId });
 
-  it('Retries jobs with a fixed retry delay handler', async () => {
-    try {
-      const queueId = uuidv4();
-      const maxCleanupAttempts = Math.ceil(Math.random() * 10);
-      const value = uuidv4();
-      const args = [TRIGGER_ERROR, value, maxCleanupAttempts];
-      const maxAttempts = 1;
-      const retryDelay = Math.round(Math.random() * 1000);
-      queue.setRetryDelay('echo', retryDelay);
-      const id = await enqueueToDatabase(queueId, 'echo', args, maxAttempts, 0);
-      queue.dequeue();
-      await expectEmit(queue, 'delayRetry', { id, queueId, delay: retryDelay });
-    } catch (error) {
-      throw error;
-    } finally {
-      queue.removeRetryDelay('echo');
-    }
-  });
-
-  it('Retries jobs with a dynamic retry delay handler based on attempt', async () => {
-    try {
-      const queueId = uuidv4();
-      const maxCleanupAttempts = Math.ceil(Math.random() * 10);
-      const value = uuidv4();
-      const args = [TRIGGER_ERROR, value, maxCleanupAttempts];
-      const maxAttempts = 2;
-      const retryFactor = Math.round(Math.random() * 100);
-      queue.setRetryDelay('echo', (attempt:number) => attempt * retryFactor);
-      const id = await enqueueToDatabase(queueId, 'echo', args, maxAttempts, 0);
-      queue.dequeue();
-      await expectEmit(queue, 'delayRetry', { id, queueId, delay: retryFactor });
-      await expectEmit(queue, 'delayRetry', { id, queueId, delay: retryFactor * 2 });
-    } catch (error) {
-      throw error;
-    } finally {
-      queue.removeRetryDelay('echo');
-    }
+    expect(retries).toEqual(1);
+    queue.removeListener('retry', handleRetry);
+    queue.removeRetryJobDelay('echo');
   });
 
   it('Removes completed items older than a certain age', async () => {
     const queueId = uuidv4();
-    const maxCleanupAttempts = Math.ceil(Math.random() * 10);
     const value = uuidv4();
-    const args = [TRIGGER_NO_ERROR, value, maxCleanupAttempts];
-    const maxAttempts = 1;
-    await enqueueToDatabase(queueId, 'echo', args, maxAttempts, 0);
+    const args = [TRIGGER_NO_ERROR, value];
+
+    await enqueueToDatabase(queueId, 'echo', args, 0);
 
     expect(await getCompletedJobsCountFromDatabase(queueId)).toEqual(0);
     await queue.dequeue();
@@ -207,12 +278,10 @@ describe('Queue', () => {
 
   it('Delays execution of items', async () => {
     const queueId = uuidv4();
-    const maxCleanupAttempts = Math.ceil(Math.random() * 10);
     const value = uuidv4();
-    const maxAttempts = 1;
     let echoReceivedTime = -1;
     const start = Date.now();
-    await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, value, maxCleanupAttempts], maxAttempts, 250);
+    await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, value], 250);
     const handleEcho = ({ value: echoValue }) => {
       if (echoValue === value) {
         echoReceivedTime = Date.now();
@@ -229,10 +298,8 @@ describe('Queue', () => {
   it('Enqueues to the database and is cleaned up after an error following a defined delay', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
-    const maxCleanupAttempts = Math.ceil(Math.random() * 10);
-    const args = [TRIGGER_NO_ERROR, value, maxCleanupAttempts];
-    const maxAttempts = Math.round(2 + Math.random() * 10);
-    const id = await enqueueToDatabase(queueId, 'echo', args, maxAttempts, 0);
+    const args = [TRIGGER_NO_ERROR, value];
+    const id = await enqueueToDatabase(queueId, 'echo', args, 0);
     queue.dequeue();
     await queue.onIdle();
     await queue.abortQueue(queueId);
@@ -252,43 +319,11 @@ describe('Queue', () => {
     expect(echoCleanupReceivedTime).toBeGreaterThan(start + 250);
   });
 
-  it('Enqueues to the database and is cleaned up after a DelayRetryError', async () => {
-    const queueId = uuidv4();
-    const value = uuidv4();
-    const maxCleanupAttempts = 2;
-    const args = [TRIGGER_DELAY_RETRY_ERROR_IN_CLEANUP, value, maxCleanupAttempts];
-    const maxAttempts = Math.round(2 + Math.random() * 10);
-    await enqueueToDatabase(queueId, 'echo', args, maxAttempts, 0);
-    await queue.dequeue();
-    await queue.onIdle();
-    await queue.abortQueue(queueId);
-    queue.dequeue();
-    const delayCleanupRetry = await getNextEmit(queue, 'delayCleanupRetry');
-
-    expect(delayCleanupRetry.delay).toBeGreaterThan(250);
-  });
-
-  it('Enqueues to the database and is stops cleanup after FatalCleanupError', async () => {
-    const queueId = uuidv4();
-    const value = uuidv4();
-    const maxCleanupAttempts = 1;
-    const args = [TRIGGER_FATAL_ERROR_IN_CLEANUP, value, maxCleanupAttempts];
-    const maxAttempts = Math.round(2 + Math.random() * 10);
-    const id = await enqueueToDatabase(queueId, 'echo', args, maxAttempts, 0);
-    await queue.dequeue();
-    await queue.onIdle();
-    await queue.abortQueue(queueId);
-    queue.dequeue();
-    await expectEmit(queue, 'fatalCleanupError', { id, queueId });
-  });
-
   it('Enqueues to the database and stops cleanup after FatalCleanupError', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
-    const maxCleanupAttempts = 2;
-    const args = [TRIGGER_ERROR_IN_CLEANUP, value, maxCleanupAttempts];
-    const maxAttempts = Math.round(2 + Math.random() * 10);
-    const id = await enqueueToDatabase(queueId, 'echo', args, maxAttempts, 0);
+    const args = [TRIGGER_FATAL_ERROR_IN_CLEANUP, value];
+    const id = await enqueueToDatabase(queueId, 'echo', args, 0);
     await queue.dequeue();
     await queue.onIdle();
     await queue.abortQueue(queueId);
@@ -296,58 +331,182 @@ describe('Queue', () => {
     await expectEmit(queue, 'fatalCleanupError', { id, queueId });
   });
 
-  it('Enqueues to the database and stops cleanup after reaching max cleanup attempts', async () => {
+  it('Enqueues to the database and stops cleanup after Error', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
-    const maxCleanupAttempts = Math.ceil(Math.random() * 5);
-    const args = [TRIGGER_ERROR_IN_CLEANUP, value, maxCleanupAttempts];
-    const maxAttempts = Math.round(2 + Math.random() * 10);
-    const id = await enqueueToDatabase(queueId, 'echo', args, maxAttempts, 0);
+    const args = [TRIGGER_ERROR_IN_CLEANUP, value];
+    const id = await enqueueToDatabase(queueId, 'echo', args, 0);
     await queue.dequeue();
     await queue.onIdle();
     await queue.abortQueue(queueId);
-    let cleanupAttempts = 0;
-    const handleDequeueCleanup = ({ id: cleanupId }) => {
-      if (cleanupId === id) {
-        cleanupAttempts += 1;
-      }
-    };
-    queue.addListener('dequeueCleanup', handleDequeueCleanup);
     queue.dequeue();
     await expectEmit(queue, 'fatalCleanupError', { id, queueId });
-    echoEmitter.removeListener('dequeueCleanup', handleDequeueCleanup);
-
-    expect(cleanupAttempts).toEqual(maxCleanupAttempts);
   });
 
-
-  it('Handles errors thrown in cleanup methods', async () => {
+  it('Does not retry cleanup if a retry cleanup delay function returns false', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
-    const maxCleanupAttempts = Math.ceil(Math.random() * 3);
-    const args = [TRIGGER_ERROR_IN_HANDLER_AND_IN_CLEANUP, value, maxCleanupAttempts];
-    const maxAttempts = Math.ceil(Math.random() * 3);
-    const id = await enqueueToDatabase(queueId, 'echo', args, maxAttempts, 0);
-    let jobAttempts = 0;
-    const handleDequeue = ({ id: jobId }) => {
-      if (jobId === id) {
-        jobAttempts += 1;
-      }
-    };
-    queue.addListener('dequeue', handleDequeue);
     let cleanupAttempts = 0;
-    const handleDequeueCleanup = ({ id: cleanupId }) => {
+    queue.setRetryCleanupDelay('echo', (attempt, error) => {
+      expect(attempt).toEqual(1);
+      expect(error).toBeInstanceOf(Error);
+      return false;
+    });
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR_IN_CLEANUP, value], 0);
+    await queue.dequeue();
+    await queue.onIdle();
+    await queue.abortQueue(queueId);
+    const handleCleanupStart = ({ id: cleanupId }) => {
       if (cleanupId === id) {
         cleanupAttempts += 1;
       }
     };
-    queue.addListener('dequeueCleanup', handleDequeueCleanup);
+    queue.addListener('cleanupStart', handleCleanupStart);
     queue.dequeue();
-    await queue.onIdle();
-    echoEmitter.removeListener('dequeueCleanup', handleDequeue);
-    echoEmitter.removeListener('dequeueCleanup', handleDequeueCleanup);
+    await expectEmit(queue, 'fatalCleanupError', { id, queueId });
 
-    expect(jobAttempts).toEqual(maxAttempts);
-    expect(cleanupAttempts).toEqual(maxAttempts * maxCleanupAttempts);
+    expect(cleanupAttempts).toEqual(1);
+    queue.removeListener('cleanupStart', handleCleanupStart);
+    queue.removeRetryCleanupDelay('echo');
+  });
+
+  it('Retries cleanup if a retry cleanup delay function returns 0', async () => {
+    const queueId = uuidv4();
+    const value = uuidv4();
+    let cleanupAttempts = 0;
+    let didRequestRetry = false;
+    queue.setRetryCleanupDelay('echo', (attempt, error) => {
+      if (!didRequestRetry) {
+        didRequestRetry = true;
+
+        expect(attempt).toEqual(1);
+        expect(error).toBeInstanceOf(Error);
+        return 0;
+      }
+
+      expect(attempt).toEqual(2);
+      expect(error).toBeInstanceOf(Error);
+      return false;
+    });
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR_IN_CLEANUP, value], 0);
+    await queue.dequeue();
+    await queue.onIdle();
+    await queue.abortQueue(queueId);
+    const handleCleanupStart = ({ id: cleanupId }) => {
+      if (cleanupId === id) {
+        cleanupAttempts += 1;
+      }
+    };
+    queue.addListener('cleanupStart', handleCleanupStart);
+    queue.dequeue();
+    await expectEmit(queue, 'fatalCleanupError', { id, queueId });
+
+    expect(cleanupAttempts).toEqual(2);
+    queue.removeListener('cleanupStart', handleCleanupStart);
+    queue.removeRetryCleanupDelay('echo');
+  });
+
+  it('Does not retry cleanup if an asynchronous retry cleanup delay function returns false', async () => {
+    const queueId = uuidv4();
+    const value = uuidv4();
+    let cleanupAttempts = 0;
+    queue.setRetryCleanupDelay('echo', async (attempt, error) => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      expect(attempt).toEqual(1);
+      expect(error).toBeInstanceOf(Error);
+      return false;
+    });
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR_IN_CLEANUP, value], 0);
+    await queue.dequeue();
+    await queue.onIdle();
+    await queue.abortQueue(queueId);
+    const handleCleanupStart = ({ id: cleanupId }) => {
+      if (cleanupId === id) {
+        cleanupAttempts += 1;
+      }
+    };
+    queue.addListener('cleanupStart', handleCleanupStart);
+    queue.dequeue();
+    await expectEmit(queue, 'fatalCleanupError', { id, queueId });
+
+    expect(cleanupAttempts).toEqual(1);
+    queue.removeListener('cleanupStart', handleCleanupStart);
+    queue.removeRetryCleanupDelay('echo');
+  });
+
+  it('Retries cleanup if an asynchronous retry cleanup delay function returns 0', async () => {
+    const queueId = uuidv4();
+    const value = uuidv4();
+    let cleanupAttempts = 0;
+    let didRequestRetry = false;
+    queue.setRetryCleanupDelay('echo', async (attempt, error) => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      if (!didRequestRetry) {
+        didRequestRetry = true;
+
+        expect(attempt).toEqual(1);
+        expect(error).toBeInstanceOf(Error);
+        return 0;
+      }
+
+      expect(attempt).toEqual(2);
+      expect(error).toBeInstanceOf(Error);
+      return false;
+    });
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR_IN_CLEANUP, value], 0);
+    await queue.dequeue();
+    await queue.onIdle();
+    await queue.abortQueue(queueId);
+    const handleCleanupStart = ({ id: cleanupId }) => {
+      if (cleanupId === id) {
+        cleanupAttempts += 1;
+      }
+    };
+    queue.addListener('cleanupStart', handleCleanupStart);
+    queue.dequeue();
+    await expectEmit(queue, 'fatalCleanupError', { id, queueId });
+
+    expect(cleanupAttempts).toEqual(2);
+    queue.removeListener('cleanupStart', handleCleanupStart);
+    queue.removeRetryCleanupDelay('echo');
+  });
+
+  it('Retries cleanup after 100ms if an asynchronous retry cleanup delay function returns 100', async () => {
+    const queueId = uuidv4();
+    const value = uuidv4();
+    let cleanupAttempts = 0;
+    let didRequestRetry = false;
+    queue.setRetryCleanupDelay('echo', async (attempt, error) => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      if (!didRequestRetry) {
+        didRequestRetry = true;
+
+        expect(attempt).toEqual(1);
+        expect(error).toBeInstanceOf(Error);
+        return 100;
+      }
+
+      expect(attempt).toEqual(2);
+      expect(error).toBeInstanceOf(Error);
+      return false;
+    });
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR_IN_CLEANUP, value], 0);
+    await queue.dequeue();
+    await queue.onIdle();
+    await queue.abortQueue(queueId);
+    const handleCleanupStart = ({ id: cleanupId }) => {
+      if (cleanupId === id) {
+        cleanupAttempts += 1;
+      }
+    };
+    queue.addListener('cleanupStart', handleCleanupStart);
+    queue.dequeue();
+    await expectEmit(queue, 'retryCleanupDelay', { id, queueId, retryCleanupDelay: 100 });
+    await expectEmit(queue, 'fatalCleanupError', { id, queueId });
+
+    expect(cleanupAttempts).toEqual(2);
+    queue.removeListener('cleanupStart', handleCleanupStart);
+    queue.removeRetryCleanupDelay('echo');
   });
 });

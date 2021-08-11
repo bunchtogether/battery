@@ -14,15 +14,6 @@ export class FatalQueueError extends Error {
   }
 }
 
-export class DelayRetryError extends Error {
-  declare delay: number;
-  constructor(message:string, delay:number) {
-    super(message);
-    this.name = 'DelayRetryError';
-    this.delay = delay;
-  }
-}
-
 export class FatalCleanupError extends Error {
   constructor(message:string) {
     super(message);

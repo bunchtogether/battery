@@ -10,7 +10,7 @@ import { enqueueToDatabase } from '@bunchtogether/battery/database';
 
 const queue = new BatteryQueue();
 
-queue.addHandler('mybasicjob', (args) => {
+queue.setHandler('mybasicjob', (args) => {
   const [name] = args;
   console.log(`Job ${name} was executed`);
 });
@@ -55,7 +55,7 @@ In `./myjob-handler.js`:
 import { queue } from './queue';
 import { AbortError } from '@bunchtogether/battery/errors';
 
-queue.addHandler('myjob', async (args, abortSignal, updateCleanupData) => {
+queue.setHandler('myjob', async (args, abortSignal, updateCleanupData) => {
   const [name, blob] = args;
   await new Promise((resolve) => setTimeout(resolve, 100));
   // Monitor the abort signal to handle external aborts gracefully, 
@@ -108,7 +108,7 @@ In `./myjob-cleanup-handler.js`:
 ```js
 import { queue } from './queue';
 
-queue.addCleanup('myjob', (cleanupData, args, removePathFromCleanupData) => {
+queue.setCleanup('myjob', (cleanupData, args, removePathFromCleanupData) => {
   const [name] = args;
   const { myApiResultParameter } = cleanupData;
   if(typeof myApiResultParameter === 'string') {

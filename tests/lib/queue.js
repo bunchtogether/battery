@@ -12,8 +12,8 @@ import {
 
 export const queue = new BatteryQueue();
 
-queue.addHandler('echo', echoHandler);
-queue.addCleanup('echo', echoCleanup);
+queue.setHandler('echo', echoHandler);
+queue.setCleanup('echo', echoCleanup);
 
-queue.addHandler('fuzz', fuzzHandler);
-queue.addCleanup('fuzz', fuzzCleanup);
+queue.setHandler('fuzz', fuzzHandler);
+queue.setCleanup('fuzz', fuzzCleanup);

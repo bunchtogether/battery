@@ -415,7 +415,6 @@ export async function removePathFromCleanupDataInDatabase(id, path) {
   const {
     queueId,
     attempt,
-    maxAttempts,
     startAfter
   } = value;
   const data = Object.assign({}, value.data);
@@ -424,7 +423,6 @@ export async function removePathFromCleanupDataInDatabase(id, path) {
     id,
     queueId,
     attempt,
-    maxAttempts,
     startAfter,
     data
   });
@@ -440,7 +438,7 @@ export async function removePathFromCleanupDataInDatabase(id, path) {
     };
   });
 }
-export async function updateCleanupInDatabase(id, queueId, data, maxAttempts) {
+export async function updateCleanupInDatabase(id, queueId, data) {
   if (typeof id !== 'number') {
     throw new TypeError(`Unable to update cleanup in database, received invalid "id" argument type "${typeof id}"`);
   }
@@ -453,10 +451,6 @@ export async function updateCleanupInDatabase(id, queueId, data, maxAttempts) {
     throw new TypeError(`Unable to update cleanup in database, received invalid "data" argument type "${typeof data}"`);
   }
 
-  if (typeof maxAttempts !== 'number') {
-    throw new TypeError(`Unable to update cleanup in database, received invalid "maxAttempts" argument type "${typeof maxAttempts}"`);
-  }
-
   const value = await getCleanupFromDatabase(id);
   const store = await getReadWriteCleanupsObjectStore();
   const combinedData = typeof value === 'undefined' ? data : merge({}, value.data, data);
@@ -465,7 +459,6 @@ export async function updateCleanupInDatabase(id, queueId, data, maxAttempts) {
     queueId,
     attempt: 0,
     startAfter: Date.now(),
-    maxAttempts,
     data: combinedData
   });
   return new Promise((resolve, reject) => {
@@ -589,10 +582,14 @@ export async function markJobStartAfterInDatabase(id, startAfter) {
     throw new Error(`Unable to mark job ${id} start-after time to ${new Date(startAfter).toLocaleString()} in database, job does not exist`);
   }
 
+  if (startAfter < value.startAfter) {
+    return;
+  }
+
   value.startAfter = startAfter;
   const store = await getReadWriteJobsObjectStore();
   const request = store.put(value);
-  return new Promise((resolve, reject) => {
+  await new Promise((resolve, reject) => {
     request.onsuccess = function () {
       resolve();
     };
@@ -611,10 +608,14 @@ export async function markCleanupStartAfterInDatabase(id, startAfter) {
     throw new Error(`Unable to mark cleanup ${id} start-after time to ${new Date(startAfter).toLocaleString()} in database, cleanup does not exist`);
   }
 
+  if (startAfter < value.startAfter) {
+    return;
+  }
+
   value.startAfter = startAfter;
   const store = await getReadWriteCleanupsObjectStore();
   const request = store.put(value);
-  return new Promise((resolve, reject) => {
+  await new Promise((resolve, reject) => {
     request.onsuccess = function () {
       resolve();
     };
@@ -710,18 +711,36 @@ export async function incrementJobAttemptInDatabase(id) {
       reject(new Error(`Request error while incrementing attempt to ${attempt} for job ${id}`));
     };
   });
-  return [attempt, value.maxAttempts];
+  return attempt;
 }
-export async function incrementCleanupAttemptInDatabase(id) {
+export async function incrementCleanupAttemptInDatabase(id, queueId) {
   const value = await getCleanupFromDatabase(id);
+  const store = await getReadWriteCleanupsObjectStore();
 
   if (typeof value === 'undefined') {
-    throw new Error(`Unable to increment attempts for cleanup ${id} in database, cleanup does not exist`);
+    const request = store.put({
+      id,
+      queueId,
+      attempt: 1,
+      startAfter: Date.now(),
+      data: {}
+    });
+    await new Promise((resolve, reject) => {
+      request.onsuccess = function () {
+        resolve();
+      };
+
+      request.onerror = function (event) {
+        logger.error(`Request error while incrementing attempt to 1 for cleanup ${id}`);
+        logger.errorObject(event);
+        reject(new Error(`Request error while incrementing attempt to 1 for cleanup ${id}`));
+      };
+    });
+    return 1;
   }
 
   const attempt = value.attempt + 1;
   value.attempt = attempt;
-  const store = await getReadWriteCleanupsObjectStore();
   const request = store.put(value);
   await new Promise((resolve, reject) => {
     request.onsuccess = function () {
@@ -734,7 +753,7 @@ export async function incrementCleanupAttemptInDatabase(id) {
       reject(new Error(`Request error while incrementing attempt to ${attempt} for cleanup ${id}`));
     };
   });
-  return [attempt, value.maxAttempts];
+  return attempt;
 }
 export async function bulkEnqueueToDatabase(queueId, items, delay) {
   // eslint-disable-line no-underscore-dangle
@@ -747,7 +766,7 @@ export async function bulkEnqueueToDatabase(queueId, items, delay) {
   }
 
   for (let i = 0; i < items.length; i += 1) {
-    const [type, args, maxAttempts] = items[i];
+    const [type, args] = items[i];
 
     if (typeof type !== 'string') {
       throw new TypeError(`Unable to bulk enqueue in database, received invalid items[${i}] "type" argument type "${typeof type}"`);
@@ -755,10 +774,6 @@ export async function bulkEnqueueToDatabase(queueId, items, delay) {
 
     if (!Array.isArray(args)) {
       throw new TypeError(`Unable to bulk enqueue in database, received invalid items[${i}] "args" argument type "${typeof args}"`);
-    }
-
-    if (typeof maxAttempts !== 'number') {
-      throw new TypeError(`Unable to bulk enqueue in database, received invalid items[${i}] "maxAttempts" argument type "${typeof maxAttempts}"`);
     }
   }
 
@@ -769,13 +784,12 @@ export async function bulkEnqueueToDatabase(queueId, items, delay) {
   const store = await getReadWriteJobsObjectStore();
   await new Promise((resolve, reject) => {
     for (let i = 0; i < items.length; i += 1) {
-      const [type, args, maxAttempts] = items[i];
+      const [type, args] = items[i];
       const value = {
         queueId,
         type,
         args,
         attempt: 0,
-        maxAttempts,
         created: Date.now(),
         status: JOB_PENDING_STATUS,
         startAfter: Date.now() + delay
@@ -796,7 +810,7 @@ export async function bulkEnqueueToDatabase(queueId, items, delay) {
     }
   });
 }
-export async function enqueueToDatabase(queueId, type, args, maxAttempts, delay) {
+export async function enqueueToDatabase(queueId, type, args, delay) {
   // eslint-disable-line no-underscore-dangle
   if (typeof queueId !== 'string') {
     throw new TypeError(`Unable to enqueue in database, received invalid "queueId" argument type "${typeof queueId}"`);
@@ -810,10 +824,6 @@ export async function enqueueToDatabase(queueId, type, args, maxAttempts, delay)
     throw new TypeError(`Unable to enqueue in database, received invalid "args" argument type "${typeof args}"`);
   }
 
-  if (typeof maxAttempts !== 'number') {
-    throw new TypeError(`Unable to enqueue in database, received invalid "maxAttempts" argument type "${typeof maxAttempts}"`);
-  }
-
   if (typeof delay !== 'number') {
     throw new TypeError(`Unable to enqueue in database, received invalid "delay" argument type "${typeof delay}"`);
   }
@@ -823,7 +833,6 @@ export async function enqueueToDatabase(queueId, type, args, maxAttempts, delay)
     type,
     args,
     attempt: 0,
-    maxAttempts,
     created: Date.now(),
     status: JOB_PENDING_STATUS,
     startAfter: Date.now() + delay

@@ -2,7 +2,7 @@
 
 import { oneOutOf, generateRandomValue } from './fuzz';
 
-export async function handler(args:Array<any>, abortSignal: AbortSignal, updateCleanupData: (Object, number) => Promise<void>) {
+export async function handler(args:Array<any>, abortSignal: AbortSignal, updateCleanupData: (Object) => Promise<void>) {
   
   if (oneOutOf(6)) {
     args = generateRandomValue(1);
@@ -17,7 +17,7 @@ export async function handler(args:Array<any>, abortSignal: AbortSignal, updateC
   }
 
   if (oneOutOf(4)) {
-    await updateCleanupData(generateRandomValue(3), generateRandomValue(3));
+    await updateCleanupData(generateRandomValue(3));
   }
 
   await new Promise((resolve) => setTimeout(resolve, Math.random() * 50));

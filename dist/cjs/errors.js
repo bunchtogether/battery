@@ -5,7 +5,7 @@ function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "functi
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.FatalCleanupError = exports.DelayRetryError = exports.FatalQueueError = exports.AbortError = void 0;
+exports.FatalCleanupError = exports.FatalQueueError = exports.AbortError = void 0;
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -66,40 +66,19 @@ var _FatalQueueError = /*#__PURE__*/function (_Error) {
 
 exports.FatalQueueError = _FatalQueueError;
 
-var _DelayRetryError = /*#__PURE__*/function (_Error2) {
-  _inherits(DelayRetryError, _Error2);
+var _FatalCleanupError = /*#__PURE__*/function (_Error2) {
+  _inherits(FatalCleanupError, _Error2);
 
-  var _super3 = _createSuper(DelayRetryError);
-
-  function DelayRetryError(message, delay) {
-    var _this2;
-
-    _classCallCheck(this, DelayRetryError);
-
-    _this2 = _super3.call(this, message);
-    _this2.name = 'DelayRetryError';
-    _this2.delay = delay;
-    return _this2;
-  }
-
-  return DelayRetryError;
-}( /*#__PURE__*/_wrapNativeSuper(Error));
-
-exports.DelayRetryError = _DelayRetryError;
-
-var _FatalCleanupError = /*#__PURE__*/function (_Error3) {
-  _inherits(FatalCleanupError, _Error3);
-
-  var _super4 = _createSuper(FatalCleanupError);
+  var _super3 = _createSuper(FatalCleanupError);
 
   function FatalCleanupError(message) {
-    var _this3;
+    var _this2;
 
     _classCallCheck(this, FatalCleanupError);
 
-    _this3 = _super4.call(this, message);
-    _this3.name = 'FatalCleanupError';
-    return _this3;
+    _this2 = _super3.call(this, message);
+    _this2.name = 'FatalCleanupError';
+    return _this2;
   }
 
   return FatalCleanupError;
@@ -108,6 +87,5 @@ var _FatalCleanupError = /*#__PURE__*/function (_Error3) {
 exports.FatalCleanupError = _FatalCleanupError;
 export var AbortError = exports.AbortError;
 export var FatalQueueError = exports.FatalQueueError;
-export var DelayRetryError = exports.DelayRetryError;
 export var FatalCleanupError = exports.FatalCleanupError;
 //# sourceMappingURL=errors.js.map

@@ -47,25 +47,37 @@ describe('IndexedDB Database', () => {
     const data = {
       [uuidv4()]: uuidv4(),
     };
-    const maxAttempts = Math.ceil(Math.random() * 10);
-    await updateCleanupInDatabase(id, queueId, data, maxAttempts);
+    await updateCleanupInDatabase(id, queueId, data);
 
     expect(await getCleanupFromDatabase(id)).toEqual(jasmine.objectContaining({
       id,
       queueId,
       data,
       attempt: 0,
-      maxAttempts,
       startAfter: jasmine.any(Number),
     }));
-    await incrementCleanupAttemptInDatabase(id);
+    await incrementCleanupAttemptInDatabase(id, queueId);
 
     expect(await getCleanupFromDatabase(id)).toEqual(jasmine.objectContaining({
       id,
       queueId,
       data,
       attempt: 1,
-      maxAttempts,
+      startAfter: jasmine.any(Number),
+    }));
+  });
+
+  it('Increments cleanup attempts if cleanup data does not initially exist', async () => {
+    const id = Math.round(1000 + Math.random() * 1000);
+    const queueId = uuidv4();
+
+    await incrementCleanupAttemptInDatabase(id, queueId);
+
+    expect(await getCleanupFromDatabase(id)).toEqual(jasmine.objectContaining({
+      id,
+      queueId,
+      data: {},
+      attempt: 1,
       startAfter: jasmine.any(Number),
     }));
   });
@@ -76,31 +88,28 @@ describe('IndexedDB Database', () => {
     const data1 = {
       a: uuidv4(),
     };
-    const maxAttempts1 = Math.ceil(Math.random() * 10);
     const data2 = {
       b: uuidv4(),
     };
-    const maxAttempts2 = Math.ceil(Math.random() * 10);
 
-    await updateCleanupInDatabase(id, queueId, data1, maxAttempts1);
+
+    await updateCleanupInDatabase(id, queueId, data1);
 
     expect(await getCleanupFromDatabase(id)).toEqual(jasmine.objectContaining({
       id,
       queueId,
       data: data1,
       attempt: 0,
-      maxAttempts: maxAttempts1,
       startAfter: jasmine.any(Number),
     }));
 
-    await updateCleanupInDatabase(id, queueId, data2, maxAttempts2);
+    await updateCleanupInDatabase(id, queueId, data2);
 
     expect(await getCleanupFromDatabase(id)).toEqual(jasmine.objectContaining({
       id,
       queueId,
       data: Object.assign({}, data1, data2),
       attempt: 0,
-      maxAttempts: maxAttempts2,
       startAfter: jasmine.any(Number),
     }));
 
@@ -111,7 +120,6 @@ describe('IndexedDB Database', () => {
       queueId,
       data: data2,
       attempt: 0,
-      maxAttempts: maxAttempts2,
       startAfter: jasmine.any(Number),
     }));
 
@@ -126,8 +134,7 @@ describe('IndexedDB Database', () => {
     const data = {
       [uuidv4()]: uuidv4(),
     };
-    const maxAttempts = Math.ceil(Math.random() * 10);
-    await updateCleanupInDatabase(id, queueId, data, maxAttempts);
+    await updateCleanupInDatabase(id, queueId, data);
 
     const cleanupBeforeDatabase = await getCleanupFromDatabase(id);
     if (typeof cleanupBeforeDatabase === 'undefined') {
@@ -150,8 +157,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const maxAttempts = 1;
-    const id = await enqueueToDatabase(queueId, type, args, maxAttempts, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0);
 
     expect(await dequeueFromDatabase()).toEqual([jasmine.objectContaining({
       id,
@@ -159,7 +165,6 @@ describe('IndexedDB Database', () => {
       type,
       args,
       attempt: 0,
-      maxAttempts,
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
@@ -170,8 +175,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const maxAttempts = 1;
-    const id = await enqueueToDatabase(queueId, type, args, maxAttempts, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0);
     await markJobErrorInDatabase(id);
 
     expect(await dequeueFromDatabase()).toEqual([jasmine.objectContaining({
@@ -180,7 +184,6 @@ describe('IndexedDB Database', () => {
       type,
       args,
       attempt: 0,
-      maxAttempts,
       created: jasmine.any(Number),
       status: JOB_ERROR_STATUS,
       startAfter: jasmine.any(Number),
@@ -191,8 +194,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const maxAttempts = 1;
-    const id = await enqueueToDatabase(queueId, type, args, maxAttempts, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0);
     await markJobCleanupInDatabase(id);
 
     expect(await dequeueFromDatabase()).toEqual([jasmine.objectContaining({
@@ -201,7 +203,6 @@ describe('IndexedDB Database', () => {
       type,
       args,
       attempt: 0,
-      maxAttempts,
       created: jasmine.any(Number),
       status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
@@ -212,8 +213,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const maxAttempts = 1;
-    const id = await enqueueToDatabase(queueId, type, args, maxAttempts, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0);
     await markJobCompleteInDatabase(id);
 
     expect(await dequeueFromDatabase()).toEqual([]);
@@ -223,8 +223,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const maxAttempts = 1;
-    const id = await enqueueToDatabase(queueId, type, args, maxAttempts, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0);
     await markJobAbortedInDatabase(id);
 
     expect(await dequeueFromDatabase()).toEqual([]);
@@ -234,8 +233,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const maxAttempts = Math.round(1 + Math.random() * 10);
-    const id = await enqueueToDatabase(queueId, type, args, maxAttempts, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0);
     await incrementJobAttemptInDatabase(id);
 
     expect(await getJobFromDatabase(id)).toEqual(jasmine.objectContaining({
@@ -244,7 +242,6 @@ describe('IndexedDB Database', () => {
       type,
       args,
       attempt: 1,
-      maxAttempts,
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
@@ -255,8 +252,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const maxAttempts = Math.round(1 + Math.random() * 10);
-    const id = await enqueueToDatabase(queueId, type, args, maxAttempts, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0);
 
     expect(await getJobFromDatabase(id)).toEqual(jasmine.objectContaining({
       id,
@@ -264,7 +260,6 @@ describe('IndexedDB Database', () => {
       type,
       args,
       attempt: 0,
-      maxAttempts,
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
@@ -277,7 +272,6 @@ describe('IndexedDB Database', () => {
       type,
       args,
       attempt: 0,
-      maxAttempts,
       created: jasmine.any(Number),
       status: JOB_ABORTED_STATUS,
       startAfter: jasmine.any(Number),
@@ -288,8 +282,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const maxAttempts = Math.round(1 + Math.random() * 10);
-    const id = await enqueueToDatabase(queueId, type, args, maxAttempts, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0);
     await markJobCompleteInDatabase(id);
 
     expect(await getJobFromDatabase(id)).toEqual(jasmine.objectContaining({
@@ -298,7 +291,6 @@ describe('IndexedDB Database', () => {
       type,
       args,
       attempt: 0,
-      maxAttempts,
       created: jasmine.any(Number),
       status: JOB_COMPLETE_STATUS,
       startAfter: jasmine.any(Number),
@@ -311,7 +303,6 @@ describe('IndexedDB Database', () => {
       type,
       args,
       attempt: 0,
-      maxAttempts,
       created: jasmine.any(Number),
       status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
@@ -322,8 +313,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const maxAttempts = Math.round(1 + Math.random() * 10);
-    const id = await enqueueToDatabase(queueId, type, args, maxAttempts, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0);
     await markJobCompleteInDatabase(id);
     const jobBeforeUpdate = await getJobFromDatabase(id);
     if (typeof jobBeforeUpdate === 'undefined') {
@@ -344,8 +334,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const maxAttempts = Math.round(1 + Math.random() * 10);
-    const id = await enqueueToDatabase(queueId, type, args, maxAttempts, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0);
     await markJobErrorInDatabase(id);
 
     expect(await getJobFromDatabase(id)).toEqual(jasmine.objectContaining({
@@ -354,7 +343,6 @@ describe('IndexedDB Database', () => {
       type,
       args,
       attempt: 0,
-      maxAttempts,
       created: jasmine.any(Number),
       status: JOB_ERROR_STATUS,
       startAfter: jasmine.any(Number),
@@ -367,7 +355,6 @@ describe('IndexedDB Database', () => {
       type,
       args,
       attempt: 0,
-      maxAttempts,
       created: jasmine.any(Number),
       status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
@@ -379,10 +366,9 @@ describe('IndexedDB Database', () => {
     const type = uuidv4();
     const valueA = uuidv4();
     const valueB = uuidv4();
-    const maxAttempts = Math.round(2 + Math.random() * 10);
     const items = [
-      [type, [valueA], maxAttempts],
-      [type, [valueB], maxAttempts],
+      [type, [valueA]],
+      [type, [valueB]],
     ];
     await bulkEnqueueToDatabase(queueId, items, 0);
 
@@ -392,7 +378,6 @@ describe('IndexedDB Database', () => {
       type,
       args: [valueA],
       attempt: 0,
-      maxAttempts,
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
@@ -402,7 +387,6 @@ describe('IndexedDB Database', () => {
       type,
       args: [valueB],
       attempt: 0,
-      maxAttempts,
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),

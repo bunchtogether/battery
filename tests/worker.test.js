@@ -29,10 +29,8 @@ describe('Worker', () => {
   it('Enqueues to the database and is handled', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
-    const maxCleanupAttempts = Math.ceil(Math.random() * 10);
-    const args = [TRIGGER_NO_ERROR, value, maxCleanupAttempts];
-    const maxAttempts = Math.round(2 + Math.random() * 10);
-    const id = await enqueueToDatabase(queueId, 'echo', args, maxAttempts, 0);
+    const args = [TRIGGER_NO_ERROR, value];
+    const id = await enqueueToDatabase(queueId, 'echo', args, 0);
     await queueInterface.dequeue();
     await expectEmit(queueInterface, 'complete', { id });
   });
@@ -40,10 +38,8 @@ describe('Worker', () => {
   it('Waits for the queue to idle', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
-    const maxCleanupAttempts = Math.ceil(Math.random() * 10);
-    const args = [TRIGGER_NO_ERROR, value, maxCleanupAttempts];
-    const maxAttempts = Math.round(2 + Math.random() * 10);
-    const id = await enqueueToDatabase(queueId, 'echo', args, maxAttempts, 0);
+    const args = [TRIGGER_NO_ERROR, value];
+    const id = await enqueueToDatabase(queueId, 'echo', args, 0);
     const idlePromise = expectEmit(queueInterface, 'idle');
     await queueInterface.dequeue();
     await expectEmit(queueInterface, 'complete', { id });
