@@ -630,13 +630,13 @@ export default class BatteryQueue extends EventEmitter {
       }
       this.emitCallbacks = this.emitCallbacks.filter((x) => x !== activeEmitCallback);
       const previousPort = this.port;
-      if(previousPort instanceof MessagePort) {
+      if (previousPort instanceof MessagePort) {
         this.logger.info('Closing previous worker interface');
         previousPort.close();
       }
       port.postMessage({ type: 'BATTERY_QUEUE_WORKER_CONFIRMATION' });
       this.logger.info('Linked to worker interface');
-      port.onmessage = this.handlePortMessage.bind(this);      
+      port.onmessage = this.handlePortMessage.bind(this);
       const emitCallback = (t:string, args:Array<any>) => {
         port.postMessage({ type: t, args });
       };
