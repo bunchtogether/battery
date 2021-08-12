@@ -19,10 +19,9 @@ const run = async () => {
   const queueId = 'mybasicqueue'; // Jobs with the same queue ID run serially
   const type = 'mybasicjob'; // Use the "mybasicjob" handler for this job
   const args = ["X"]; // Array of arguments to be passed to the handler
-  const maxAttempts = 3; // Attempt the task up to 3 times
   const delayInMs = 100; // Delay the start of the task by 100ms
 
-  await enqueueToDatabase(queueId, type, args, maxAttempts, delayInMs);
+  await enqueueToDatabase(queueId, type, args, delayInMs);
   await queue.dequeue();
 }
 ```
@@ -154,7 +153,6 @@ export const enqueueJobs = async () => {
 
   const type = 'myjob'; // Use the "myjob" handlers for this job
   
-  const maxAttempts = 3; // Attempt the task up to 3 times
   const delayInMs = 0; // Delay the start of the task by 0ms
 
   // Job handler arguments are serialized using the native structured clone algorithm.
@@ -164,8 +162,8 @@ export const enqueueJobs = async () => {
   const blobB = new Blob([1,1,1], {type: 'my/mimetype'});
 
   // Add tasks to the IndexedDB database. 
-  const idA = await enqueueToDatabase(queueId, type, [nameA, blobA], maxAttempts, delayInMs);
-  const idB = await enqueueToDatabase(queueId, type, [nameB, blobB], maxAttempts, delayInMs);
+  const idA = await enqueueToDatabase(queueId, type, [nameA, blobA], delayInMs);
+  const idB = await enqueueToDatabase(queueId, type, [nameB, blobB], delayInMs);
 
   console.log(`Enqueued jobs "${nameA}" (${idA}) and "${nameB}" ${idB}`);
 }

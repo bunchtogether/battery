@@ -21,15 +21,12 @@ import {
   markCleanupStartAfterInDatabase,
   updateCleanupValuesInDatabase,
   getCleanupFromDatabase,
-  //  getJobFromDatabase,
   removePathFromCleanupDataInDatabase,
   markQueueForCleanupInDatabase,
   removeCleanupFromDatabase,
   JOB_PENDING_STATUS,
-  // JOB_ABORTED_STATUS,
   JOB_ERROR_STATUS,
   JOB_CLEANUP_STATUS,
-  // JOB_COMPLETE_STATUS,
 } from './database';
 import { AbortError } from './errors';
 

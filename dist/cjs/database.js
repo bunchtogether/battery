@@ -189,11 +189,10 @@ function _getReadWriteAuthObjectStore() {
       while (1) {
         switch (_context2.prev = _context2.next) {
           case 0:
-            console.log('getReadWriteAuthObjectStore');
-            _context2.next = 3;
+            _context2.next = 2;
             return _databasePromise;
 
-          case 3:
+          case 2:
             database = _context2.sent;
             transaction = database.transaction(['auth-data'], 'readwrite');
             objectStore = transaction.objectStore('auth-data');
@@ -210,7 +209,7 @@ function _getReadWriteAuthObjectStore() {
 
             return _context2.abrupt("return", objectStore);
 
-          case 9:
+          case 8:
           case "end":
             return _context2.stop();
         }
@@ -231,11 +230,10 @@ function _getReadOnlyAuthObjectStore() {
       while (1) {
         switch (_context3.prev = _context3.next) {
           case 0:
-            console.log('getReadOnlyAuthObjectStore');
-            _context3.next = 3;
+            _context3.next = 2;
             return _databasePromise;
 
-          case 3:
+          case 2:
             database = _context3.sent;
             transaction = database.transaction(['auth-data'], 'readonly');
             objectStore = transaction.objectStore('auth-data');
@@ -252,7 +250,7 @@ function _getReadOnlyAuthObjectStore() {
 
             return _context3.abrupt("return", objectStore);
 
-          case 9:
+          case 8:
           case "end":
             return _context3.stop();
         }
@@ -273,11 +271,10 @@ function _getReadWriteQueueDataObjectStore() {
       while (1) {
         switch (_context4.prev = _context4.next) {
           case 0:
-            console.log('getReadWriteQueueDataObjectStore');
-            _context4.next = 3;
+            _context4.next = 2;
             return _databasePromise;
 
-          case 3:
+          case 2:
             database = _context4.sent;
             transaction = database.transaction(['queue-data'], 'readwrite');
             objectStore = transaction.objectStore('queue-data');
@@ -294,7 +291,7 @@ function _getReadWriteQueueDataObjectStore() {
 
             return _context4.abrupt("return", objectStore);
 
-          case 9:
+          case 8:
           case "end":
             return _context4.stop();
         }
@@ -315,11 +312,10 @@ function _getReadOnlyQueueDataObjectStore() {
       while (1) {
         switch (_context5.prev = _context5.next) {
           case 0:
-            console.log('getReadOnlyQueueDataObjectStore');
-            _context5.next = 3;
+            _context5.next = 2;
             return _databasePromise;
 
-          case 3:
+          case 2:
             database = _context5.sent;
             transaction = database.transaction(['queue-data'], 'readonly');
             objectStore = transaction.objectStore('queue-data');
@@ -336,7 +332,7 @@ function _getReadOnlyQueueDataObjectStore() {
 
             return _context5.abrupt("return", objectStore);
 
-          case 9:
+          case 8:
           case "end":
             return _context5.stop();
         }
@@ -357,11 +353,10 @@ function _getReadWriteJobsObjectStore() {
       while (1) {
         switch (_context6.prev = _context6.next) {
           case 0:
-            console.log('getReadWriteJobsObjectStore');
-            _context6.next = 3;
+            _context6.next = 2;
             return _databasePromise;
 
-          case 3:
+          case 2:
             database = _context6.sent;
             transaction = database.transaction(['jobs'], 'readwrite');
             objectStore = transaction.objectStore('jobs');
@@ -378,7 +373,7 @@ function _getReadWriteJobsObjectStore() {
 
             return _context6.abrupt("return", objectStore);
 
-          case 9:
+          case 8:
           case "end":
             return _context6.stop();
         }
@@ -399,11 +394,10 @@ function _getReadOnlyJobsObjectStore() {
       while (1) {
         switch (_context7.prev = _context7.next) {
           case 0:
-            console.log('getReadOnlyJobsObjectStore');
-            _context7.next = 3;
+            _context7.next = 2;
             return _databasePromise;
 
-          case 3:
+          case 2:
             database = _context7.sent;
             transaction = database.transaction(['jobs'], 'readonly');
             objectStore = transaction.objectStore('jobs');
@@ -420,7 +414,7 @@ function _getReadOnlyJobsObjectStore() {
 
             return _context7.abrupt("return", objectStore);
 
-          case 9:
+          case 8:
           case "end":
             return _context7.stop();
         }
@@ -441,11 +435,10 @@ function _getReadWriteCleanupsObjectStore() {
       while (1) {
         switch (_context8.prev = _context8.next) {
           case 0:
-            console.log('getReadWriteCleanupsObjectStore');
-            _context8.next = 3;
+            _context8.next = 2;
             return _databasePromise;
 
-          case 3:
+          case 2:
             database = _context8.sent;
             transaction = database.transaction(['cleanups'], 'readwrite');
             objectStore = transaction.objectStore('cleanups');
@@ -462,7 +455,7 @@ function _getReadWriteCleanupsObjectStore() {
 
             return _context8.abrupt("return", objectStore);
 
-          case 9:
+          case 8:
           case "end":
             return _context8.stop();
         }
@@ -483,11 +476,10 @@ function _getReadOnlyCleanupsObjectStore() {
       while (1) {
         switch (_context9.prev = _context9.next) {
           case 0:
-            console.log('getReadOnlyCleanupsObjectStore');
-            _context9.next = 3;
+            _context9.next = 2;
             return _databasePromise;
 
-          case 3:
+          case 2:
             database = _context9.sent;
             transaction = database.transaction(['cleanups'], 'readonly');
             objectStore = transaction.objectStore('cleanups');
@@ -504,7 +496,7 @@ function _getReadOnlyCleanupsObjectStore() {
 
             return _context9.abrupt("return", objectStore);
 
-          case 9:
+          case 8:
           case "end":
             return _context9.stop();
         }
@@ -525,14 +517,13 @@ function _clearQueueDataDatabase() {
       while (1) {
         switch (_context10.prev = _context10.next) {
           case 0:
-            console.log('clearQueueDataDatabase');
-            _context10.next = 3;
+            _context10.next = 2;
             return getReadWriteQueueDataObjectStore();
 
-          case 3:
+          case 2:
             store = _context10.sent;
             request = store.clear();
-            _context10.next = 7;
+            _context10.next = 6;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve();
@@ -545,7 +536,7 @@ function _clearQueueDataDatabase() {
               };
             });
 
-          case 7:
+          case 6:
           case "end":
             return _context10.stop();
         }
@@ -566,14 +557,13 @@ function _clearJobsDatabase() {
       while (1) {
         switch (_context11.prev = _context11.next) {
           case 0:
-            console.log('clearJobsDatabase');
-            _context11.next = 3;
+            _context11.next = 2;
             return getReadWriteJobsObjectStore();
 
-          case 3:
+          case 2:
             store = _context11.sent;
             request = store.clear();
-            _context11.next = 7;
+            _context11.next = 6;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve();
@@ -586,7 +576,7 @@ function _clearJobsDatabase() {
               };
             });
 
-          case 7:
+          case 6:
           case "end":
             return _context11.stop();
         }
@@ -607,14 +597,13 @@ function _clearCleanupsDatabase() {
       while (1) {
         switch (_context12.prev = _context12.next) {
           case 0:
-            console.log('clearCleanupsDatabase');
-            _context12.next = 3;
+            _context12.next = 2;
             return getReadWriteCleanupsObjectStore();
 
-          case 3:
+          case 2:
             store = _context12.sent;
             request = store.clear();
-            _context12.next = 7;
+            _context12.next = 6;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve();
@@ -627,7 +616,7 @@ function _clearCleanupsDatabase() {
               };
             });
 
-          case 7:
+          case 6:
           case "end":
             return _context12.stop();
         }
@@ -647,19 +636,18 @@ function _clearDatabase() {
       while (1) {
         switch (_context13.prev = _context13.next) {
           case 0:
-            console.log('clearDatabase');
-            _context13.next = 3;
+            _context13.next = 2;
             return clearJobsDatabase();
 
-          case 3:
-            _context13.next = 5;
+          case 2:
+            _context13.next = 4;
             return clearCleanupsDatabase();
 
-          case 5:
-            _context13.next = 7;
+          case 4:
+            _context13.next = 6;
             return clearQueueDataDatabase();
 
-          case 7:
+          case 6:
           case "end":
             return _context13.stop();
         }
@@ -680,16 +668,15 @@ function _removeJobsWithQueueIdAndTypeFromDatabase() {
       while (1) {
         switch (_context14.prev = _context14.next) {
           case 0:
-            console.log('removeJobsWithQueueIdAndTypeFromDatabase');
-            _context14.next = 3;
+            _context14.next = 2;
             return getReadWriteJobsObjectStore();
 
-          case 3:
+          case 2:
             store = _context14.sent;
             index = store.index('queueIdTypeIndex'); // $FlowFixMe
 
             request = index.openCursor(IDBKeyRange.only([queueId, type]));
-            _context14.next = 8;
+            _context14.next = 7;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function (event) {
                 var cursor = event.target.result;
@@ -709,7 +696,7 @@ function _removeJobsWithQueueIdAndTypeFromDatabase() {
               };
             });
 
-          case 8:
+          case 7:
           case "end":
             return _context14.stop();
         }
@@ -730,16 +717,15 @@ function _removeQueueIdFromJobsDatabase() {
       while (1) {
         switch (_context15.prev = _context15.next) {
           case 0:
-            console.log('removeQueueIdFromJobsDatabase');
-            _context15.next = 3;
+            _context15.next = 2;
             return getReadWriteJobsObjectStore();
 
-          case 3:
+          case 2:
             store = _context15.sent;
             index = store.index('queueIdIndex'); // $FlowFixMe
 
             request = index.openCursor(IDBKeyRange.only(queueId));
-            _context15.next = 8;
+            _context15.next = 7;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function (event) {
                 var cursor = event.target.result;
@@ -759,7 +745,7 @@ function _removeQueueIdFromJobsDatabase() {
               };
             });
 
-          case 8:
+          case 7:
           case "end":
             return _context15.stop();
         }
@@ -780,16 +766,15 @@ function _removeQueueIdFromCleanupsDatabase() {
       while (1) {
         switch (_context16.prev = _context16.next) {
           case 0:
-            console.log('removeQueueIdFromCleanupsDatabase');
-            _context16.next = 3;
+            _context16.next = 2;
             return getReadWriteCleanupsObjectStore();
 
-          case 3:
+          case 2:
             store = _context16.sent;
             index = store.index('queueIdIndex'); // $FlowFixMe
 
             request = index.openCursor(IDBKeyRange.only(queueId));
-            _context16.next = 8;
+            _context16.next = 7;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function (event) {
                 var cursor = event.target.result;
@@ -809,7 +794,7 @@ function _removeQueueIdFromCleanupsDatabase() {
               };
             });
 
-          case 8:
+          case 7:
           case "end":
             return _context16.stop();
         }
@@ -829,15 +814,14 @@ function _removeQueueIdFromDatabase() {
       while (1) {
         switch (_context17.prev = _context17.next) {
           case 0:
-            console.log('removeQueueIdFromDatabase');
-            _context17.next = 3;
+            _context17.next = 2;
             return removeQueueIdFromJobsDatabase(queueId);
 
-          case 3:
-            _context17.next = 5;
+          case 2:
+            _context17.next = 4;
             return removeQueueIdFromCleanupsDatabase(queueId);
 
-          case 5:
+          case 4:
           case "end":
             return _context17.stop();
         }
@@ -859,17 +843,16 @@ function _removeCompletedExpiredItemsFromDatabase() {
       while (1) {
         switch (_context18.prev = _context18.next) {
           case 0:
-            console.log('removeCompletedExpiredItemsFromDatabase');
-            _context18.next = 3;
+            _context18.next = 2;
             return getReadWriteJobsObjectStore();
 
-          case 3:
+          case 2:
             store = _context18.sent;
             index = store.index('statusCreatedIndex'); // $FlowFixMe
 
             request = index.openCursor(IDBKeyRange.bound([_JOB_COMPLETE_STATUS, 0], [_JOB_COMPLETE_STATUS, Date.now() - maxAge]));
             queueIds = new Set();
-            _context18.next = 9;
+            _context18.next = 8;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function (event) {
                 var cursor = event.target.result;
@@ -890,49 +873,49 @@ function _removeCompletedExpiredItemsFromDatabase() {
               };
             });
 
-          case 9:
+          case 8:
             _iterator = _createForOfIteratorHelper(queueIds);
-            _context18.prev = 10;
+            _context18.prev = 9;
 
             _iterator.s();
 
-          case 12:
+          case 11:
             if ((_step = _iterator.n()).done) {
-              _context18.next = 18;
+              _context18.next = 17;
               break;
             }
 
             queueId = _step.value;
-            _context18.next = 16;
+            _context18.next = 15;
             return _removeQueueIdFromDatabase2(queueId);
 
-          case 16:
-            _context18.next = 12;
+          case 15:
+            _context18.next = 11;
             break;
 
-          case 18:
-            _context18.next = 23;
+          case 17:
+            _context18.next = 22;
             break;
 
-          case 20:
-            _context18.prev = 20;
-            _context18.t0 = _context18["catch"](10);
+          case 19:
+            _context18.prev = 19;
+            _context18.t0 = _context18["catch"](9);
 
             _iterator.e(_context18.t0);
 
-          case 23:
-            _context18.prev = 23;
+          case 22:
+            _context18.prev = 22;
 
             _iterator.f();
 
-            return _context18.finish(23);
+            return _context18.finish(22);
 
-          case 26:
+          case 25:
           case "end":
             return _context18.stop();
         }
       }
-    }, _callee18, null, [[10, 20, 23, 26]]);
+    }, _callee18, null, [[9, 19, 22, 25]]);
   }));
   return _removeCompletedExpiredItemsFromDatabase.apply(this, arguments);
 }
@@ -1004,11 +987,10 @@ function _getJobFromDatabase() {
       while (1) {
         switch (_context20.prev = _context20.next) {
           case 0:
-            console.log('getJobFromDatabase');
-            _context20.next = 3;
+            _context20.next = 2;
             return getReadOnlyJobsObjectStore();
 
-          case 3:
+          case 2:
             store = _context20.sent;
             request = store.get(id);
             return _context20.abrupt("return", new Promise(function (resolve, reject) {
@@ -1023,7 +1005,7 @@ function _getJobFromDatabase() {
               };
             }));
 
-          case 6:
+          case 5:
           case "end":
             return _context20.stop();
         }
@@ -1099,8 +1081,7 @@ function _removePathFromCleanupDataInDatabase() {
       while (1) {
         switch (_context22.prev = _context22.next) {
           case 0:
-            console.log('removePathFromCleanupDataInDatabase');
-            _context22.next = 3;
+            _context22.next = 2;
             return _updateCleanupInDatabase2(id, function (value) {
               if (typeof value === 'undefined') {
                 return;
@@ -1121,7 +1102,7 @@ function _removePathFromCleanupDataInDatabase() {
               };
             });
 
-          case 3:
+          case 2:
           case "end":
             return _context22.stop();
         }
@@ -1141,33 +1122,31 @@ function _updateCleanupValuesInDatabase() {
       while (1) {
         switch (_context23.prev = _context23.next) {
           case 0:
-            console.log('updateCleanupValuesInDatabase');
-
             if (!(typeof id !== 'number')) {
-              _context23.next = 3;
+              _context23.next = 2;
               break;
             }
 
             throw new TypeError("Unable to update cleanup in database, received invalid \"id\" argument type \"".concat(_typeof(id), "\""));
 
-          case 3:
+          case 2:
             if (!(typeof queueId !== 'string')) {
-              _context23.next = 5;
+              _context23.next = 4;
               break;
             }
 
             throw new TypeError("Unable to update cleanup in database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\""));
 
-          case 5:
+          case 4:
             if (!(_typeof(data) !== 'object')) {
-              _context23.next = 7;
+              _context23.next = 6;
               break;
             }
 
             throw new TypeError("Unable to update cleanup in database, received invalid \"data\" argument type \"".concat(_typeof(data), "\""));
 
-          case 7:
-            _context23.next = 9;
+          case 6:
+            _context23.next = 8;
             return _updateCleanupInDatabase2(id, function (value) {
               var combinedData = typeof value === 'undefined' ? data : (0, _merge.default)({}, value.data, data);
               return {
@@ -1179,7 +1158,7 @@ function _updateCleanupValuesInDatabase() {
               };
             });
 
-          case 9:
+          case 8:
           case "end":
             return _context23.stop();
         }
@@ -1200,11 +1179,10 @@ function _removeCleanupFromDatabase() {
       while (1) {
         switch (_context24.prev = _context24.next) {
           case 0:
-            console.log('removeCleanupFromDatabase');
-            _context24.next = 3;
+            _context24.next = 2;
             return getReadWriteCleanupsObjectStore();
 
-          case 3:
+          case 2:
             store = _context24.sent;
             request = store.delete(id);
             return _context24.abrupt("return", new Promise(function (resolve, reject) {
@@ -1219,7 +1197,7 @@ function _removeCleanupFromDatabase() {
               };
             }));
 
-          case 6:
+          case 5:
           case "end":
             return _context24.stop();
         }
@@ -1240,11 +1218,10 @@ function _getCleanupFromDatabase() {
       while (1) {
         switch (_context25.prev = _context25.next) {
           case 0:
-            console.log('getCleanupFromDatabase');
-            _context25.next = 3;
+            _context25.next = 2;
             return getReadOnlyCleanupsObjectStore();
 
-          case 3:
+          case 2:
             store = _context25.sent;
             request = store.get(id);
             return _context25.abrupt("return", new Promise(function (resolve, reject) {
@@ -1259,7 +1236,7 @@ function _getCleanupFromDatabase() {
               };
             }));
 
-          case 6:
+          case 5:
           case "end":
             return _context25.stop();
         }
@@ -1280,14 +1257,13 @@ function _getQueueDataFromDatabase() {
       while (1) {
         switch (_context26.prev = _context26.next) {
           case 0:
-            console.log('getQueueDataFromDatabase');
-            _context26.next = 3;
+            _context26.next = 2;
             return getReadOnlyQueueDataObjectStore();
 
-          case 3:
+          case 2:
             store = _context26.sent;
             request = store.get(queueId);
-            _context26.next = 7;
+            _context26.next = 6;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve(request.result);
@@ -1300,11 +1276,11 @@ function _getQueueDataFromDatabase() {
               };
             });
 
-          case 7:
+          case 6:
             queueData = _context26.sent;
             return _context26.abrupt("return", typeof queueData !== 'undefined' ? queueData.data : undefined);
 
-          case 9:
+          case 8:
           case "end":
             return _context26.stop();
         }
@@ -1325,16 +1301,15 @@ function _updateQueueDataInDatabase() {
       while (1) {
         switch (_context27.prev = _context27.next) {
           case 0:
-            console.log('updateQueueDataInDatabase');
-            _context27.next = 3;
+            _context27.next = 2;
             return _getQueueDataFromDatabase2(queueId);
 
-          case 3:
+          case 2:
             value = _context27.sent;
-            _context27.next = 6;
+            _context27.next = 5;
             return getReadWriteQueueDataObjectStore();
 
-          case 6:
+          case 5:
             store = _context27.sent;
             request = store.put({
               queueId: queueId,
@@ -1352,7 +1327,7 @@ function _updateQueueDataInDatabase() {
               };
             }));
 
-          case 9:
+          case 8:
           case "end":
             return _context27.stop();
         }
@@ -1394,27 +1369,22 @@ function _markJobStatusInDatabase() {
 }
 
 function _markJobCompleteInDatabase(id) {
-  console.log('markJobCompleteInDatabase', id);
   return _markJobStatusInDatabase2(id, _JOB_COMPLETE_STATUS);
 }
 
 function _markJobPendingInDatabase(id) {
-  console.log('markJobPendingInDatabase', id);
   return _markJobStatusInDatabase2(id, _JOB_PENDING_STATUS);
 }
 
 function _markJobErrorInDatabase(id) {
-  console.log('markJobErrorInDatabase', id);
   return _markJobStatusInDatabase2(id, _JOB_ERROR_STATUS);
 }
 
 function _markJobCleanupInDatabase(id) {
-  console.log('markJobCleanupInDatabase', id);
   return _markJobStatusInDatabase2(id, _JOB_CLEANUP_STATUS);
 }
 
 function _markJobAbortedInDatabase(id) {
-  console.log('markJobAbortedInDatabase', id);
   return _markJobStatusInDatabase2(id, _JOB_ABORTED_STATUS);
 }
 
@@ -1428,7 +1398,6 @@ function _markJobStartAfterInDatabase() {
       while (1) {
         switch (_context29.prev = _context29.next) {
           case 0:
-            console.log('markJobStartAfterInDatabase', id);
             return _context29.abrupt("return", _updateJobInDatabase2(id, function (value) {
               if (typeof value === 'undefined') {
                 throw new Error("Unable to mark job ".concat(id, " start-after time to ").concat(new Date(startAfter).toLocaleString(), " in database, job does not exist"));
@@ -1444,7 +1413,7 @@ function _markJobStartAfterInDatabase() {
               return value; // eslint-disable-line consistent-return
             }));
 
-          case 2:
+          case 1:
           case "end":
             return _context29.stop();
         }
@@ -1464,8 +1433,7 @@ function _markCleanupStartAfterInDatabase() {
       while (1) {
         switch (_context30.prev = _context30.next) {
           case 0:
-            console.log('markCleanupStartAfterInDatabase');
-            _context30.next = 3;
+            _context30.next = 2;
             return _updateCleanupInDatabase2(id, function (value) {
               if (typeof value === 'undefined') {
                 throw new Error("Unable to mark cleanup ".concat(id, " start-after time to ").concat(new Date(startAfter).toLocaleString(), " in database, cleanup does not exist"));
@@ -1481,7 +1449,7 @@ function _markCleanupStartAfterInDatabase() {
               return value; // eslint-disable-line consistent-return
             });
 
-          case 3:
+          case 2:
           case "end":
             return _context30.stop();
         }
@@ -1502,17 +1470,16 @@ function _markQueueForCleanupInDatabase() {
       while (1) {
         switch (_context31.prev = _context31.next) {
           case 0:
-            console.log('markQueueForCleanupInDatabase');
-            _context31.next = 3;
+            _context31.next = 2;
             return getReadWriteJobsObjectStore();
 
-          case 3:
+          case 2:
             store = _context31.sent;
             index = store.index('queueIdIndex'); // $FlowFixMe
 
             request = index.openCursor(IDBKeyRange.only(queueId));
             jobs = [];
-            _context31.next = 9;
+            _context31.next = 8;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function (event) {
                 var cursor = event.target.result;
@@ -1572,10 +1539,10 @@ function _markQueueForCleanupInDatabase() {
               };
             });
 
-          case 9:
+          case 8:
             return _context31.abrupt("return", jobs);
 
-          case 10:
+          case 9:
           case "end":
             return _context31.stop();
         }
@@ -1595,8 +1562,7 @@ function _incrementJobAttemptInDatabase() {
       while (1) {
         switch (_context32.prev = _context32.next) {
           case 0:
-            console.log('incrementJobAttemptInDatabase');
-            _context32.next = 3;
+            _context32.next = 2;
             return _updateJobInDatabase2(id, function (value) {
               if (typeof value === 'undefined') {
                 throw new Error("Unable to increment attempts for job ".concat(id, " in database, job does not exist"));
@@ -1608,7 +1574,7 @@ function _incrementJobAttemptInDatabase() {
               return value;
             });
 
-          case 3:
+          case 2:
           case "end":
             return _context32.stop();
         }
@@ -1629,9 +1595,8 @@ function _incrementCleanupAttemptInDatabase() {
       while (1) {
         switch (_context33.prev = _context33.next) {
           case 0:
-            console.log('incrementCleanupAttemptInDatabase');
             attempt = 1;
-            _context33.next = 4;
+            _context33.next = 3;
             return _updateCleanupInDatabase2(id, function (value) {
               if (typeof value === 'undefined') {
                 return {
@@ -1650,10 +1615,10 @@ function _incrementCleanupAttemptInDatabase() {
               return value;
             });
 
-          case 4:
+          case 3:
             return _context33.abrupt("return", attempt);
 
-          case 5:
+          case 4:
           case "end":
             return _context33.stop();
         }
@@ -1675,70 +1640,67 @@ function _bulkEnqueueToDatabase() {
       while (1) {
         switch (_context34.prev = _context34.next) {
           case 0:
-            // eslint-disable-line no-underscore-dangle
-            console.log('bulkEnqueueToDatabase');
-
             if (!(typeof queueId !== 'string')) {
-              _context34.next = 3;
+              _context34.next = 2;
               break;
             }
 
             throw new TypeError("Unable to bulk enqueue in database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\""));
 
-          case 3:
+          case 2:
             if (Array.isArray(items)) {
-              _context34.next = 5;
+              _context34.next = 4;
               break;
             }
 
             throw new TypeError("Unable to bulk enqueue in database, received invalid \"items\" argument type \"".concat(_typeof(items), "\""));
 
-          case 5:
+          case 4:
             i = 0;
 
-          case 6:
+          case 5:
             if (!(i < items.length)) {
-              _context34.next = 15;
+              _context34.next = 14;
               break;
             }
 
             _items$i = _slicedToArray(items[i], 2), type = _items$i[0], args = _items$i[1];
 
             if (!(typeof type !== 'string')) {
-              _context34.next = 10;
+              _context34.next = 9;
               break;
             }
 
             throw new TypeError("Unable to bulk enqueue in database, received invalid items[".concat(i, "] \"type\" argument type \"").concat(_typeof(type), "\""));
 
-          case 10:
+          case 9:
             if (Array.isArray(args)) {
-              _context34.next = 12;
+              _context34.next = 11;
               break;
             }
 
             throw new TypeError("Unable to bulk enqueue in database, received invalid items[".concat(i, "] \"args\" argument type \"").concat(_typeof(args), "\""));
 
-          case 12:
+          case 11:
             i += 1;
-            _context34.next = 6;
+            _context34.next = 5;
             break;
 
-          case 15:
+          case 14:
             if (!(typeof delay !== 'number')) {
-              _context34.next = 17;
+              _context34.next = 16;
               break;
             }
 
             throw new TypeError("Unable to bulk enqueue in database, received invalid \"delay\" argument type \"".concat(_typeof(delay), "\""));
 
-          case 17:
-            _context34.next = 19;
+          case 16:
+            _context34.next = 18;
             return getReadWriteJobsObjectStore();
 
-          case 19:
+          case 18:
             store = _context34.sent;
-            _context34.next = 22;
+            _context34.next = 21;
             return new Promise(function (resolve, reject) {
               var _loop = function _loop(_i2) {
                 var _items$_i = _slicedToArray(items[_i2], 2),
@@ -1774,7 +1736,7 @@ function _bulkEnqueueToDatabase() {
               }
             });
 
-          case 22:
+          case 21:
           case "end":
             return _context34.stop();
         }
@@ -1795,41 +1757,38 @@ function _enqueueToDatabase() {
       while (1) {
         switch (_context35.prev = _context35.next) {
           case 0:
-            // eslint-disable-line no-underscore-dangle
-            console.log('enqueueToDatabase');
-
             if (!(typeof queueId !== 'string')) {
-              _context35.next = 3;
+              _context35.next = 2;
               break;
             }
 
             throw new TypeError("Unable to enqueue in database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\""));
 
-          case 3:
+          case 2:
             if (!(typeof type !== 'string')) {
-              _context35.next = 5;
+              _context35.next = 4;
               break;
             }
 
             throw new TypeError("Unable to enqueue in database, received invalid \"type\" argument type \"".concat(_typeof(type), "\""));
 
-          case 5:
+          case 4:
             if (Array.isArray(args)) {
-              _context35.next = 7;
+              _context35.next = 6;
               break;
             }
 
             throw new TypeError("Unable to enqueue in database, received invalid \"args\" argument type \"".concat(_typeof(args), "\""));
 
-          case 7:
+          case 6:
             if (!(typeof delay !== 'number')) {
-              _context35.next = 9;
+              _context35.next = 8;
               break;
             }
 
             throw new TypeError("Unable to enqueue in database, received invalid \"delay\" argument type \"".concat(_typeof(delay), "\""));
 
-          case 9:
+          case 8:
             value = {
               queueId: queueId,
               type: type,
@@ -1839,13 +1798,13 @@ function _enqueueToDatabase() {
               status: _JOB_PENDING_STATUS,
               startAfter: Date.now() + delay
             };
-            _context35.next = 12;
+            _context35.next = 11;
             return getReadWriteJobsObjectStore();
 
-          case 12:
+          case 11:
             store = _context35.sent;
             request = store.put(value);
-            _context35.next = 16;
+            _context35.next = 15;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve(request.result);
@@ -1858,11 +1817,11 @@ function _enqueueToDatabase() {
               };
             });
 
-          case 16:
+          case 15:
             id = _context35.sent;
             return _context35.abrupt("return", id);
 
-          case 18:
+          case 17:
           case "end":
             return _context35.stop();
         }
@@ -1883,17 +1842,15 @@ function _dequeueFromDatabase() {
       while (1) {
         switch (_context36.prev = _context36.next) {
           case 0:
-            // eslint-disable-line no-underscore-dangle
-            console.log('dequeueFromDatabase');
-            _context36.next = 3;
+            _context36.next = 2;
             return getReadOnlyJobsObjectStore();
 
-          case 3:
+          case 2:
             store = _context36.sent;
             index = store.index('statusIndex'); // $FlowFixMe
 
             request = index.getAll(IDBKeyRange.bound(_JOB_CLEANUP_STATUS, _JOB_PENDING_STATUS));
-            _context36.next = 8;
+            _context36.next = 7;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function (event) {
                 resolve(event.target.result);
@@ -1906,11 +1863,11 @@ function _dequeueFromDatabase() {
               };
             });
 
-          case 8:
+          case 7:
             jobs = _context36.sent;
             return _context36.abrupt("return", jobs);
 
-          case 10:
+          case 9:
           case "end":
             return _context36.stop();
         }
@@ -1921,7 +1878,6 @@ function _dequeueFromDatabase() {
 }
 
 function _getContiguousIds(ids) {
-  console.log('getContiguousIds');
   ids.sort(function (a, b) {
     return a - b;
   });
@@ -1951,21 +1907,18 @@ function _dequeueFromDatabaseNotIn() {
       while (1) {
         switch (_context37.prev = _context37.next) {
           case 0:
-            // eslint-disable-line no-underscore-dangle
-            console.log('dequeueFromDatabaseNotIn');
-
             if (!(ids.length === 0)) {
-              _context37.next = 3;
+              _context37.next = 2;
               break;
             }
 
             return _context37.abrupt("return", _dequeueFromDatabase2());
 
-          case 3:
-            _context37.next = 5;
+          case 2:
+            _context37.next = 4;
             return _databasePromise;
 
-          case 5:
+          case 4:
             database = _context37.sent;
             transaction = database.transaction(['jobs'], 'readonly');
             store = transaction.objectStore('jobs');
@@ -2032,13 +1985,13 @@ function _dequeueFromDatabaseNotIn() {
               logger.errorObject(event);
             };
 
-            _context37.next = 16;
+            _context37.next = 15;
             return promise;
 
-          case 16:
+          case 15:
             return _context37.abrupt("return", jobs);
 
-          case 17:
+          case 16:
           case "end":
             return _context37.stop();
         }
@@ -2059,16 +2012,14 @@ function _getCompletedJobsCountFromDatabase() {
       while (1) {
         switch (_context38.prev = _context38.next) {
           case 0:
-            // eslint-disable-line no-underscore-dangle
-            console.log('getCompletedJobsCountFromDatabase');
-            _context38.next = 3;
+            _context38.next = 2;
             return _getCompletedJobsFromDatabase2(queueId);
 
-          case 3:
+          case 2:
             jobs = _context38.sent;
             return _context38.abrupt("return", jobs.length);
 
-          case 5:
+          case 4:
           case "end":
             return _context38.stop();
         }
@@ -2089,27 +2040,24 @@ function _getCompletedJobsFromDatabase() {
       while (1) {
         switch (_context39.prev = _context39.next) {
           case 0:
-            // eslint-disable-line no-underscore-dangle
-            console.log('getCompletedJobsFromDatabase');
-
             if (!(typeof queueId !== 'string')) {
-              _context39.next = 3;
+              _context39.next = 2;
               break;
             }
 
             throw new TypeError("Unable to get completed jobs database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\""));
 
-          case 3:
-            _context39.next = 5;
+          case 2:
+            _context39.next = 4;
             return getReadOnlyJobsObjectStore();
 
-          case 5:
+          case 4:
             store = _context39.sent;
             index = store.index('statusQueueIdIndex'); // $FlowFixMe
 
             request = index.openCursor(IDBKeyRange.only([queueId, _JOB_COMPLETE_STATUS]));
             jobs = [];
-            _context39.next = 11;
+            _context39.next = 10;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function (event) {
                 var cursor = event.target.result;
@@ -2129,10 +2077,10 @@ function _getCompletedJobsFromDatabase() {
               };
             });
 
-          case 11:
+          case 10:
             return _context39.abrupt("return", jobs);
 
-          case 12:
+          case 11:
           case "end":
             return _context39.stop();
         }
@@ -2153,35 +2101,32 @@ function _storeAuthDataInDatabase() {
       while (1) {
         switch (_context40.prev = _context40.next) {
           case 0:
-            // eslint-disable-line no-underscore-dangle
-            console.log('storeAuthDataInDatabase');
-
             if (!(typeof id !== 'string')) {
-              _context40.next = 3;
+              _context40.next = 2;
               break;
             }
 
             throw new TypeError("Unable to store auth data in database, received invalid \"id\" argument type \"".concat(_typeof(id), "\""));
 
-          case 3:
+          case 2:
             if (!(_typeof(data) !== 'object')) {
-              _context40.next = 5;
+              _context40.next = 4;
               break;
             }
 
             throw new TypeError("Unable to store auth data in database, received invalid \"data\" argument type \"".concat(_typeof(data), "\""));
 
-          case 5:
-            _context40.next = 7;
+          case 4:
+            _context40.next = 6;
             return getReadWriteAuthObjectStore();
 
-          case 7:
+          case 6:
             store = _context40.sent;
             request = store.put({
               id: id,
               data: data
             });
-            _context40.next = 11;
+            _context40.next = 10;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve();
@@ -2194,7 +2139,7 @@ function _storeAuthDataInDatabase() {
               };
             });
 
-          case 11:
+          case 10:
           case "end":
             return _context40.stop();
         }
@@ -2215,23 +2160,21 @@ function _getAuthDataFromDatabase() {
       while (1) {
         switch (_context41.prev = _context41.next) {
           case 0:
-            console.log('getAuthDataFromDatabase');
-
             if (!(typeof id !== 'string')) {
-              _context41.next = 3;
+              _context41.next = 2;
               break;
             }
 
             throw new TypeError("Unable to store auth data in database, received invalid \"id\" argument type \"".concat(_typeof(id), "\""));
 
-          case 3:
-            _context41.next = 5;
+          case 2:
+            _context41.next = 4;
             return getReadOnlyAuthObjectStore();
 
-          case 5:
+          case 4:
             store = _context41.sent;
             request = store.get(id);
-            _context41.next = 9;
+            _context41.next = 8;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve(request.result);
@@ -2244,11 +2187,11 @@ function _getAuthDataFromDatabase() {
               };
             });
 
-          case 9:
+          case 8:
             authData = _context41.sent;
             return _context41.abrupt("return", typeof authData !== 'undefined' ? authData.data : undefined);
 
-          case 11:
+          case 10:
           case "end":
             return _context41.stop();
         }
@@ -2269,20 +2212,18 @@ function _removeAuthDataFromDatabase() {
       while (1) {
         switch (_context42.prev = _context42.next) {
           case 0:
-            console.log('removeAuthDataFromDatabase');
-
             if (!(typeof id !== 'string')) {
-              _context42.next = 3;
+              _context42.next = 2;
               break;
             }
 
             throw new TypeError("Unable to store auth data in database, received invalid \"id\" argument type \"".concat(_typeof(id), "\""));
 
-          case 3:
-            _context42.next = 5;
+          case 2:
+            _context42.next = 4;
             return getReadWriteAuthObjectStore();
 
-          case 5:
+          case 4:
             store = _context42.sent;
             request = store.delete(id);
             return _context42.abrupt("return", new Promise(function (resolve, reject) {
@@ -2297,7 +2238,7 @@ function _removeAuthDataFromDatabase() {
               };
             }));
 
-          case 8:
+          case 7:
           case "end":
             return _context42.stop();
         }
