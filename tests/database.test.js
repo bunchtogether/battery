@@ -14,7 +14,7 @@ import {
   markJobStartAfterInDatabase,
   incrementJobAttemptInDatabase,
   getJobFromDatabase,
-  updateCleanupInDatabase,
+  updateCleanupValuesInDatabase,
   getCleanupFromDatabase,
   incrementCleanupAttemptInDatabase,
   removePathFromCleanupDataInDatabase,
@@ -49,7 +49,7 @@ describe('IndexedDB Database', () => {
     const data = {
       [uuidv4()]: uuidv4(),
     };
-    await updateCleanupInDatabase(id, queueId, data);
+    await updateCleanupValuesInDatabase(id, queueId, data);
 
     expect(await getCleanupFromDatabase(id)).toEqual(jasmine.objectContaining({
       id,
@@ -95,7 +95,7 @@ describe('IndexedDB Database', () => {
     };
 
 
-    await updateCleanupInDatabase(id, queueId, data1);
+    await updateCleanupValuesInDatabase(id, queueId, data1);
 
     expect(await getCleanupFromDatabase(id)).toEqual(jasmine.objectContaining({
       id,
@@ -105,7 +105,7 @@ describe('IndexedDB Database', () => {
       startAfter: jasmine.any(Number),
     }));
 
-    await updateCleanupInDatabase(id, queueId, data2);
+    await updateCleanupValuesInDatabase(id, queueId, data2);
 
     expect(await getCleanupFromDatabase(id)).toEqual(jasmine.objectContaining({
       id,
@@ -136,7 +136,7 @@ describe('IndexedDB Database', () => {
     const data = {
       [uuidv4()]: uuidv4(),
     };
-    await updateCleanupInDatabase(id, queueId, data);
+    await updateCleanupValuesInDatabase(id, queueId, data);
 
     const cleanupBeforeDatabase = await getCleanupFromDatabase(id);
     if (typeof cleanupBeforeDatabase === 'undefined') {

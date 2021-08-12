@@ -86,6 +86,7 @@ export const databasePromise = (async () => {
 })();
 
 async function getReadWriteAuthObjectStore() {
+  console.log('getReadWriteAuthObjectStore');
   const database = await databasePromise;
   const transaction = database.transaction(['auth-data'], 'readwrite');
   const objectStore = transaction.objectStore('auth-data');
@@ -101,6 +102,7 @@ async function getReadWriteAuthObjectStore() {
 }
 
 async function getReadOnlyAuthObjectStore() {
+  console.log('getReadOnlyAuthObjectStore');
   const database = await databasePromise;
   const transaction = database.transaction(['auth-data'], 'readonly');
   const objectStore = transaction.objectStore('auth-data');
@@ -116,6 +118,7 @@ async function getReadOnlyAuthObjectStore() {
 }
 
 async function getReadWriteQueueDataObjectStore() {
+  console.log('getReadWriteQueueDataObjectStore');
   const database = await databasePromise;
   const transaction = database.transaction(['queue-data'], 'readwrite');
   const objectStore = transaction.objectStore('queue-data');
@@ -131,6 +134,7 @@ async function getReadWriteQueueDataObjectStore() {
 }
 
 async function getReadOnlyQueueDataObjectStore() {
+  console.log('getReadOnlyQueueDataObjectStore');
   const database = await databasePromise;
   const transaction = database.transaction(['queue-data'], 'readonly');
   const objectStore = transaction.objectStore('queue-data');
@@ -147,6 +151,7 @@ async function getReadOnlyQueueDataObjectStore() {
 
 
 async function getReadWriteJobsObjectStore() {
+  console.log('getReadWriteJobsObjectStore');
   const database = await databasePromise;
   const transaction = database.transaction(['jobs'], 'readwrite');
   const objectStore = transaction.objectStore('jobs');
@@ -162,6 +167,7 @@ async function getReadWriteJobsObjectStore() {
 }
 
 async function getReadOnlyJobsObjectStore() {
+  console.log('getReadOnlyJobsObjectStore');
   const database = await databasePromise;
   const transaction = database.transaction(['jobs'], 'readonly');
   const objectStore = transaction.objectStore('jobs');
@@ -177,6 +183,7 @@ async function getReadOnlyJobsObjectStore() {
 }
 
 async function getReadWriteCleanupsObjectStore() {
+  console.log('getReadWriteCleanupsObjectStore');
   const database = await databasePromise;
   const transaction = database.transaction(['cleanups'], 'readwrite');
   const objectStore = transaction.objectStore('cleanups');
@@ -192,6 +199,7 @@ async function getReadWriteCleanupsObjectStore() {
 }
 
 async function getReadOnlyCleanupsObjectStore() {
+  console.log('getReadOnlyCleanupsObjectStore');
   const database = await databasePromise;
   const transaction = database.transaction(['cleanups'], 'readonly');
   const objectStore = transaction.objectStore('cleanups');
@@ -207,6 +215,7 @@ async function getReadOnlyCleanupsObjectStore() {
 }
 
 async function clearQueueDataDatabase() {
+  console.log('clearQueueDataDatabase');
   const store = await getReadWriteQueueDataObjectStore();
   const request = store.clear();
   await new Promise((resolve, reject) => {
@@ -222,6 +231,7 @@ async function clearQueueDataDatabase() {
 }
 
 async function clearJobsDatabase() {
+  console.log('clearJobsDatabase');
   const store = await getReadWriteJobsObjectStore();
   const request = store.clear();
   await new Promise((resolve, reject) => {
@@ -237,6 +247,7 @@ async function clearJobsDatabase() {
 }
 
 async function clearCleanupsDatabase() {
+  console.log('clearCleanupsDatabase');
   const store = await getReadWriteCleanupsObjectStore();
   const request = store.clear();
   await new Promise((resolve, reject) => {
@@ -252,12 +263,14 @@ async function clearCleanupsDatabase() {
 }
 
 export async function clearDatabase() {
+  console.log('clearDatabase');
   await clearJobsDatabase();
   await clearCleanupsDatabase();
   await clearQueueDataDatabase();
 }
 
 export async function removeJobsWithQueueIdAndTypeFromDatabase(queueId:string, type:string) {
+  console.log('removeJobsWithQueueIdAndTypeFromDatabase');
   const store = await getReadWriteJobsObjectStore();
   const index = store.index('queueIdTypeIndex');
   // $FlowFixMe
@@ -281,6 +294,7 @@ export async function removeJobsWithQueueIdAndTypeFromDatabase(queueId:string, t
 }
 
 async function removeQueueIdFromJobsDatabase(queueId:string) {
+  console.log('removeQueueIdFromJobsDatabase');
   const store = await getReadWriteJobsObjectStore();
   const index = store.index('queueIdIndex');
   // $FlowFixMe
@@ -304,6 +318,7 @@ async function removeQueueIdFromJobsDatabase(queueId:string) {
 }
 
 async function removeQueueIdFromCleanupsDatabase(queueId:string) {
+  console.log('removeQueueIdFromCleanupsDatabase');
   const store = await getReadWriteCleanupsObjectStore();
   const index = store.index('queueIdIndex');
   // $FlowFixMe
@@ -327,11 +342,13 @@ async function removeQueueIdFromCleanupsDatabase(queueId:string) {
 }
 
 export async function removeQueueIdFromDatabase(queueId:string) {
+  console.log('removeQueueIdFromDatabase');
   await removeQueueIdFromJobsDatabase(queueId);
   await removeQueueIdFromCleanupsDatabase(queueId);
 }
 
 export async function removeCompletedExpiredItemsFromDatabase(maxAge:number) {
+  console.log('removeCompletedExpiredItemsFromDatabase');
   const store = await getReadWriteJobsObjectStore();
   const index = store.index('statusCreatedIndex');
   // $FlowFixMe
@@ -359,7 +376,36 @@ export async function removeCompletedExpiredItemsFromDatabase(maxAge:number) {
   }
 }
 
+export async function updateJobInDatabase(id:number, transform:(Job | void) => Object):Promise<Job | void> {
+  const store = await getReadWriteJobsObjectStore();
+  const request = store.get(id);
+  await new Promise((resolve, reject) => {
+    request.onsuccess = function () {
+      const newValue = transform(request.result);
+      if (typeof newValue === 'undefined') {
+        resolve();
+      } else {
+        const putRequest = store.put(newValue);
+        putRequest.onsuccess = function () {
+          resolve();
+        };
+        putRequest.onerror = function (event) {
+          logger.error(`Put request error while updating ${id}`);
+          logger.errorObject(event);
+          reject(new Error(`Put request error while updating ${id}`));
+        };
+      }
+    };
+    request.onerror = function (event) {
+      logger.error(`Get request error while updating ${id}`);
+      logger.errorObject(event);
+      reject(new Error(`Get request error while updating ${id}`));
+    };
+  });
+}
+
 export async function getJobFromDatabase(id:number):Promise<Job | void> {
+  console.log('getJobFromDatabase');
   const store = await getReadOnlyJobsObjectStore();
   const request = store.get(id);
   return new Promise((resolve, reject) => {
@@ -374,35 +420,56 @@ export async function getJobFromDatabase(id:number):Promise<Job | void> {
   });
 }
 
-export async function removePathFromCleanupDataInDatabase(id:number, path:Array<string>) {
-  const value = await getCleanupFromDatabase(id);
+export async function updateCleanupInDatabase(id:number, transform:(Cleanup | void) => Object):Promise<Cleanup | void> {
   const store = await getReadWriteCleanupsObjectStore();
-  if (typeof value === 'undefined') {
-    return;
-  }
-  const { queueId, attempt, startAfter } = value;
-  const data = Object.assign({}, value.data);
-  unset(data, path);
-  const request = store.put({
-    id,
-    queueId,
-    attempt,
-    startAfter,
-    data,
-  });
+  const request = store.get(id);
   await new Promise((resolve, reject) => {
     request.onsuccess = function () {
-      resolve();
+      const newValue = transform(request.result);
+      if (typeof newValue === 'undefined') {
+        resolve();
+      } else {
+        const putRequest = store.put(newValue);
+        putRequest.onsuccess = function () {
+          resolve();
+        };
+        putRequest.onerror = function (event) {
+          logger.error(`Put request error while updating ${id} cleanup`);
+          logger.errorObject(event);
+          reject(new Error(`Put request error while updating ${id} cleanup`));
+        };
+      }
     };
     request.onerror = function (event) {
-      logger.error(`Error while removing path ${Array.isArray(path) ? path.join('.') : path} from cleanup data for ${id} in queue ${queueId}`);
+      logger.error(`Get request error while updating ${id} cleanup`);
       logger.errorObject(event);
-      reject(new Error(`Error while removing path ${Array.isArray(path) ? path.join('.') : path} from cleanup data for ${id} in queue ${queueId}`));
+      reject(new Error(`Get request error while updating ${id} cleanup`));
     };
   });
 }
 
-export async function updateCleanupInDatabase(id:number, queueId:string, data:Object) {
+export async function removePathFromCleanupDataInDatabase(id:number, path:Array<string>) {
+  console.log('removePathFromCleanupDataInDatabase');
+  await updateCleanupInDatabase(id, (value: Cleanup | void) => {
+    if (typeof value === 'undefined') {
+      return;
+    }
+    const { queueId, attempt, startAfter } = value;
+    const data = Object.assign({}, value.data);
+    unset(data, path);
+    return { // eslint-disable-line consistent-return
+      id,
+      queueId,
+      attempt,
+      startAfter,
+      data,
+    };
+  });
+}
+
+
+export async function updateCleanupValuesInDatabase(id:number, queueId:string, data:Object) {
+  console.log('updateCleanupValuesInDatabase');
   if (typeof id !== 'number') {
     throw new TypeError(`Unable to update cleanup in database, received invalid "id" argument type "${typeof id}"`);
   }
@@ -412,29 +479,20 @@ export async function updateCleanupInDatabase(id:number, queueId:string, data:Ob
   if (typeof data !== 'object') {
     throw new TypeError(`Unable to update cleanup in database, received invalid "data" argument type "${typeof data}"`);
   }
-  const value = await getCleanupFromDatabase(id);
-  const store = await getReadWriteCleanupsObjectStore();
-  const combinedData = typeof value === 'undefined' ? data : merge({}, value.data, data);
-  const request = store.put({
-    id,
-    queueId,
-    attempt: 0,
-    startAfter: Date.now(),
-    data: combinedData,
-  });
-  return new Promise((resolve, reject) => {
-    request.onsuccess = function () {
-      resolve();
-    };
-    request.onerror = function (event) {
-      logger.error(`Error while updating cleanup data for ${id}`);
-      logger.errorObject(event);
-      reject(new Error(`Error while updating cleanup data for ${id}`));
+  await updateCleanupInDatabase(id, (value: Cleanup | void) => {
+    const combinedData = typeof value === 'undefined' ? data : merge({}, value.data, data);
+    return {
+      id,
+      queueId,
+      attempt: 0,
+      startAfter: Date.now(),
+      data: combinedData,
     };
   });
 }
 
 export async function removeCleanupFromDatabase(id:number) {
+  console.log('removeCleanupFromDatabase');
   const store = await getReadWriteCleanupsObjectStore();
   const request = store.delete(id);
   return new Promise((resolve, reject) => {
@@ -450,6 +508,7 @@ export async function removeCleanupFromDatabase(id:number) {
 }
 
 export async function getCleanupFromDatabase(id:number):Promise<Cleanup | void> {
+  console.log('getCleanupFromDatabase');
   const store = await getReadOnlyCleanupsObjectStore();
   const request = store.get(id);
   return new Promise((resolve, reject) => {
@@ -465,6 +524,7 @@ export async function getCleanupFromDatabase(id:number):Promise<Cleanup | void> 
 }
 
 export async function getQueueDataFromDatabase(queueId:string) {
+  console.log('getQueueDataFromDatabase');
   const store = await getReadOnlyQueueDataObjectStore();
   const request = store.get(queueId);
   const queueData = await new Promise((resolve, reject) => {
@@ -481,6 +541,7 @@ export async function getQueueDataFromDatabase(queueId:string) {
 }
 
 export async function updateQueueDataInDatabase(queueId:string, data:Object) {
+  console.log('updateQueueDataInDatabase');
   const value = await getQueueDataFromDatabase(queueId);
   const store = await getReadWriteQueueDataObjectStore();
   const request = store.put({
@@ -500,92 +561,70 @@ export async function updateQueueDataInDatabase(queueId:string, data:Object) {
 }
 
 export async function markJobStatusInDatabase(id:number, status:number) {
-  const value = await getJobFromDatabase(id);
-  if (typeof value === 'undefined') {
-    throw new Error(`Unable to mark job ${id} as status ${status} in database, job does not exist`);
-  }
-  value.status = status;
-  const store = await getReadWriteJobsObjectStore();
-  const request = store.put(value);
-  return new Promise((resolve, reject) => {
-    request.onsuccess = function () {
-      resolve();
-    };
-    request.onerror = function (event) {
-      logger.error(`Request error while marking job ${id} as status ${status}`);
-      logger.errorObject(event);
-      reject(new Error(`Request error while marking job ${id} as status ${status}`));
-    };
+  return updateJobInDatabase(id, (value:Job | void) => {
+    if (typeof value === 'undefined') {
+      throw new Error(`Unable to mark job ${id} as status ${status} in database, job does not exist`);
+    }
+    value.status = status; // eslint-disable-line no-param-reassign
+    return value;
   });
 }
 
 export function markJobCompleteInDatabase(id:number) {
+  console.log('markJobCompleteInDatabase', id);
   return markJobStatusInDatabase(id, JOB_COMPLETE_STATUS);
 }
 
 export function markJobPendingInDatabase(id:number) {
+  console.log('markJobPendingInDatabase', id);
   return markJobStatusInDatabase(id, JOB_PENDING_STATUS);
 }
 
 export function markJobErrorInDatabase(id:number) {
+  console.log('markJobErrorInDatabase', id);
   return markJobStatusInDatabase(id, JOB_ERROR_STATUS);
 }
 
 export function markJobCleanupInDatabase(id:number) {
+  console.log('markJobCleanupInDatabase', id);
   return markJobStatusInDatabase(id, JOB_CLEANUP_STATUS);
 }
 
 export function markJobAbortedInDatabase(id:number) {
+  console.log('markJobAbortedInDatabase', id);
   return markJobStatusInDatabase(id, JOB_ABORTED_STATUS);
 }
 
 export async function markJobStartAfterInDatabase(id:number, startAfter:number) {
-  const value = await getJobFromDatabase(id);
-  if (typeof value === 'undefined') {
-    throw new Error(`Unable to mark job ${id} start-after time to ${new Date(startAfter).toLocaleString()} in database, job does not exist`);
-  }
-  if (startAfter < value.startAfter) {
-    return;
-  }
-  value.startAfter = startAfter;
-  const store = await getReadWriteJobsObjectStore();
-  const request = store.put(value);
-  await new Promise((resolve, reject) => {
-    request.onsuccess = function () {
-      resolve();
-    };
-    request.onerror = function (event) {
-      logger.error(`Request error while marking job ${id} start-after time to ${new Date(startAfter).toLocaleString()}`);
-      logger.errorObject(event);
-      reject(new Error(`Request error while marking job ${id} start-after time to ${new Date(startAfter).toLocaleString()}`));
-    };
+  console.log('markJobStartAfterInDatabase', id);
+  return updateJobInDatabase(id, (value:Job | void) => {
+    if (typeof value === 'undefined') {
+      throw new Error(`Unable to mark job ${id} start-after time to ${new Date(startAfter).toLocaleString()} in database, job does not exist`);
+    }
+    if (startAfter < value.startAfter) {
+      return;
+    }
+    value.startAfter = startAfter; // eslint-disable-line no-param-reassign
+    return value; // eslint-disable-line consistent-return
   });
 }
 
 export async function markCleanupStartAfterInDatabase(id:number, startAfter:number) {
-  const value = await getCleanupFromDatabase(id);
-  if (typeof value === 'undefined') {
-    throw new Error(`Unable to mark cleanup ${id} start-after time to ${new Date(startAfter).toLocaleString()} in database, cleanup does not exist`);
-  }
-  if (startAfter < value.startAfter) {
-    return;
-  }
-  value.startAfter = startAfter;
-  const store = await getReadWriteCleanupsObjectStore();
-  const request = store.put(value);
-  await new Promise((resolve, reject) => {
-    request.onsuccess = function () {
-      resolve();
-    };
-    request.onerror = function (event) {
-      logger.error(`Request error while marking cleanup ${id} start-after time to ${new Date(startAfter).toLocaleString()}`);
-      logger.errorObject(event);
-      reject(new Error(`Request error while marking cleanup ${id} start-after time to ${new Date(startAfter).toLocaleString()}`));
-    };
+  console.log('markCleanupStartAfterInDatabase');
+  await updateCleanupInDatabase(id, (value: Cleanup | void) => {
+    if (typeof value === 'undefined') {
+      throw new Error(`Unable to mark cleanup ${id} start-after time to ${new Date(startAfter).toLocaleString()} in database, cleanup does not exist`);
+    }
+    if (startAfter < value.startAfter) {
+      return;
+    }
+    value.startAfter = startAfter; // eslint-disable-line  no-param-reassign
+    return value; // eslint-disable-line consistent-return
   });
 }
 
 export async function markQueueForCleanupInDatabase(queueId:string) {
+  console.log('markQueueForCleanupInDatabase');
   const store = await getReadWriteJobsObjectStore();
   const index = store.index('queueIdIndex');
   // $FlowFixMe
@@ -642,67 +681,38 @@ export async function markQueueForCleanupInDatabase(queueId:string) {
 }
 
 export async function incrementJobAttemptInDatabase(id:number) {
-  const value = await getJobFromDatabase(id);
-  if (typeof value === 'undefined') {
-    throw new Error(`Unable to increment attempts for job ${id} in database, job does not exist`);
-  }
-  const attempt = value.attempt + 1;
-  value.attempt = attempt;
-  const store = await getReadWriteJobsObjectStore();
-  const request = store.put(value);
-  await new Promise((resolve, reject) => {
-    request.onsuccess = function () {
-      resolve();
-    };
-    request.onerror = function (event) {
-      logger.error(`Request error while incrementing attempt to ${attempt} for job ${id}`);
-      logger.errorObject(event);
-      reject(new Error(`Request error while incrementing attempt to ${attempt} for job ${id}`));
-    };
+  console.log('incrementJobAttemptInDatabase');
+  await updateJobInDatabase(id, (value:Job | void) => {
+    if (typeof value === 'undefined') {
+      throw new Error(`Unable to increment attempts for job ${id} in database, job does not exist`);
+    }
+    value.attempt += 1; // eslint-disable-line no-param-reassign
+    return value;
   });
-  return attempt;
 }
 
 export async function incrementCleanupAttemptInDatabase(id:number, queueId:string) {
-  const value = await getCleanupFromDatabase(id);
-  const store = await getReadWriteCleanupsObjectStore();
-  if (typeof value === 'undefined') {
-    const request = store.put({
-      id,
-      queueId,
-      attempt: 1,
-      startAfter: Date.now(),
-      data: {},
-    });
-    await new Promise((resolve, reject) => {
-      request.onsuccess = function () {
-        resolve();
+  console.log('incrementCleanupAttemptInDatabase');
+  let attempt = 1;
+  await updateCleanupInDatabase(id, (value: Cleanup | void) => {
+    if (typeof value === 'undefined') {
+      return {
+        id,
+        queueId,
+        attempt: 1,
+        startAfter: Date.now(),
+        data: {},
       };
-      request.onerror = function (event) {
-        logger.error(`Request error while incrementing attempt to 1 for cleanup ${id}`);
-        logger.errorObject(event);
-        reject(new Error(`Request error while incrementing attempt to 1 for cleanup ${id}`));
-      };
-    });
-    return 1;
-  }
-  const attempt = value.attempt + 1;
-  value.attempt = attempt;
-  const request = store.put(value);
-  await new Promise((resolve, reject) => {
-    request.onsuccess = function () {
-      resolve();
-    };
-    request.onerror = function (event) {
-      logger.error(`Request error while incrementing attempt to ${attempt} for cleanup ${id}`);
-      logger.errorObject(event);
-      reject(new Error(`Request error while incrementing attempt to ${attempt} for cleanup ${id}`));
-    };
+    }
+    attempt = value.attempt + 1;
+    value.attempt = attempt; // eslint-disable-line no-param-reassign
+    return value;
   });
   return attempt;
 }
 
 export async function bulkEnqueueToDatabase(queueId: string, items:Array<[string, Array<any>]>, delay: number) { // eslint-disable-line no-underscore-dangle
+  console.log('bulkEnqueueToDatabase');
   if (typeof queueId !== 'string') {
     throw new TypeError(`Unable to bulk enqueue in database, received invalid "queueId" argument type "${typeof queueId}"`);
   }
@@ -750,6 +760,7 @@ export async function bulkEnqueueToDatabase(queueId: string, items:Array<[string
 }
 
 export async function enqueueToDatabase(queueId: string, type: string, args: Array<any>, delay: number) { // eslint-disable-line no-underscore-dangle
+  console.log('enqueueToDatabase');
   if (typeof queueId !== 'string') {
     throw new TypeError(`Unable to enqueue in database, received invalid "queueId" argument type "${typeof queueId}"`);
   }
@@ -787,6 +798,7 @@ export async function enqueueToDatabase(queueId: string, type: string, args: Arr
 }
 
 export async function dequeueFromDatabase():Promise<Array<Job>> { // eslint-disable-line no-underscore-dangle
+  console.log('dequeueFromDatabase');
   const store = await getReadOnlyJobsObjectStore();
   const index = store.index('statusIndex');
   // $FlowFixMe
@@ -805,6 +817,7 @@ export async function dequeueFromDatabase():Promise<Array<Job>> { // eslint-disa
 }
 
 export function getContiguousIds(ids:Array<number>) {
+  console.log('getContiguousIds');
   ids.sort((a, b) => a - b);
   const points = [[0, ids[0] - 1]];
   for (let i = 0; i < ids.length; i += 1) {
@@ -820,6 +833,7 @@ export function getContiguousIds(ids:Array<number>) {
 }
 
 export async function dequeueFromDatabaseNotIn(ids:Array<number>):Promise<Array<Job>> { // eslint-disable-line no-underscore-dangle
+  console.log('dequeueFromDatabaseNotIn');
   if (ids.length === 0) {
     return dequeueFromDatabase();
   }
@@ -869,11 +883,13 @@ export async function dequeueFromDatabaseNotIn(ids:Array<number>):Promise<Array<
 }
 
 export async function getCompletedJobsCountFromDatabase(queueId: string) { // eslint-disable-line no-underscore-dangle
+  console.log('getCompletedJobsCountFromDatabase');
   const jobs = await getCompletedJobsFromDatabase(queueId);
   return jobs.length;
 }
 
 export async function getCompletedJobsFromDatabase(queueId: string):Promise<Array<Job>> { // eslint-disable-line no-underscore-dangle
+  console.log('getCompletedJobsFromDatabase');
   if (typeof queueId !== 'string') {
     throw new TypeError(`Unable to get completed jobs database, received invalid "queueId" argument type "${typeof queueId}"`);
   }
@@ -902,6 +918,7 @@ export async function getCompletedJobsFromDatabase(queueId: string):Promise<Arra
 }
 
 export async function storeAuthDataInDatabase(id:string, data: Object) { // eslint-disable-line no-underscore-dangle
+  console.log('storeAuthDataInDatabase');
   if (typeof id !== 'string') {
     throw new TypeError(`Unable to store auth data in database, received invalid "id" argument type "${typeof id}"`);
   }
@@ -923,6 +940,7 @@ export async function storeAuthDataInDatabase(id:string, data: Object) { // esli
 }
 
 export async function getAuthDataFromDatabase(id:string) {
+  console.log('getAuthDataFromDatabase');
   if (typeof id !== 'string') {
     throw new TypeError(`Unable to store auth data in database, received invalid "id" argument type "${typeof id}"`);
   }
@@ -942,6 +960,7 @@ export async function getAuthDataFromDatabase(id:string) {
 }
 
 export async function removeAuthDataFromDatabase(id:string) {
+  console.log('removeAuthDataFromDatabase');
   if (typeof id !== 'string') {
     throw new TypeError(`Unable to store auth data in database, received invalid "id" argument type "${typeof id}"`);
   }

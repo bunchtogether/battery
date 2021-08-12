@@ -19,17 +19,17 @@ import {
   markJobAbortedInDatabase,
   markJobStartAfterInDatabase,
   markCleanupStartAfterInDatabase,
-  updateCleanupInDatabase,
+  updateCleanupValuesInDatabase,
   getCleanupFromDatabase,
-  getJobFromDatabase,
+  //  getJobFromDatabase,
   removePathFromCleanupDataInDatabase,
   markQueueForCleanupInDatabase,
   removeCleanupFromDatabase,
   JOB_PENDING_STATUS,
-  JOB_ABORTED_STATUS,
+  // JOB_ABORTED_STATUS,
   JOB_ERROR_STATUS,
   JOB_CLEANUP_STATUS,
-  JOB_COMPLETE_STATUS,
+  // JOB_COMPLETE_STATUS,
 } from './database';
 import { AbortError } from './errors';
 
@@ -433,7 +433,7 @@ export default class BatteryQueue extends EventEmitter {
     this.logger.info(`Adding ${type} job #${id} to queue ${queueId}`);
     this.jobIds.add(id);
     const priority = PRIORITY_OFFSET - id;
-    const updateCleanupData = (data:Object) => updateCleanupInDatabase(id, queueId, data);
+    const updateCleanupData = (data:Object) => updateCleanupValuesInDatabase(id, queueId, data);
     const run = async () => {
       this.logger.info(`Starting ${type} job #${id} in queue ${queueId} attempt ${attempt}`);
       const handler = this.handlerMap.get(type);
@@ -445,11 +445,11 @@ export default class BatteryQueue extends EventEmitter {
         return;
       }
       const abortController = this.getAbortController(id, queueId);
-      await this.delayJobStart(id, queueId, type, abortController.signal, startAfter);
       // Mark as error in database so the job is cleaned up and retried if execution
       // stops before job completion or error
       await markJobErrorInDatabase(id);
       try {
+        await this.delayJobStart(id, queueId, type, abortController.signal, startAfter);
         await handler(args, abortController.signal, updateCleanupData);
         if (abortController.signal.aborted) {
           throw new AbortError('Aborted');
@@ -495,24 +495,6 @@ export default class BatteryQueue extends EventEmitter {
           this.jobIds.delete(id);
           this.startErrorHandler(id, queueId, args, type, attempt, startAfter);
         }
-        return;
-      }
-      const job = await getJobFromDatabase(id);
-      if (typeof job === 'undefined') {
-        throw new Error(`Unable to find ${type} job #${id} in queue ${queueId}, this should not happen`);
-      }
-      if (job.status === JOB_CLEANUP_STATUS) {
-        throw new Error(`Found cleanup status for ${type} job #${id} in queue ${queueId}, this should not happen`);
-      }
-      if (job.status === JOB_COMPLETE_STATUS) {
-        throw new Error(`Found complete status for ${type} job #${id} in queue ${queueId}, this should not happen`);
-      }
-      if (job.status === JOB_ABORTED_STATUS) {
-        // Job was aborted while running
-        this.logger.error(`Found aborted status for ${type} job #${id} in queue ${queueId} following error, starting cleanup`);
-        await markJobCleanupInDatabase(id);
-        this.jobIds.delete(id);
-        this.startCleanup(id, queueId, args, type);
         return;
       }
       await markJobCompleteInDatabase(id);

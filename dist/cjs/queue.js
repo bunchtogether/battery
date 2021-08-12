@@ -1127,12 +1127,12 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
       var priority = PRIORITY_OFFSET - id;
 
       var updateCleanupData = function updateCleanupData(data) {
-        return (0, _database.updateCleanupInDatabase)(id, queueId, data);
+        return (0, _database.updateCleanupValuesInDatabase)(id, queueId, data);
       };
 
       var run = /*#__PURE__*/function () {
         var _ref6 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee13() {
-          var handler, abortController, retryDelay, newStartAfter, job;
+          var handler, abortController, retryDelay, newStartAfter;
           return regeneratorRuntime.wrap(function _callee13$(_context14) {
             while (1) {
               switch (_context14.prev = _context14.next) {
@@ -1161,16 +1161,18 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   return _context14.abrupt("return");
 
                 case 9:
-                  abortController = _this6.getAbortController(id, queueId);
-                  _context14.next = 12;
-                  return _this6.delayJobStart(id, queueId, type, abortController.signal, startAfter);
+                  abortController = _this6.getAbortController(id, queueId); // Mark as error in database so the job is cleaned up and retried if execution
+                  // stops before job completion or error
 
-                case 12:
-                  _context14.next = 14;
+                  _context14.next = 12;
                   return (0, _database.markJobErrorInDatabase)(id);
 
-                case 14:
-                  _context14.prev = 14;
+                case 12:
+                  _context14.prev = 12;
+                  _context14.next = 15;
+                  return _this6.delayJobStart(id, queueId, type, abortController.signal, startAfter);
+
+                case 15:
                   _context14.next = 17;
                   return handler(args, abortController.signal, updateCleanupData);
 
@@ -1190,7 +1192,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
                 case 22:
                   _context14.prev = 22;
-                  _context14.t0 = _context14["catch"](14);
+                  _context14.t0 = _context14["catch"](12);
 
                   _this6.removeAbortController(id, queueId);
 
@@ -1305,70 +1307,21 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
                 case 68:
                   _context14.next = 70;
-                  return (0, _database.getJobFromDatabase)(id);
-
-                case 70:
-                  job = _context14.sent;
-
-                  if (!(typeof job === 'undefined')) {
-                    _context14.next = 73;
-                    break;
-                  }
-
-                  throw new Error("Unable to find ".concat(type, " job #").concat(id, " in queue ").concat(queueId, ", this should not happen"));
-
-                case 73:
-                  if (!(job.status === _database.JOB_CLEANUP_STATUS)) {
-                    _context14.next = 75;
-                    break;
-                  }
-
-                  throw new Error("Found cleanup status for ".concat(type, " job #").concat(id, " in queue ").concat(queueId, ", this should not happen"));
-
-                case 75:
-                  if (!(job.status === _database.JOB_COMPLETE_STATUS)) {
-                    _context14.next = 77;
-                    break;
-                  }
-
-                  throw new Error("Found complete status for ".concat(type, " job #").concat(id, " in queue ").concat(queueId, ", this should not happen"));
-
-                case 77:
-                  if (!(job.status === _database.JOB_ABORTED_STATUS)) {
-                    _context14.next = 84;
-                    break;
-                  }
-
-                  // Job was aborted while running
-                  _this6.logger.error("Found aborted status for ".concat(type, " job #").concat(id, " in queue ").concat(queueId, " following error, starting cleanup"));
-
-                  _context14.next = 81;
-                  return (0, _database.markJobCleanupInDatabase)(id);
-
-                case 81:
-                  _this6.jobIds.delete(id);
-
-                  _this6.startCleanup(id, queueId, args, type);
-
-                  return _context14.abrupt("return");
-
-                case 84:
-                  _context14.next = 86;
                   return (0, _database.markJobCompleteInDatabase)(id);
 
-                case 86:
+                case 70:
                   _this6.emit('complete', {
                     id: id
                   });
 
                   _this6.jobIds.delete(id);
 
-                case 88:
+                case 72:
                 case "end":
                   return _context14.stop();
               }
             }
-          }, _callee13, null, [[14, 22]]);
+          }, _callee13, null, [[12, 22]]);
         }));
 
         return function run() {

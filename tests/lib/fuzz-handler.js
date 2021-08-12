@@ -20,7 +20,7 @@ export async function handler(args:Array<any>, abortSignal: AbortSignal, updateC
     await updateCleanupData(generateRandomValue(3));
   }
 
-  await new Promise((resolve) => setTimeout(resolve, Math.random() * 50));
+  await new Promise((resolve) => setTimeout(resolve, 0));
 
   if (oneOutOf(5)) {
     throw new Error('Fuzz error before async');
@@ -38,7 +38,7 @@ export async function cleanup(cleanupData: Object | void, args:Array<any>, remov
     await removePathFromCleanupData(generateRandomValue(3));
   } 
 
-  await new Promise((resolve) => setTimeout(resolve, Math.random() * 50));
+  await new Promise((resolve) => setTimeout(resolve, 0));
 
   if (oneOutOf(5)) {
     throw new Error('Fuzz cleanup error before async');
