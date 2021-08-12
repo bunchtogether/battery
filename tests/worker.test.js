@@ -8,6 +8,7 @@ import {
 } from '../src/database';
 import { expectEmit } from './lib/emit';
 import {
+  TRIGGER_ERROR,
   TRIGGER_NO_ERROR,
 } from './lib/echo-handler';
 
@@ -18,6 +19,10 @@ const queueInterface = new BatteryQueueServiceWorkerInterface();
 describe('Worker', () => {
   beforeAll(async () => {
     await serviceWorkerPromise;
+  });
+
+  afterEach(async () => {
+    await queueInterface.clear();
   });
 
   it('Should clear the service worker', async () => {
@@ -33,6 +38,15 @@ describe('Worker', () => {
     const id = await enqueueToDatabase(queueId, 'echo', args, 0);
     await queueInterface.dequeue();
     await expectEmit(queueInterface, 'complete', { id });
+  });
+
+  it('Enqueues to the database and throws an error', async () => {
+    const queueId = uuidv4();
+    const value = uuidv4();
+    const args = [TRIGGER_ERROR, value];
+    await enqueueToDatabase(queueId, 'echo', args, 0);
+    await queueInterface.dequeue();
+    await expectEmit(queueInterface, 'fatalError', { queueId });
   });
 
   it('Waits for the queue to idle', async () => {

@@ -7,8 +7,6 @@ exports.default = void 0;
 
 var _pQueue = _interopRequireDefault(require("p-queue"));
 
-var _serializeError = _interopRequireDefault(require("serialize-error"));
-
 var _events = _interopRequireDefault(require("events"));
 
 var _logger = _interopRequireDefault(require("./logger"));
@@ -1377,48 +1375,6 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
       });
     }
   }, {
-    key: "handleInitializationMessage",
-    value: function handleInitializationMessage(event) {
-      if (!(event instanceof ExtendableMessageEvent)) {
-        return;
-      }
-
-      var data = event.data;
-
-      if (!data || _typeof(data) !== 'object') {
-        return;
-      }
-
-      var type = data.type;
-
-      if (type !== 'BATTERY_QUEUE_WORKER_INITIALIZATION') {
-        return;
-      }
-
-      if (!Array.isArray(event.ports)) {
-        return;
-      }
-
-      var port = event.ports[0];
-
-      if (!(port instanceof MessagePort)) {
-        return;
-      }
-
-      port.postMessage({
-        type: 'BATTERY_QUEUE_WORKER_CONFIRMATION'
-      });
-      this.logger.info('Linked to interface');
-      port.onmessage = this.handlePortMessage.bind(this);
-      this.emitCallbacks.push(function (t, args) {
-        port.postMessage({
-          type: t,
-          args: args
-        });
-      });
-      this.port = port;
-    }
-  }, {
     key: "handlePortMessage",
     value: function () {
       var _handlePortMessage = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee14(event) {
@@ -1497,7 +1453,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 _context15.prev = 26;
                 _context15.t1 = _context15["catch"](20);
                 this.emit('clearError', {
-                  errorObject: _serializeError.default.serializeError(_context15.t1),
+                  error: _context15.t1,
                   id: id
                 });
                 this.logger.error('Unable to handle clear message');
@@ -1532,7 +1488,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 _context15.prev = 41;
                 _context15.t2 = _context15["catch"](32);
                 this.emit('abortQueueError', {
-                  errorObject: _serializeError.default.serializeError(_context15.t2),
+                  error: _context15.t2,
                   id: id
                 });
                 this.logger.error('Unable to handle abort queue message');
@@ -1557,7 +1513,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 _context15.prev = 53;
                 _context15.t3 = _context15["catch"](47);
                 this.emit('dequeueError', {
-                  errorObject: _serializeError.default.serializeError(_context15.t3),
+                  error: _context15.t3,
                   id: id
                 });
                 this.logger.error('Unable to handle dequeue message');
@@ -1600,7 +1556,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 _context15.prev = 70;
                 _context15.t4 = _context15["catch"](59);
                 this.emit('idleError', {
-                  errorObject: _serializeError.default.serializeError(_context15.t4),
+                  error: _context15.t4,
                   id: id
                 });
                 this.logger.error('Unable to handle idle message');
@@ -1629,7 +1585,73 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
   }, {
     key: "listenForServiceWorkerInterface",
     value: function listenForServiceWorkerInterface() {
-      self.addEventListener('message', this.handleInitializationMessage.bind(this));
+      var _this7 = this;
+
+      var activeEmitCallback;
+      self.addEventListener('message', function (event) {
+        if (!(event instanceof ExtendableMessageEvent)) {
+          return;
+        }
+
+        var data = event.data;
+
+        if (!data || _typeof(data) !== 'object') {
+          return;
+        }
+
+        var type = data.type;
+
+        if (type !== 'BATTERY_QUEUE_WORKER_INITIALIZATION') {
+          return;
+        }
+
+        if (!Array.isArray(event.ports)) {
+          return;
+        }
+
+        var port = event.ports[0];
+
+        if (!(port instanceof MessagePort)) {
+          return;
+        }
+
+        _this7.emitCallbacks = _this7.emitCallbacks.filter(function (x) {
+          return x !== activeEmitCallback;
+        });
+        var previousPort = _this7.port;
+
+        if (previousPort instanceof MessagePort) {
+          _this7.logger.info('Closing previous worker interface');
+
+          previousPort.close();
+        }
+
+        port.postMessage({
+          type: 'BATTERY_QUEUE_WORKER_CONFIRMATION'
+        });
+
+        _this7.logger.info('Linked to worker interface');
+
+        port.onmessage = _this7.handlePortMessage.bind(_this7);
+
+        var emitCallback = function emitCallback(t, args) {
+          port.postMessage({
+            type: t,
+            args: args
+          });
+        };
+
+        activeEmitCallback = emitCallback;
+
+        _this7.emitCallbacks.push(emitCallback);
+
+        _this7.port = port;
+      });
+      self.addEventListener('messageerror', function (event) {
+        _this7.logger.error('Service worker interface message error');
+
+        _this7.logger.errorObject(event);
+      });
     }
   }]);
 

@@ -1,7 +1,6 @@
 // @flow
 
 import EventEmitter from 'events';
-import errorObjectParser from 'serialize-error';
 import type { Logger } from './logger';
 import makeLogger from './logger';
 
@@ -17,6 +16,9 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
   constructor(options?: Options = {}) {
     super();
     this.logger = options.logger || makeLogger('Battery Queue Worker Interface');
+    // This is a no-op to prevent errors from being thrown in the browser context.
+    // Errors are logged in the worker.
+    this.on('error', () => {});
   }
 
   getController() {
@@ -122,14 +124,13 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
         this.removeListener('clearError', handleClearError);
         resolve();
       };
-      const handleClearError = ({ id: responseId, errorObject }) => {
+      const handleClearError = ({ id: responseId, error }) => {
         if (id !== responseId) {
           return;
         }
         clearTimeout(timeout);
         this.removeListener('clearComplete', handleClearComplete);
         this.removeListener('clearError', handleClearError);
-        const error = errorObjectParser.deserializeError(errorObject);
         reject(error);
       };
       this.addListener('clearComplete', handleClearComplete);
@@ -156,14 +157,13 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
         this.removeListener('abortQueueError', handleAbortQueueError);
         resolve();
       };
-      const handleAbortQueueError = ({ id: responseId, errorObject }) => {
+      const handleAbortQueueError = ({ id: responseId, error }) => {
         if (id !== responseId) {
           return;
         }
         clearTimeout(timeout);
         this.removeListener('abortQueueComplete', handleAbortQueueComplete);
         this.removeListener('abortQueueError', handleAbortQueueError);
-        const error = errorObjectParser.deserializeError(errorObject);
         reject(error);
       };
       this.addListener('abortQueueComplete', handleAbortQueueComplete);
@@ -190,14 +190,13 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
         this.removeListener('dequeueError', handleDequeueError);
         resolve();
       };
-      const handleDequeueError = ({ id: responseId, errorObject }) => {
+      const handleDequeueError = ({ id: responseId, error }) => {
         if (id !== responseId) {
           return;
         }
         clearTimeout(timeout);
         this.removeListener('dequeueComplete', handleDequeueComplete);
         this.removeListener('dequeueError', handleDequeueError);
-        const error = errorObjectParser.deserializeError(errorObject);
         reject(error);
       };
       this.addListener('dequeueComplete', handleDequeueComplete);
@@ -224,14 +223,13 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
         this.removeListener('idleError', handleIdleError);
         resolve();
       };
-      const handleIdleError = ({ id: responseId, errorObject }) => {
+      const handleIdleError = ({ id: responseId, error }) => {
         if (id !== responseId) {
           return;
         }
         clearTimeout(timeout);
         this.removeListener('idleComplete', handleIdleComplete);
         this.removeListener('idleError', handleIdleError);
-        const error = errorObjectParser.deserializeError(errorObject);
         reject(error);
       };
       this.addListener('idleComplete', handleIdleComplete);

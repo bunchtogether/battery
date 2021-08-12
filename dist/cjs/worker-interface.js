@@ -7,8 +7,6 @@ exports.default = void 0;
 
 var _events = _interopRequireDefault(require("events"));
 
-var _serializeError = _interopRequireDefault(require("serialize-error"));
-
 var _logger = _interopRequireDefault(require("./logger"));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
@@ -64,7 +62,11 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
     _classCallCheck(this, BatteryQueueServiceWorkerInterface);
 
     _this = _super.call(this);
-    _this.logger = options.logger || (0, _logger.default)('Battery Queue Worker Interface');
+    _this.logger = options.logger || (0, _logger.default)('Battery Queue Worker Interface'); // This is a no-op to prevent errors from being thrown in the browser context.
+    // Errors are logged in the worker.
+
+    _this.on('error', function () {});
+
     return _this;
   }
 
@@ -265,7 +267,7 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
 
                   var handleClearError = function handleClearError(_ref2) {
                     var responseId = _ref2.id,
-                        errorObject = _ref2.errorObject;
+                        error = _ref2.error;
 
                     if (id !== responseId) {
                       return;
@@ -276,8 +278,6 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                     _this3.removeListener('clearComplete', handleClearComplete);
 
                     _this3.removeListener('clearError', handleClearError);
-
-                    var error = _serializeError.default.deserializeError(errorObject);
 
                     reject(error);
                   };
@@ -356,7 +356,7 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
 
                   var handleAbortQueueError = function handleAbortQueueError(_ref4) {
                     var responseId = _ref4.id,
-                        errorObject = _ref4.errorObject;
+                        error = _ref4.error;
 
                     if (id !== responseId) {
                       return;
@@ -367,8 +367,6 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                     _this4.removeListener('abortQueueComplete', handleAbortQueueComplete);
 
                     _this4.removeListener('abortQueueError', handleAbortQueueError);
-
-                    var error = _serializeError.default.deserializeError(errorObject);
 
                     reject(error);
                   };
@@ -448,7 +446,7 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
 
                   var handleDequeueError = function handleDequeueError(_ref6) {
                     var responseId = _ref6.id,
-                        errorObject = _ref6.errorObject;
+                        error = _ref6.error;
 
                     if (id !== responseId) {
                       return;
@@ -459,8 +457,6 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                     _this5.removeListener('dequeueComplete', handleDequeueComplete);
 
                     _this5.removeListener('dequeueError', handleDequeueError);
-
-                    var error = _serializeError.default.deserializeError(errorObject);
 
                     reject(error);
                   };
@@ -539,7 +535,7 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
 
                   var handleIdleError = function handleIdleError(_ref8) {
                     var responseId = _ref8.id,
-                        errorObject = _ref8.errorObject;
+                        error = _ref8.error;
 
                     if (id !== responseId) {
                       return;
@@ -550,8 +546,6 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                     _this6.removeListener('idleComplete', handleIdleComplete);
 
                     _this6.removeListener('idleError', handleIdleError);
-
-                    var error = _serializeError.default.deserializeError(errorObject);
 
                     reject(error);
                   };

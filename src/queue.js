@@ -1,7 +1,6 @@
 // @flow
 
 import PQueue from 'p-queue';
-import errorObjectParser from 'serialize-error';
 import EventEmitter from 'events';
 import type { Logger } from './logger';
 import makeLogger from './logger';
@@ -528,34 +527,6 @@ export default class BatteryQueue extends EventEmitter {
     this.emit('dequeue', { id });
   }
 
-  handleInitializationMessage(event:ExtendableMessageEvent) {
-    if (!(event instanceof ExtendableMessageEvent)) {
-      return;
-    }
-    const { data } = event;
-    if (!data || typeof data !== 'object') {
-      return;
-    }
-    const { type } = data;
-    if (type !== 'BATTERY_QUEUE_WORKER_INITIALIZATION') {
-      return;
-    }
-    if (!Array.isArray(event.ports)) {
-      return;
-    }
-    const port = event.ports[0];
-    if (!(port instanceof MessagePort)) {
-      return;
-    }
-    port.postMessage({ type: 'BATTERY_QUEUE_WORKER_CONFIRMATION' });
-    this.logger.info('Linked to interface');
-    port.onmessage = this.handlePortMessage.bind(this);
-    this.emitCallbacks.push((t:string, args:Array<any>) => {
-      port.postMessage({ type: t, args });
-    });
-    this.port = port;
-  }
-
   async handlePortMessage(event:MessageEvent) {
     if (!(event instanceof MessageEvent)) {
       return;
@@ -585,7 +556,7 @@ export default class BatteryQueue extends EventEmitter {
           await this.clear();
           this.emit('clearComplete', { id });
         } catch (error) {
-          this.emit('clearError', { errorObject: errorObjectParser.serializeError(error), id });
+          this.emit('clearError', { error, id });
           this.logger.error('Unable to handle clear message');
           this.emit('error', error);
         }
@@ -599,7 +570,7 @@ export default class BatteryQueue extends EventEmitter {
           await this.abortQueue(queueId);
           this.emit('abortQueueComplete', { id });
         } catch (error) {
-          this.emit('abortQueueError', { errorObject: errorObjectParser.serializeError(error), id });
+          this.emit('abortQueueError', { error, id });
           this.logger.error('Unable to handle abort queue message');
           this.emit('error', error);
         }
@@ -609,7 +580,7 @@ export default class BatteryQueue extends EventEmitter {
           await this.dequeue();
           this.emit('dequeueComplete', { id });
         } catch (error) {
-          this.emit('dequeueError', { errorObject: errorObjectParser.serializeError(error), id });
+          this.emit('dequeueError', { error, id });
           this.logger.error('Unable to handle dequeue message');
           this.emit('error', error);
         }
@@ -626,7 +597,7 @@ export default class BatteryQueue extends EventEmitter {
           await this.onIdle(maxDuration - (Date.now() - start));
           this.emit('idleComplete', { id });
         } catch (error) {
-          this.emit('idleError', { errorObject: errorObjectParser.serializeError(error), id });
+          this.emit('idleError', { error, id });
           this.logger.error('Unable to handle idle message');
           this.emit('error', error);
         }
@@ -637,7 +608,46 @@ export default class BatteryQueue extends EventEmitter {
   }
 
   listenForServiceWorkerInterface() {
-    self.addEventListener('message', this.handleInitializationMessage.bind(this));
+    let activeEmitCallback;
+    self.addEventListener('message', (event:ExtendableMessageEvent) => {
+      if (!(event instanceof ExtendableMessageEvent)) {
+        return;
+      }
+      const { data } = event;
+      if (!data || typeof data !== 'object') {
+        return;
+      }
+      const { type } = data;
+      if (type !== 'BATTERY_QUEUE_WORKER_INITIALIZATION') {
+        return;
+      }
+      if (!Array.isArray(event.ports)) {
+        return;
+      }
+      const port = event.ports[0];
+      if (!(port instanceof MessagePort)) {
+        return;
+      }
+      this.emitCallbacks = this.emitCallbacks.filter((x) => x !== activeEmitCallback);
+      const previousPort = this.port;
+      if(previousPort instanceof MessagePort) {
+        this.logger.info('Closing previous worker interface');
+        previousPort.close();
+      }
+      port.postMessage({ type: 'BATTERY_QUEUE_WORKER_CONFIRMATION' });
+      this.logger.info('Linked to worker interface');
+      port.onmessage = this.handlePortMessage.bind(this);      
+      const emitCallback = (t:string, args:Array<any>) => {
+        port.postMessage({ type: t, args });
+      };
+      activeEmitCallback = emitCallback;
+      this.emitCallbacks.push(emitCallback);
+      this.port = port;
+    });
+    self.addEventListener('messageerror', (event:MessageEvent) => {
+      this.logger.error('Service worker interface message error');
+      this.logger.errorObject(event);
+    });
   }
 }
 

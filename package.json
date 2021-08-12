@@ -1,6 +1,6 @@
 {
   "name": "@bunchtogether/battery",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "main": "dist/cjs/queue.js",
   "module": "dist/esm/queue.js",
   "exports": {
@@ -93,7 +93,6 @@
     "flatted": "^3.2.1",
     "lodash": "^4.17.21",
     "p-queue": "^7.1.0",
-    "serialize-error": "^8.1.0",
     "uuid": "^8.3.2"
   }
 }
