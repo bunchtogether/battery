@@ -6,6 +6,7 @@ import {
   enqueueToDatabase,
   bulkEnqueueToDatabase,
   dequeueFromDatabase,
+  dequeueFromDatabaseNotIn,
   markJobCompleteInDatabase,
   markJobErrorInDatabase,
   markJobAbortedInDatabase,
@@ -26,6 +27,7 @@ import {
   storeAuthDataInDatabase,
   getAuthDataFromDatabase,
   removeAuthDataFromDatabase,
+  getContiguousIds,
   JOB_PENDING_STATUS,
   JOB_COMPLETE_STATUS,
   JOB_ERROR_STATUS,
@@ -227,6 +229,238 @@ describe('IndexedDB Database', () => {
     await markJobAbortedInDatabase(id);
 
     expect(await dequeueFromDatabase()).toEqual([]);
+  });
+
+  it('Should get the lowest and highest elements of contiguous sequences of integers in an array', () => {
+    expect(getContiguousIds([1, 2])).toEqual([[0, 0], [3, Infinity]]);
+    expect(getContiguousIds([1, 3])).toEqual([[0, 0], [2, 2], [4, Infinity]]);
+    expect(getContiguousIds([1, 3, 5])).toEqual([[0, 0], [2, 2], [4, 4], [6, Infinity]]);
+    expect(getContiguousIds([1, 2, 3, 5])).toEqual([[0, 0], [4, 4], [6, Infinity]]);
+    expect(getContiguousIds([1, 2, 3, 5])).toEqual([[0, 0], [4, 4], [6, Infinity]]);
+    expect(getContiguousIds([1, 2, 3, 4, 5])).toEqual([[0, 0], [6, Infinity]]);
+    expect(getContiguousIds([1, 2, 3, 7, 8, 9, 13, 14, 15])).toEqual([[0, 0], [4, 6], [10, 12], [16, Infinity]]);
+  });
+
+  it('Dequeues items in pending state not in a specified array', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const argsA = [uuidv4()];
+    const argsB = [uuidv4()];
+    const argsC = [uuidv4()];
+    const idA = await enqueueToDatabase(queueId, type, argsA, 0);
+    const idB = await enqueueToDatabase(queueId, type, argsB, 0);
+    const idC = await enqueueToDatabase(queueId, type, argsC, 0);
+
+    expect(await dequeueFromDatabaseNotIn([])).toEqual([jasmine.objectContaining({
+      id: idA,
+      queueId,
+      type,
+      args: argsA,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    }), jasmine.objectContaining({
+      id: idB,
+      queueId,
+      type,
+      args: argsB,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    }), jasmine.objectContaining({
+      id: idC,
+      queueId,
+      type,
+      args: argsC,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    })]);
+
+    expect(await dequeueFromDatabaseNotIn([idA])).toEqual([jasmine.objectContaining({
+      id: idB,
+      queueId,
+      type,
+      args: argsB,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    }), jasmine.objectContaining({
+      id: idC,
+      queueId,
+      type,
+      args: argsC,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    })]);
+
+    expect(await dequeueFromDatabaseNotIn([idC])).toEqual([jasmine.objectContaining({
+      id: idA,
+      queueId,
+      type,
+      args: argsA,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    }), jasmine.objectContaining({
+      id: idB,
+      queueId,
+      type,
+      args: argsB,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    })]);
+
+    expect(await dequeueFromDatabaseNotIn([idB])).toEqual([jasmine.objectContaining({
+      id: idA,
+      queueId,
+      type,
+      args: argsA,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    }), jasmine.objectContaining({
+      id: idC,
+      queueId,
+      type,
+      args: argsC,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    })]);
+
+    expect(await dequeueFromDatabaseNotIn([idA, idC])).toEqual([jasmine.objectContaining({
+      id: idB,
+      queueId,
+      type,
+      args: argsB,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    })]);
+
+    expect(await dequeueFromDatabaseNotIn([idB, idC])).toEqual([jasmine.objectContaining({
+      id: idA,
+      queueId,
+      type,
+      args: argsA,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    })]);
+
+    expect(await dequeueFromDatabaseNotIn([idA, idB])).toEqual([jasmine.objectContaining({
+      id: idC,
+      queueId,
+      type,
+      args: argsC,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    })]);
+
+    expect(await dequeueFromDatabaseNotIn([idA, idB, idC])).toEqual([]);
+  });
+
+
+  it('Does not dequeue items in complete state and not in a specified array', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const argsA = [uuidv4()];
+    const argsB = [uuidv4()];
+    const idA = await enqueueToDatabase(queueId, type, argsA, 0);
+    const idB = await enqueueToDatabase(queueId, type, argsB, 0);
+
+    await markJobErrorInDatabase(idA);
+    await markJobCompleteInDatabase(idB);
+
+    expect(await dequeueFromDatabaseNotIn([idA])).toEqual([]);
+  });
+
+  it('Dequeues items in error state not in a specified array', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const argsA = [uuidv4()];
+    const argsB = [uuidv4()];
+    const idA = await enqueueToDatabase(queueId, type, argsA, 0);
+    const idB = await enqueueToDatabase(queueId, type, argsB, 0);
+
+    await markJobErrorInDatabase(idA);
+    await markJobErrorInDatabase(idB);
+
+    expect(await dequeueFromDatabaseNotIn([idA])).toEqual([jasmine.objectContaining({
+      id: idB,
+      queueId,
+      type,
+      args: argsB,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_ERROR_STATUS,
+      startAfter: jasmine.any(Number),
+    })]);
+
+    expect(await dequeueFromDatabaseNotIn([idB])).toEqual([jasmine.objectContaining({
+      id: idA,
+      queueId,
+      type,
+      args: argsA,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_ERROR_STATUS,
+      startAfter: jasmine.any(Number),
+    })]);
+
+    expect(await dequeueFromDatabaseNotIn([idA, idB])).toEqual([]);
+  });
+
+  it('Dequeues items in cleanup state not in a specified array', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const argsA = [uuidv4()];
+    const argsB = [uuidv4()];
+    const idA = await enqueueToDatabase(queueId, type, argsA, 0);
+    const idB = await enqueueToDatabase(queueId, type, argsB, 0);
+
+    await markJobCleanupInDatabase(idA);
+    await markJobCleanupInDatabase(idB);
+
+    expect(await dequeueFromDatabaseNotIn([idA])).toEqual([jasmine.objectContaining({
+      id: idB,
+      queueId,
+      type,
+      args: argsB,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_CLEANUP_STATUS,
+      startAfter: jasmine.any(Number),
+    })]);
+
+    expect(await dequeueFromDatabaseNotIn([idB])).toEqual([jasmine.objectContaining({
+      id: idA,
+      queueId,
+      type,
+      args: argsA,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_CLEANUP_STATUS,
+      startAfter: jasmine.any(Number),
+    })]);
+
+    expect(await dequeueFromDatabaseNotIn([idA, idB])).toEqual([]);
   });
 
   it('Increments attempt in database', async () => {

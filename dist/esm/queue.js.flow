@@ -5,9 +5,11 @@ import errorObjectParser from 'serialize-error';
 import EventEmitter from 'events';
 import type { Logger } from './logger';
 import makeLogger from './logger';
+import type { Job } from './database';
 import {
   clearDatabase,
   dequeueFromDatabase,
+  dequeueFromDatabaseNotIn,
   incrementJobAttemptInDatabase,
   incrementCleanupAttemptInDatabase,
   markJobCompleteInDatabase,
@@ -205,7 +207,7 @@ export default class BatteryQueue extends EventEmitter {
     // * JOB_ERROR_STATUS -> JOB_CLEANUP_STATUS
     // * JOB_COMPLETE_STATUS -> JOB_CLEANUP_STATUS
     // * JOB_PENDING_STATUS -> JOB_ABORTED_STATUS
-    await markQueueForCleanupInDatabase(queueId);
+    const jobs = await markQueueForCleanupInDatabase(queueId);
     // Abort active jobs
     const queueAbortControllerMap = this.abortControllerMap.get(queueId);
     if (typeof queueAbortControllerMap !== 'undefined') {
@@ -214,18 +216,19 @@ export default class BatteryQueue extends EventEmitter {
       }
     }
     this.abortControllerMap.delete(queueId);
+    await this.startJobs(jobs);
   }
 
   dequeue():void | Promise<void> {
     if (this.dequeueQueue.size === 0) {
       // Add a subsequent dequeue
-      this.dequeueQueue.add(this._dequeue.bind(this)); // eslint-disable-line no-underscore-dangle
+      this.dequeueQueue.add(this.startJobs.bind(this));
     }
     return this.dequeueQueue.onIdle();
   }
 
-  async _dequeue() { // eslint-disable-line consistent-return
-    const jobs = await dequeueFromDatabase();
+  async startJobs(newJobs?:Array<Job>) { // eslint-disable-line consistent-return
+    const jobs = Array.isArray(newJobs) ? newJobs : await dequeueFromDatabaseNotIn([...this.jobIds.keys()]);
     const queueIds = new Set();
     for (const { id, queueId, args, type, status, attempt, startAfter } of jobs) {
       if (this.jobIds.has(id)) {
@@ -242,7 +245,7 @@ export default class BatteryQueue extends EventEmitter {
       if (status === JOB_PENDING_STATUS) {
         this.startJob(id, queueId, args, type, attempt + 1, startAfter);
       } else if (status === JOB_ERROR_STATUS) {
-        this.startErrorHandler(id, queueId, args, type);
+        this.startErrorHandler(id, queueId, args, type, attempt, startAfter);
       } else if (status === JOB_CLEANUP_STATUS) {
         this.startCleanup(id, queueId, args, type);
       } else {
@@ -388,12 +391,11 @@ export default class BatteryQueue extends EventEmitter {
       this.logger.info(`Starting ${type} cleanup #${id} in queue ${queueId}`);
       await this.runCleanup(id, queueId, args, type);
       await markJobAbortedInDatabase(id);
-      await this.dequeue();
     };
     this.addToQueue(queueId, priority, run);
   }
 
-  startErrorHandler(id:number, queueId:string, args:Array<any>, type:string) {
+  startErrorHandler(id:number, queueId:string, args:Array<any>, type:string, attempt: number, startAfter: number) {
     this.logger.info(`Adding ${type} error handler job #${id} to queue ${queueId}`);
     this.jobIds.add(id);
     const priority = PRIORITY_OFFSET + id;
@@ -403,7 +405,7 @@ export default class BatteryQueue extends EventEmitter {
       await markJobPendingInDatabase(id);
       this.logger.info(`Retrying ${type} job #${id} in queue ${queueId}`);
       this.emit('retry', { id });
-      await this.dequeue();
+      this.startJob(id, queueId, args, type, attempt + 1, startAfter);
     };
     this.addToQueue(queueId, priority, run);
   }
@@ -440,7 +442,6 @@ export default class BatteryQueue extends EventEmitter {
         await markJobCompleteInDatabase(id);
         this.emit('complete', { id });
         this.jobIds.delete(id);
-        await this.dequeue();
         return;
       }
       const abortController = this.getAbortController(id, queueId);
@@ -460,11 +461,9 @@ export default class BatteryQueue extends EventEmitter {
         if (error.name === 'FatalError') {
           this.logger.error(`Fatal error in ${type} job #${id} in queue ${queueId} attempt ${attempt}`);
           this.logger.errorStack(error);
-          await this.abortQueue(queueId);
-          await markJobCleanupInDatabase(id);
           this.emit('fatalError', { queueId });
           this.jobIds.delete(id);
-          await this.dequeue();
+          await this.abortQueue(queueId);
           return;
         }
         if (error.name === 'AbortError') {
@@ -472,18 +471,16 @@ export default class BatteryQueue extends EventEmitter {
           this.logger.errorStack(error);
           await markJobCleanupInDatabase(id);
           this.jobIds.delete(id);
-          await this.dequeue();
+          this.startCleanup(id, queueId, args, type);
           return;
         }
         const retryDelay = await this.getRetryJobDelay(type, attempt, error);
         if (retryDelay === false) {
           this.logger.error(`Error in ${type} job #${id} in queue ${queueId} attempt ${attempt} with no additional attempts requested`);
           this.logger.errorStack(error);
-          await this.abortQueue(queueId);
-          await markJobCleanupInDatabase(id);
           this.emit('fatalError', { queueId });
           this.jobIds.delete(id);
-          await this.dequeue();
+          await this.abortQueue(queueId);
           return;
         }
         this.logger.error(`Error in ${type} job #${id} in queue ${queueId} attempt ${attempt}, retrying ${retryDelay > 0 ? `in ${retryDelay}ms'}` : 'immediately'}`);
@@ -492,9 +489,12 @@ export default class BatteryQueue extends EventEmitter {
           this.emit('retryDelay', { id, queueId, retryDelay });
           const newStartAfter = Date.now() + retryDelay;
           await markJobStartAfterInDatabase(id, newStartAfter);
+          this.jobIds.delete(id);
+          this.startErrorHandler(id, queueId, args, type, attempt, newStartAfter);
+        } else {
+          this.jobIds.delete(id);
+          this.startErrorHandler(id, queueId, args, type, attempt, startAfter);
         }
-        this.jobIds.delete(id);
-        await this.dequeue();
         return;
       }
       const job = await getJobFromDatabase(id);
@@ -512,13 +512,12 @@ export default class BatteryQueue extends EventEmitter {
         this.logger.error(`Found aborted status for ${type} job #${id} in queue ${queueId} following error, starting cleanup`);
         await markJobCleanupInDatabase(id);
         this.jobIds.delete(id);
-        await this.dequeue();
+        this.startCleanup(id, queueId, args, type);
         return;
       }
       await markJobCompleteInDatabase(id);
       this.emit('complete', { id });
       this.jobIds.delete(id);
-      await this.dequeue();
     };
     this.addToQueue(queueId, priority, run);
     this.emit('dequeue', { id });

@@ -302,7 +302,6 @@ describe('Queue', () => {
     const id = await enqueueToDatabase(queueId, 'echo', args, 0);
     queue.dequeue();
     await queue.onIdle();
-    await queue.abortQueue(queueId);
     const start = Date.now();
     await markCleanupStartAfterInDatabase(id, Date.now() + 250);
     let echoCleanupReceivedTime = -1;
@@ -312,7 +311,7 @@ describe('Queue', () => {
       }
     };
     echoEmitter.addListener('echoCleanupComplete', handleEchoCleanup);
-    await queue.dequeue();
+    await queue.abortQueue(queueId);
     await queue.onIdle();
     echoEmitter.removeListener('echoCleanupComplete', handleEchoCleanup);
 
@@ -355,14 +354,13 @@ describe('Queue', () => {
     const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR_IN_CLEANUP, value], 0);
     await queue.dequeue();
     await queue.onIdle();
-    await queue.abortQueue(queueId);
     const handleCleanupStart = ({ id: cleanupId }) => {
       if (cleanupId === id) {
         cleanupAttempts += 1;
       }
     };
     queue.addListener('cleanupStart', handleCleanupStart);
-    queue.dequeue();
+    await queue.abortQueue(queueId);
     await expectEmit(queue, 'fatalCleanupError', { id, queueId });
 
     expect(cleanupAttempts).toEqual(1);
@@ -391,14 +389,13 @@ describe('Queue', () => {
     const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR_IN_CLEANUP, value], 0);
     await queue.dequeue();
     await queue.onIdle();
-    await queue.abortQueue(queueId);
     const handleCleanupStart = ({ id: cleanupId }) => {
       if (cleanupId === id) {
         cleanupAttempts += 1;
       }
     };
     queue.addListener('cleanupStart', handleCleanupStart);
-    queue.dequeue();
+    await queue.abortQueue(queueId);
     await expectEmit(queue, 'fatalCleanupError', { id, queueId });
 
     expect(cleanupAttempts).toEqual(2);
@@ -420,14 +417,13 @@ describe('Queue', () => {
     const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR_IN_CLEANUP, value], 0);
     await queue.dequeue();
     await queue.onIdle();
-    await queue.abortQueue(queueId);
     const handleCleanupStart = ({ id: cleanupId }) => {
       if (cleanupId === id) {
         cleanupAttempts += 1;
       }
     };
     queue.addListener('cleanupStart', handleCleanupStart);
-    queue.dequeue();
+    await queue.abortQueue(queueId);
     await expectEmit(queue, 'fatalCleanupError', { id, queueId });
 
     expect(cleanupAttempts).toEqual(1);
@@ -457,14 +453,13 @@ describe('Queue', () => {
     const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR_IN_CLEANUP, value], 0);
     await queue.dequeue();
     await queue.onIdle();
-    await queue.abortQueue(queueId);
     const handleCleanupStart = ({ id: cleanupId }) => {
       if (cleanupId === id) {
         cleanupAttempts += 1;
       }
     };
     queue.addListener('cleanupStart', handleCleanupStart);
-    queue.dequeue();
+    await queue.abortQueue(queueId);
     await expectEmit(queue, 'fatalCleanupError', { id, queueId });
 
     expect(cleanupAttempts).toEqual(2);
@@ -494,14 +489,14 @@ describe('Queue', () => {
     const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR_IN_CLEANUP, value], 0);
     await queue.dequeue();
     await queue.onIdle();
-    await queue.abortQueue(queueId);
+
     const handleCleanupStart = ({ id: cleanupId }) => {
       if (cleanupId === id) {
         cleanupAttempts += 1;
       }
     };
     queue.addListener('cleanupStart', handleCleanupStart);
-    queue.dequeue();
+    await queue.abortQueue(queueId);
     await expectEmit(queue, 'retryCleanupDelay', { id, queueId, retryCleanupDelay: 100 });
     await expectEmit(queue, 'fatalCleanupError', { id, queueId });
 

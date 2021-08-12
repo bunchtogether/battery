@@ -8,7 +8,7 @@ export const JOB_PENDING_STATUS = 0;
 export const JOB_ERROR_STATUS = -1;
 export const JOB_CLEANUP_STATUS = -2;
 export const databasePromise = (async () => {
-  const request = self.indexedDB.open('battery-queue', 2);
+  const request = self.indexedDB.open('battery-queue-01', 2);
 
   request.onupgradeneeded = function (e) {
     try {
@@ -632,6 +632,7 @@ export async function markQueueForCleanupInDatabase(queueId) {
   const index = store.index('queueIdIndex'); // $FlowFixMe
 
   const request = index.openCursor(IDBKeyRange.only(queueId));
+  const jobs = [];
   await new Promise((resolve, reject) => {
     request.onsuccess = function (event) {
       const cursor = event.target.result;
@@ -642,10 +643,12 @@ export async function markQueueForCleanupInDatabase(queueId) {
         switch (value.status) {
           case JOB_ERROR_STATUS:
             value.status = JOB_CLEANUP_STATUS;
+            jobs.push(value);
             break;
 
           case JOB_COMPLETE_STATUS:
             value.status = JOB_CLEANUP_STATUS;
+            jobs.push(value);
             break;
 
           case JOB_PENDING_STATUS:
@@ -688,6 +691,7 @@ export async function markQueueForCleanupInDatabase(queueId) {
       reject(new Error(`Request error while marking queue ${queueId} error`));
     };
   });
+  return jobs;
 }
 export async function incrementJobAttemptInDatabase(id) {
   const value = await getJobFromDatabase(id);
@@ -857,18 +861,10 @@ export async function dequeueFromDatabase() {
   const store = await getReadOnlyJobsObjectStore();
   const index = store.index('statusIndex'); // $FlowFixMe
 
-  const request = index.openCursor(IDBKeyRange.bound(JOB_CLEANUP_STATUS, JOB_PENDING_STATUS));
-  const jobs = [];
-  await new Promise((resolve, reject) => {
+  const request = index.getAll(IDBKeyRange.bound(JOB_CLEANUP_STATUS, JOB_PENDING_STATUS));
+  const jobs = await new Promise((resolve, reject) => {
     request.onsuccess = function (event) {
-      const cursor = event.target.result;
-
-      if (cursor) {
-        jobs.push(cursor.value);
-        cursor.continue();
-      } else {
-        resolve();
-      }
+      resolve(event.target.result);
     };
 
     request.onerror = function (event) {
@@ -877,6 +873,80 @@ export async function dequeueFromDatabase() {
       reject(new Error('Request error while dequeing'));
     };
   });
+  return jobs;
+}
+export function getContiguousIds(ids) {
+  ids.sort((a, b) => a - b);
+  const points = [[0, ids[0] - 1]];
+
+  for (let i = 0; i < ids.length; i += 1) {
+    if (ids[i] + 1 !== ids[i + 1]) {
+      if (i + 1 >= ids.length) {
+        points.push([ids[i] + 1, Infinity]);
+      } else {
+        points.push([ids[i] + 1, ids[i + 1] - 1]);
+      }
+    }
+  }
+
+  return points;
+}
+export async function dequeueFromDatabaseNotIn(ids) {
+  // eslint-disable-line no-underscore-dangle
+  if (ids.length === 0) {
+    return dequeueFromDatabase();
+  }
+
+  const database = await databasePromise;
+  const transaction = database.transaction(['jobs'], 'readonly');
+  const store = transaction.objectStore('jobs');
+  const index = store.index('statusIndex');
+  const jobs = [];
+  const promise = new Promise((resolve, reject) => {
+    transaction.onabort = event => {
+      logger.error('Read-write jobs transaction was aborted');
+      logger.errorObject(event);
+      reject(new Error('Read-write jobs transaction was aborted'));
+    };
+
+    transaction.onerror = event => {
+      logger.error('Error in read-write jobs transaction');
+      logger.errorObject(event);
+      reject(new Error('Error in read-write jobs transaction'));
+    };
+
+    transaction.oncomplete = () => {
+      resolve();
+    };
+  }); // $FlowFixMe
+
+  const request = index.getAllKeys(IDBKeyRange.bound(JOB_CLEANUP_STATUS, JOB_PENDING_STATUS));
+
+  request.onsuccess = function (event) {
+    for (const id of event.target.result) {
+      if (ids.includes(id)) {
+        continue;
+      }
+
+      const getRequest = store.get(id);
+
+      getRequest.onsuccess = function () {
+        jobs.push(getRequest.result);
+      };
+
+      getRequest.onerror = function (event2) {
+        logger.error(`Request error while getting job ${id}`);
+        logger.errorObject(event2);
+      };
+    }
+  };
+
+  request.onerror = function (event) {
+    logger.error('Request error while dequeing');
+    logger.errorObject(event);
+  };
+
+  await promise;
   return jobs;
 }
 export async function getCompletedJobsCountFromDatabase(queueId) {
