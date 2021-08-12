@@ -17,6 +17,7 @@ describe('Fuzz', () => {
     await queue.clear();
   });
 
+
   it('Should fuzz items', async () => {
     const queueIds = [];
     for (let i = 0; i < QUEUE_COUNT; i += 1) {

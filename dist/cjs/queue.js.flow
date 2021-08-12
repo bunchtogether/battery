@@ -69,6 +69,9 @@ export default class BatteryQueue extends EventEmitter {
     this.isClearing = false;
     this.emitCallbacks = [];
     this.logger = options.logger || makeLogger('Battery Queue');
+    this.on('error', (error) => {
+      this.logger.errorStack(error);
+    });
   }
 
   emit(type:string, ...args:Array<any>) {
@@ -97,7 +100,14 @@ export default class BatteryQueue extends EventEmitter {
     if (typeof retryJobDelayFunction !== 'function') {
       return false;
     }
-    const result = await retryJobDelayFunction(attempt, error);
+    let result = false;
+    try {
+      result = await retryJobDelayFunction(attempt, error);
+    } catch (retryDelayError) {
+      this.logger.error(`Error in retry job delay handler for type "${type}" on attempt ${attempt}`);
+      this.emit('error', retryDelayError);
+      return false;
+    }
     if (typeof result !== 'number' && result !== false) {
       throw new Error(`Retry job delay function for type "${type}" returned invalid response, should be a number (milliseconds) or false`);
     }
@@ -123,7 +133,14 @@ export default class BatteryQueue extends EventEmitter {
     if (typeof retryCleanupDelayFunction !== 'function') {
       return false;
     }
-    const result = await retryCleanupDelayFunction(attempt, error);
+    let result = false;
+    try {
+      result = await retryCleanupDelayFunction(attempt, error);
+    } catch (retryDelayError) {
+      this.logger.error(`Error in retry cleanup delay handler for type "${type}" on attempt ${attempt}`);
+      this.emit('error', retryDelayError);
+      return false;
+    }
     if (typeof result !== 'number' && result !== false) {
       throw new Error(`Retry cleanup delay function for type "${type}" returned invalid response, should be a number (milliseconds) or false`);
     }
@@ -181,14 +198,23 @@ export default class BatteryQueue extends EventEmitter {
         await new Promise((resolve) => {
           const timeout = setTimeout(() => {
             this.removeListener('clearing', handleClearing);
+            newQueue.removeListener('active', handleActive);
             resolve();
           }, 5000);
           const handleClearing = () => {
             clearTimeout(timeout);
             this.removeListener('clearing', handleClearing);
+            newQueue.removeListener('active', handleActive);
+            resolve();
+          };
+          const handleActive = () => {
+            clearTimeout(timeout);
+            this.removeListener('clearing', handleClearing);
+            newQueue.removeListener('active', handleActive);
             resolve();
           };
           this.addListener('clearing', handleClearing);
+          newQueue.addListener('active', handleActive);
         });
       }
       if (newQueue.pending > 0 || newQueue.size > 0) {
@@ -350,7 +376,7 @@ export default class BatteryQueue extends EventEmitter {
       const attempt = await incrementCleanupAttemptInDatabase(id, queueId);
       if (error.name === 'FatalCleanupError') {
         this.logger.error(`Fatal error in ${type} job #${id} cleanup in queue ${queueId} attempt ${attempt}`);
-        this.logger.errorStack(error);
+        this.emit('error', error);
         await removeCleanupFromDatabase(id);
         this.jobIds.delete(id);
         this.emit('fatalCleanupError', { id, queueId });
@@ -359,14 +385,14 @@ export default class BatteryQueue extends EventEmitter {
       const retryCleanupDelay = await this.getRetryCleanupDelay(type, attempt, error);
       if (retryCleanupDelay === false) {
         this.logger.error(`Error in ${type} job #${id} cleanup in queue ${queueId} attempt ${attempt} with no additional attempts requested`);
-        this.logger.errorStack(error);
+        this.emit('error', error);
         await removeCleanupFromDatabase(id);
         this.jobIds.delete(id);
         this.emit('fatalCleanupError', { id, queueId });
         return;
       }
       this.logger.error(`Error in ${type} job #${id} cleanup in queue ${queueId} attempt ${attempt}, retrying ${retryCleanupDelay > 0 ? `in ${retryCleanupDelay}ms'}` : 'immediately'}`);
-      this.logger.errorStack(error);
+      this.emit('error', error);
       if (retryCleanupDelay > 0) {
         this.emit('retryCleanupDelay', { id, queueId, retryCleanupDelay });
         const newStartAfter = Date.now() + retryCleanupDelay;
@@ -457,7 +483,7 @@ export default class BatteryQueue extends EventEmitter {
         await incrementJobAttemptInDatabase(id);
         if (error.name === 'FatalError') {
           this.logger.error(`Fatal error in ${type} job #${id} in queue ${queueId} attempt ${attempt}`);
-          this.logger.errorStack(error);
+          this.emit('error', error);
           this.emit('fatalError', { queueId });
           this.jobIds.delete(id);
           await this.abortQueue(queueId);
@@ -465,7 +491,7 @@ export default class BatteryQueue extends EventEmitter {
         }
         if (error.name === 'AbortError') {
           this.logger.error(`Abort error in ${type} job #${id} in queue ${queueId} attempt ${attempt}`);
-          this.logger.errorStack(error);
+          this.emit('error', error);
           await markJobCleanupInDatabase(id);
           this.jobIds.delete(id);
           this.startCleanup(id, queueId, args, type);
@@ -474,14 +500,14 @@ export default class BatteryQueue extends EventEmitter {
         const retryDelay = await this.getRetryJobDelay(type, attempt, error);
         if (retryDelay === false) {
           this.logger.error(`Error in ${type} job #${id} in queue ${queueId} attempt ${attempt} with no additional attempts requested`);
-          this.logger.errorStack(error);
+          this.emit('error', error);
           this.emit('fatalError', { queueId });
           this.jobIds.delete(id);
           await this.abortQueue(queueId);
           return;
         }
         this.logger.error(`Error in ${type} job #${id} in queue ${queueId} attempt ${attempt}, retrying ${retryDelay > 0 ? `in ${retryDelay}ms'}` : 'immediately'}`);
-        this.logger.errorStack(error);
+        this.emit('error', error);
         if (retryDelay > 0) {
           this.emit('retryDelay', { id, queueId, retryDelay });
           const newStartAfter = Date.now() + retryDelay;
@@ -561,7 +587,7 @@ export default class BatteryQueue extends EventEmitter {
         } catch (error) {
           this.emit('clearError', { errorObject: errorObjectParser.serializeError(error), id });
           this.logger.error('Unable to handle clear message');
-          this.logger.errorStack(error);
+          this.emit('error', error);
         }
         break;
       case 'abortQueue':
@@ -575,7 +601,7 @@ export default class BatteryQueue extends EventEmitter {
         } catch (error) {
           this.emit('abortQueueError', { errorObject: errorObjectParser.serializeError(error), id });
           this.logger.error('Unable to handle abort queue message');
-          this.logger.errorStack(error);
+          this.emit('error', error);
         }
         break;
       case 'dequeue':
@@ -585,7 +611,7 @@ export default class BatteryQueue extends EventEmitter {
         } catch (error) {
           this.emit('dequeueError', { errorObject: errorObjectParser.serializeError(error), id });
           this.logger.error('Unable to handle dequeue message');
-          this.logger.errorStack(error);
+          this.emit('error', error);
         }
         break;
       case 'idle':
@@ -602,7 +628,7 @@ export default class BatteryQueue extends EventEmitter {
         } catch (error) {
           this.emit('idleError', { errorObject: errorObjectParser.serializeError(error), id });
           this.logger.error('Unable to handle idle message');
-          this.logger.errorStack(error);
+          this.emit('error', error);
         }
         break;
       default:

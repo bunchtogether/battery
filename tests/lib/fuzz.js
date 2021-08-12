@@ -4,8 +4,13 @@ import { v4 as uuidv4 } from 'uuid';
 
 export const oneOutOf = (denominator:number) => Math.random() < 1 / denominator;
 
+const arrayBuffer = new ArrayBuffer(1024 * 1024 * 100);
 
-export const generateRandomBlob = () => new Blob([new ArrayBuffer(1024 * 1024 * Math.random() * 100)], { type: 'application/octet-stream' });
+export const generateRandomBlob = () => {
+  const begin = Math.round(1024 * 1024 * 100 * Math.random());
+  const end = Math.round(Math.random() * (1024 * 1024 * 100 - begin));
+  return new Blob([arrayBuffer.slice(begin, end)], { type: 'application/octet-stream' });
+};
 
 export const generateRandomString = () => {
   const values = [];

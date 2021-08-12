@@ -99,6 +99,11 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
     _this.isClearing = false;
     _this.emitCallbacks = [];
     _this.logger = options.logger || (0, _logger.default)('Battery Queue');
+
+    _this.on('error', function (error) {
+      _this.logger.errorStack(error);
+    });
+
     return _this;
   }
 
@@ -164,28 +169,40 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 return _context.abrupt("return", false);
 
               case 3:
-                _context.next = 5;
+                result = false;
+                _context.prev = 4;
+                _context.next = 7;
                 return retryJobDelayFunction(attempt, error);
 
-              case 5:
+              case 7:
                 result = _context.sent;
+                _context.next = 15;
+                break;
 
+              case 10:
+                _context.prev = 10;
+                _context.t0 = _context["catch"](4);
+                this.logger.error("Error in retry job delay handler for type \"".concat(type, "\" on attempt ").concat(attempt));
+                this.emit('error', _context.t0);
+                return _context.abrupt("return", false);
+
+              case 15:
                 if (!(typeof result !== 'number' && result !== false)) {
-                  _context.next = 8;
+                  _context.next = 17;
                   break;
                 }
 
                 throw new Error("Retry job delay function for type \"".concat(type, "\" returned invalid response, should be a number (milliseconds) or false"));
 
-              case 8:
+              case 17:
                 return _context.abrupt("return", result);
 
-              case 9:
+              case 18:
               case "end":
                 return _context.stop();
             }
           }
-        }, _callee, this);
+        }, _callee, this, [[4, 10]]);
       }));
 
       function getRetryJobDelay(_x, _x2, _x3) {
@@ -231,28 +248,40 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 return _context2.abrupt("return", false);
 
               case 3:
-                _context2.next = 5;
+                result = false;
+                _context2.prev = 4;
+                _context2.next = 7;
                 return retryCleanupDelayFunction(attempt, error);
 
-              case 5:
+              case 7:
                 result = _context2.sent;
+                _context2.next = 15;
+                break;
 
+              case 10:
+                _context2.prev = 10;
+                _context2.t0 = _context2["catch"](4);
+                this.logger.error("Error in retry cleanup delay handler for type \"".concat(type, "\" on attempt ").concat(attempt));
+                this.emit('error', _context2.t0);
+                return _context2.abrupt("return", false);
+
+              case 15:
                 if (!(typeof result !== 'number' && result !== false)) {
-                  _context2.next = 8;
+                  _context2.next = 17;
                   break;
                 }
 
                 throw new Error("Retry cleanup delay function for type \"".concat(type, "\" returned invalid response, should be a number (milliseconds) or false"));
 
-              case 8:
+              case 17:
                 return _context2.abrupt("return", result);
 
-              case 9:
+              case 18:
               case "end":
                 return _context2.stop();
             }
           }
-        }, _callee2, this);
+        }, _callee2, this, [[4, 10]]);
       }));
 
       function getRetryCleanupDelay(_x4, _x5, _x6) {
@@ -369,6 +398,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   var timeout = setTimeout(function () {
                     _this2.removeListener('clearing', handleClearing);
 
+                    newQueue.removeListener('active', handleActive);
                     resolve();
                   }, 5000);
 
@@ -377,10 +407,22 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
                     _this2.removeListener('clearing', handleClearing);
 
+                    newQueue.removeListener('active', handleActive);
+                    resolve();
+                  };
+
+                  var handleActive = function handleActive() {
+                    clearTimeout(timeout);
+
+                    _this2.removeListener('clearing', handleClearing);
+
+                    newQueue.removeListener('active', handleActive);
                     resolve();
                   };
 
                   _this2.addListener('clearing', handleClearing);
+
+                  newQueue.addListener('active', handleActive);
                 });
 
               case 3:
@@ -897,7 +939,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 }
 
                 this.logger.error("Fatal error in ".concat(type, " job #").concat(id, " cleanup in queue ").concat(queueId, " attempt ").concat(attempt));
-                this.logger.errorStack(_context10.t0);
+                this.emit('error', _context10.t0);
                 _context10.next = 33;
                 return (0, _database.removeCleanupFromDatabase)(id);
 
@@ -922,7 +964,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 }
 
                 this.logger.error("Error in ".concat(type, " job #").concat(id, " cleanup in queue ").concat(queueId, " attempt ").concat(attempt, " with no additional attempts requested"));
-                this.logger.errorStack(_context10.t0);
+                this.emit('error', _context10.t0);
                 _context10.next = 44;
                 return (0, _database.removeCleanupFromDatabase)(id);
 
@@ -936,7 +978,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
               case 47:
                 this.logger.error("Error in ".concat(type, " job #").concat(id, " cleanup in queue ").concat(queueId, " attempt ").concat(attempt, ", retrying ").concat(retryCleanupDelay > 0 ? "in ".concat(retryCleanupDelay, "ms'}") : 'immediately'));
-                this.logger.errorStack(_context10.t0);
+                this.emit('error', _context10.t0);
 
                 if (!(retryCleanupDelay > 0)) {
                   _context10.next = 54;
@@ -1207,7 +1249,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
                   _this6.logger.error("Fatal error in ".concat(type, " job #").concat(id, " in queue ").concat(queueId, " attempt ").concat(attempt));
 
-                  _this6.logger.errorStack(_context14.t0);
+                  _this6.emit('error', _context14.t0);
 
                   _this6.emit('fatalError', {
                     queueId: queueId
@@ -1229,7 +1271,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
                   _this6.logger.error("Abort error in ".concat(type, " job #").concat(id, " in queue ").concat(queueId, " attempt ").concat(attempt));
 
-                  _this6.logger.errorStack(_context14.t0);
+                  _this6.emit('error', _context14.t0);
 
                   _context14.next = 40;
                   return (0, _database.markJobCleanupInDatabase)(id);
@@ -1255,7 +1297,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
                   _this6.logger.error("Error in ".concat(type, " job #").concat(id, " in queue ").concat(queueId, " attempt ").concat(attempt, " with no additional attempts requested"));
 
-                  _this6.logger.errorStack(_context14.t0);
+                  _this6.emit('error', _context14.t0);
 
                   _this6.emit('fatalError', {
                     queueId: queueId
@@ -1272,7 +1314,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 case 54:
                   _this6.logger.error("Error in ".concat(type, " job #").concat(id, " in queue ").concat(queueId, " attempt ").concat(attempt, ", retrying ").concat(retryDelay > 0 ? "in ".concat(retryDelay, "ms'}") : 'immediately'));
 
-                  _this6.logger.errorStack(_context14.t0);
+                  _this6.emit('error', _context14.t0);
 
                   if (!(retryDelay > 0)) {
                     _context14.next = 65;
@@ -1459,7 +1501,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   id: id
                 });
                 this.logger.error('Unable to handle clear message');
-                this.logger.errorStack(_context15.t1);
+                this.emit('error', _context15.t1);
 
               case 31:
                 return _context15.abrupt("break", 77);
@@ -1494,7 +1536,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   id: id
                 });
                 this.logger.error('Unable to handle abort queue message');
-                this.logger.errorStack(_context15.t2);
+                this.emit('error', _context15.t2);
 
               case 46:
                 return _context15.abrupt("break", 77);
@@ -1519,7 +1561,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   id: id
                 });
                 this.logger.error('Unable to handle dequeue message');
-                this.logger.errorStack(_context15.t3);
+                this.emit('error', _context15.t3);
 
               case 58:
                 return _context15.abrupt("break", 77);
@@ -1562,7 +1604,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   id: id
                 });
                 this.logger.error('Unable to handle idle message');
-                this.logger.errorStack(_context15.t4);
+                this.emit('error', _context15.t4);
 
               case 75:
                 return _context15.abrupt("break", 77);

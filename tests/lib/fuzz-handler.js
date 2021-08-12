@@ -23,7 +23,7 @@ export async function handler(args:Array<any>, abortSignal: AbortSignal, updateC
   await new Promise((resolve) => setTimeout(resolve, 0));
 
   if (oneOutOf(5)) {
-    throw new Error('Fuzz error before async');
+    throw new Error('Fuzz error after async');
   }
 
 }
@@ -41,6 +41,39 @@ export async function cleanup(cleanupData: Object | void, args:Array<any>, remov
   await new Promise((resolve) => setTimeout(resolve, 0));
 
   if (oneOutOf(5)) {
-    throw new Error('Fuzz cleanup error before async');
+    throw new Error('Fuzz cleanup error after async');
   } 
 }
+
+export async function retryJobDelay(attempt: number, Error: error) {
+  if (oneOutOf(5)) {
+    throw new Error('Fuzz retryJobDelay error before async');
+  }
+  if (oneOutOf(2)) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  if (oneOutOf(5)) {
+    throw new Error('Fuzz retryJobDelay error after async');
+  } 
+  if (oneOutOf(5)) {
+    return Math.round(Math.random() * 10);
+  }
+  return false;
+}
+
+export async function retryCleanupDelay(attempt: number, Error: error) {
+  if (oneOutOf(5)) {
+    throw new Error('Fuzz retryCleanupDelay error before async');
+  }
+  if (oneOutOf(2)) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  if (oneOutOf(5)) {
+    throw new Error('Fuzz retryCleanupDelay error after async');
+  } 
+  if (oneOutOf(5)) {
+    return Math.round(Math.random() * 10);
+  }
+  return false;
+}
+
