@@ -55,6 +55,22 @@ describe('Queue', () => {
     queue.removeListener('retry', handleRetry);
   });
 
+  it('Aborts retry delay', async () => {
+    const queueId = uuidv4();
+    const value = uuidv4();
+    queue.setRetryJobDelay('echo', (attempt, error) => {
+      expect(attempt).toEqual(1);
+      expect(error).toBeInstanceOf(Error);
+      return 120000;
+    });
+    await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value], 0);
+    queue.dequeue();
+    await expectEmit(echoEmitter, 'echoCleanupComplete', { value, cleanupData: { value } });
+    await queue.abortQueue(queueId);
+    await queue.onIdle();
+    queue.removeRetryJobDelay('echo');
+  });
+
   it('Enqueues to the database and is cleaned up after an error without retrying if the retry delay function returns false', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
@@ -608,5 +624,109 @@ describe('Queue', () => {
     expect(cleanupAttempts).toEqual(2);
     queue.removeListener('cleanupStart', handleCleanupStart);
     queue.removeRetryCleanupDelay('echo');
+  });
+
+  it('Runs cleanup on a long-running job if it was aborted', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    let didRunHandler = false;
+    let didRunCleanup = false;
+    let didRunRetryJobDelay = false;
+    const handler = async () => {
+      await queue.abortQueue(queueId);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      didRunHandler = true;
+    };
+    const cleanup = async () => {
+      didRunCleanup = true;
+    };
+    const retryJobDelay = () => {
+      didRunRetryJobDelay = true;
+      return 0;
+    };
+    queue.setHandler(type, handler);
+    queue.setCleanup(type, cleanup);
+    queue.setRetryJobDelay(type, retryJobDelay);
+    await enqueueToDatabase(queueId, type, [], 0);
+    await queue.dequeue();
+    await queue.onIdle();
+    queue.removeHandler(type);
+    queue.removeCleanup(type);
+    queue.removeRetryJobDelay(type);
+
+    expect(didRunHandler).toEqual(true);
+    expect(didRunCleanup).toEqual(true);
+    expect(didRunRetryJobDelay).toEqual(false);
+  });
+
+  it('Runs cleanup on a long-running job that throws an error if it was aborted', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    let didRunHandler = false;
+    let didRunCleanup = false;
+    let didRunRetryJobDelay = false;
+    const handler = async () => {
+      await queue.abortQueue(queueId);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      didRunHandler = true;
+      throw new Error('Test error in aborted queue');
+    };
+    const cleanup = async () => {
+      didRunCleanup = true;
+    };
+    const retryJobDelay = () => {
+      didRunRetryJobDelay = true;
+      return 0;
+    };
+    queue.setHandler(type, handler);
+    queue.setCleanup(type, cleanup);
+    queue.setRetryJobDelay(type, retryJobDelay);
+    await enqueueToDatabase(queueId, type, [], 0);
+    await queue.dequeue();
+    await queue.onIdle();
+    queue.removeHandler(type);
+    queue.removeCleanup(type);
+    queue.removeRetryJobDelay(type);
+
+    expect(didRunHandler).toEqual(true);
+    expect(didRunCleanup).toEqual(true);
+    expect(didRunRetryJobDelay).toEqual(false);
+  });
+
+  it('Prevents running a scheduled job that was aborted', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    let handlerCount = 0;
+    let cleanupCount = 0;
+    let retryCount = 0;
+    const handler = async (args:Array<any>) => {
+      const [shouldAbortQueue] = args;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      if (shouldAbortQueue) {
+        await queue.abortQueue(queueId);
+      }
+      handlerCount += 1;
+    };
+    const cleanup = async () => {
+      cleanupCount += 1;
+    };
+    const retryJobDelay = () => {
+      retryCount += 1;
+      return 0;
+    };
+    queue.setHandler(type, handler);
+    queue.setCleanup(type, cleanup);
+    queue.setRetryJobDelay(type, retryJobDelay);
+    await enqueueToDatabase(queueId, type, [true], 0);
+    await enqueueToDatabase(queueId, type, [false], 1000);
+    await queue.dequeue();
+    await queue.onIdle();
+    queue.removeHandler(type);
+    queue.removeCleanup(type);
+    queue.removeRetryJobDelay(type);
+
+    expect(handlerCount).toEqual(1);
+    expect(cleanupCount).toEqual(1);
+    expect(retryCount).toEqual(0);
   });
 });

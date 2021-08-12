@@ -138,7 +138,7 @@ export default class BatteryQueue extends EventEmitter {
   }
 
   removeCleanup(type) {
-    if (!this.handlerMap.has(type)) {
+    if (!this.cleanupMap.has(type)) {
       throw new Error(`Cleanup for type "${type}" does not exist`);
     }
 
@@ -209,12 +209,7 @@ export default class BatteryQueue extends EventEmitter {
   }
 
   async abortQueue(queueId) {
-    this.logger.info(`Aborting queue ${queueId}`); // Changes:
-    // * JOB_ERROR_STATUS -> JOB_CLEANUP_STATUS
-    // * JOB_COMPLETE_STATUS -> JOB_CLEANUP_STATUS
-    // * JOB_PENDING_STATUS -> JOB_ABORTED_STATUS
-
-    const jobs = await markQueueForCleanupInDatabase(queueId); // Abort active jobs
+    this.logger.info(`Aborting queue ${queueId}`); // Abort active jobs
 
     const queueAbortControllerMap = this.abortControllerMap.get(queueId);
 
@@ -222,9 +217,13 @@ export default class BatteryQueue extends EventEmitter {
       for (const abortController of queueAbortControllerMap.values()) {
         abortController.abort();
       }
-    }
+    } // Changes:
+    // * JOB_ERROR_STATUS -> JOB_CLEANUP_STATUS
+    // * JOB_COMPLETE_STATUS -> JOB_CLEANUP_STATUS
+    // * JOB_PENDING_STATUS -> JOB_ABORTED_STATUS
 
-    this.abortControllerMap.delete(queueId);
+
+    const jobs = await markQueueForCleanupInDatabase(queueId);
     await this.startJobs(jobs);
   }
 
@@ -371,6 +370,10 @@ export default class BatteryQueue extends EventEmitter {
     }
 
     queueAbortControllerMap.delete(id);
+
+    if (queueAbortControllerMap.size === 0) {
+      this.abortControllerMap.delete(queueId);
+    }
   }
 
   async runCleanup(id, queueId, args, type) {
@@ -453,7 +456,6 @@ export default class BatteryQueue extends EventEmitter {
     }
 
     await removeCleanupFromDatabase(id);
-    this.jobIds.delete(id);
     this.emit('cleanup', {
       id
     });
@@ -468,6 +470,8 @@ export default class BatteryQueue extends EventEmitter {
       this.logger.info(`Starting ${type} cleanup #${id} in queue ${queueId}`);
       await this.runCleanup(id, queueId, args, type);
       await markJobAbortedInDatabase(id);
+      this.removeAbortController(id, queueId);
+      this.jobIds.delete(id);
     };
 
     this.addToQueue(queueId, priority, run);
@@ -477,22 +481,34 @@ export default class BatteryQueue extends EventEmitter {
     this.logger.info(`Adding ${type} error handler job #${id} to queue ${queueId}`);
     this.jobIds.add(id);
     const priority = PRIORITY_OFFSET + id;
+    const abortController = this.getAbortController(id, queueId);
 
     const run = async () => {
       this.logger.info(`Starting ${type} error handler #${id} in queue ${queueId}`);
       await this.runCleanup(id, queueId, args, type);
-      await markJobPendingInDatabase(id);
-      this.logger.info(`Retrying ${type} job #${id} in queue ${queueId}`);
-      this.emit('retry', {
-        id
-      });
-      this.startJob(id, queueId, args, type, attempt + 1, startAfter);
+
+      if (abortController.signal.aborted) {
+        await markJobAbortedInDatabase(id);
+        this.removeAbortController(id, queueId);
+        this.jobIds.delete(id);
+      } else {
+        await markJobPendingInDatabase(id);
+        this.logger.info(`Retrying ${type} job #${id} in queue ${queueId}`);
+        this.emit('retry', {
+          id
+        });
+        this.startJob(id, queueId, args, type, attempt + 1, startAfter);
+      }
     };
 
     this.addToQueue(queueId, priority, run);
   }
 
   async delayJobStart(id, queueId, type, signal, startAfter) {
+    if (signal.aborted) {
+      throw new AbortError(`Queue ${queueId} was aborted`);
+    }
+
     const duration = startAfter - Date.now();
 
     if (duration > 0) {
@@ -506,7 +522,7 @@ export default class BatteryQueue extends EventEmitter {
         const handleAbort = () => {
           clearTimeout(timeout);
           signal.removeEventListener('abort', handleAbort);
-          reject(new AbortError('Aborted'));
+          reject(new AbortError(`Queue ${queueId} was aborted`));
         };
 
         signal.addEventListener('abort', handleAbort);
@@ -521,22 +537,29 @@ export default class BatteryQueue extends EventEmitter {
 
     const updateCleanupData = data => updateCleanupValuesInDatabase(id, queueId, data);
 
+    const abortController = this.getAbortController(id, queueId);
+
     const run = async () => {
+      if (abortController.signal.aborted) {
+        this.logger.warn(`Job #${id} in queue ${queueId} attempt ${attempt} was aborted before running`);
+        return;
+      }
+
       this.logger.info(`Starting ${type} job #${id} in queue ${queueId} attempt ${attempt}`);
       const handler = this.handlerMap.get(type);
 
       if (typeof handler !== 'function') {
         this.logger.warn(`No handler for job type ${type}`);
+        this.removeAbortController(id, queueId);
         await markJobCompleteInDatabase(id);
         this.emit('complete', {
           id
         });
         this.jobIds.delete(id);
         return;
-      }
-
-      const abortController = this.getAbortController(id, queueId); // Mark as error in database so the job is cleaned up and retried if execution
+      } // Mark as error in database so the job is cleaned up and retried if execution
       // stops before job completion or error
+
 
       await markJobErrorInDatabase(id);
 
@@ -545,13 +568,36 @@ export default class BatteryQueue extends EventEmitter {
         await handler(args, abortController.signal, updateCleanupData);
 
         if (abortController.signal.aborted) {
-          throw new AbortError('Aborted');
+          throw new AbortError(`Queue ${queueId} was aborted`);
         }
 
         this.removeAbortController(id, queueId);
+        await markJobCompleteInDatabase(id);
+        this.emit('complete', {
+          id
+        });
+        this.jobIds.delete(id);
+        return;
       } catch (error) {
-        this.removeAbortController(id, queueId);
         await incrementJobAttemptInDatabase(id);
+
+        if (error.name === 'AbortError') {
+          this.logger.error(`Abort error in ${type} job #${id} in queue ${queueId} attempt ${attempt}`);
+          this.emit('error', error);
+          await markJobCleanupInDatabase(id);
+          this.jobIds.delete(id);
+          this.startCleanup(id, queueId, args, type);
+          return;
+        }
+
+        if (abortController.signal.aborted) {
+          this.logger.error(`Abort signal following error in ${type} job #${id} in queue ${queueId} attempt ${attempt}`);
+          this.emit('error', error);
+          await markJobCleanupInDatabase(id);
+          this.jobIds.delete(id);
+          this.startCleanup(id, queueId, args, type);
+          return;
+        }
 
         if (error.name === 'FatalError') {
           this.logger.error(`Fatal error in ${type} job #${id} in queue ${queueId} attempt ${attempt}`);
@@ -561,15 +607,6 @@ export default class BatteryQueue extends EventEmitter {
           });
           this.jobIds.delete(id);
           await this.abortQueue(queueId);
-          return;
-        }
-
-        if (error.name === 'AbortError') {
-          this.logger.error(`Abort error in ${type} job #${id} in queue ${queueId} attempt ${attempt}`);
-          this.emit('error', error);
-          await markJobCleanupInDatabase(id);
-          this.jobIds.delete(id);
-          this.startCleanup(id, queueId, args, type);
           return;
         }
 
@@ -603,15 +640,7 @@ export default class BatteryQueue extends EventEmitter {
           this.jobIds.delete(id);
           this.startErrorHandler(id, queueId, args, type, attempt, startAfter);
         }
-
-        return;
       }
-
-      await markJobCompleteInDatabase(id);
-      this.emit('complete', {
-        id
-      });
-      this.jobIds.delete(id);
     };
 
     this.addToQueue(queueId, priority, run);
