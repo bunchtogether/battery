@@ -6,6 +6,7 @@ import type { Logger } from './logger';
 import makeLogger from './logger';
 import type { Job } from './database';
 import {
+  jobEmitter,
   clearDatabase,
   dequeueFromDatabase,
   dequeueFromDatabaseNotIn,
@@ -634,6 +635,11 @@ export default class BatteryQueue extends EventEmitter {
 
   listenForServiceWorkerInterface() {
     let activeEmitCallback;
+    let handleJobAdd;
+    let handleJobDelete;
+    let handleJobUpdate;
+    let handleJobsClear;
+
     self.addEventListener('message', (event:ExtendableMessageEvent) => {
       if (!(event instanceof ExtendableMessageEvent)) {
         return;
@@ -659,12 +665,40 @@ export default class BatteryQueue extends EventEmitter {
         this.logger.info('Closing previous worker interface');
         previousPort.close();
       }
+      if (typeof handleJobAdd === 'function') {
+        jobEmitter.removeListener('jobAdd', handleJobAdd);
+      }
+      if (typeof handleJobDelete === 'function') {
+        jobEmitter.removeListener('jobDelete', handleJobDelete);
+      }
+      if (typeof handleJobUpdate === 'function') {
+        jobEmitter.removeListener('jobUpdate', handleJobUpdate);
+      }
+      if (typeof handleJobsClear === 'function') {
+        jobEmitter.removeListener('jobsClear', handleJobsClear);
+      }
       port.postMessage({ type: 'BATTERY_QUEUE_WORKER_CONFIRMATION' });
       this.logger.info('Linked to worker interface');
       port.onmessage = this.handlePortMessage.bind(this);
       const emitCallback = (t:string, args:Array<any>) => {
         port.postMessage({ type: t, args });
       };
+      handleJobAdd = (...args:Array<any>) => {
+        port.postMessage({ type: 'jobAdd', args });
+      };
+      handleJobDelete = (...args:Array<any>) => {
+        port.postMessage({ type: 'jobDelete', args });
+      };
+      handleJobUpdate = (...args:Array<any>) => {
+        port.postMessage({ type: 'jobUpdate', args });
+      };
+      handleJobsClear = (...args:Array<any>) => {
+        port.postMessage({ type: 'jobsClear', args });
+      };
+      jobEmitter.addListener('jobAdd', handleJobAdd);
+      jobEmitter.addListener('jobDelete', handleJobDelete);
+      jobEmitter.addListener('jobUpdate', handleJobUpdate);
+      jobEmitter.addListener('jobsClear', handleJobsClear);
       activeEmitCallback = emitCallback;
       this.emitCallbacks.push(emitCallback);
       this.port = port;

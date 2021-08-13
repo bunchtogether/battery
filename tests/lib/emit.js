@@ -40,10 +40,10 @@ export function getNextEmit(emitter:EventEmitter, name:string, duration?:number 
       emitter.removeListener(name, handle);
       reject(new Error(`Timeout waiting for emit of ${name}`));
     }, duration);
-    const handle = (value:any) => {
+    const handle = (...values:Array<any>) => {
       clearTimeout(timeout);
       emitter.removeListener(name, handle);
-      resolve(value);
+      resolve(values);
     };
     emitter.addListener(name, handle);
   });

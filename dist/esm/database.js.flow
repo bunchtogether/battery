@@ -2,7 +2,10 @@
 
 import merge from 'lodash/merge';
 import unset from 'lodash/unset';
+import EventEmitter from 'events';
 import makeLogger from './logger';
+
+export const jobEmitter = new EventEmitter();
 
 const logger = makeLogger('Jobs Database');
 
@@ -26,6 +29,10 @@ type Cleanup = {
   startAfter: number
 };
 
+export const QUEUE_ERROR_STATUS = 0;
+export const QUEUE_PENDING_STATUS = 1;
+export const QUEUE_COMPLETE_STATUS = 2;
+export const QUEUE_EMPTY_STATUS = 3;
 
 export const JOB_ABORTED_STATUS = 2;
 export const JOB_COMPLETE_STATUS = 1;
@@ -43,7 +50,7 @@ export const databasePromise = (async () => {
       store.createIndex('queueIdIndex', 'queueId', { unique: false });
       store.createIndex('queueIdTypeIndex', ['queueId', 'type'], { unique: false });
       store.createIndex('statusQueueIdIndex', ['queueId', 'status'], { unique: false });
-      store.createIndex('statusCreatedIndex', ['status', 'created'], { unique: false });
+      store.createIndex('createdIndex', 'created', { unique: false });
     } catch (error) {
       if (!(error.name === 'ConstraintError')) {
         throw error;
@@ -145,6 +152,49 @@ async function getReadOnlyQueueDataObjectStore() {
   return objectStore;
 }
 
+async function getReadWriteJobsObjectStoreAndTransactionPromise() {
+  const database = await databasePromise;
+  const transaction = database.transaction(['jobs'], 'readwrite');
+  const objectStore = transaction.objectStore('jobs');
+  const promise = new Promise((resolve, reject) => {
+    transaction.onabort = (event) => {
+      logger.error('Read-write jobs transaction was aborted');
+      logger.errorObject(event);
+      reject(new Error('Read-write jobs transaction was aborted'));
+    };
+    transaction.onerror = (event) => {
+      logger.error('Error in read-write jobs transaction');
+      logger.errorObject(event);
+      reject(new Error('Error in read-write jobs transaction'));
+    };
+    transaction.oncomplete = () => {
+      resolve();
+    };
+  });
+  return [objectStore, promise];
+}
+
+async function getReadOnlyJobsObjectStoreAndTransactionPromise() {
+  const database = await databasePromise;
+  const transaction = database.transaction(['jobs'], 'readonly');
+  const objectStore = transaction.objectStore('jobs');
+  const promise = new Promise((resolve, reject) => {
+    transaction.onabort = (event) => {
+      logger.error('Read-only jobs transaction was aborted');
+      logger.errorObject(event);
+      reject(new Error('Read-only jobs transaction was aborted'));
+    };
+    transaction.onerror = (event) => {
+      logger.error('Error in read-only jobs transaction');
+      logger.errorObject(event);
+      reject(new Error('Error in read-only jobs transaction'));
+    };
+    transaction.oncomplete = () => {
+      resolve();
+    };
+  });
+  return [objectStore, promise];
+}
 
 async function getReadWriteJobsObjectStore() {
   const database = await databasePromise;
@@ -234,6 +284,7 @@ async function clearJobsDatabase() {
       reject(new Error('Error while clearing jobs database'));
     };
   });
+  jobEmitter.emit('jobsClear');
 }
 
 async function clearCleanupsDatabase() {
@@ -258,49 +309,47 @@ export async function clearDatabase() {
 }
 
 export async function removeJobsWithQueueIdAndTypeFromDatabase(queueId:string, type:string) {
-  const store = await getReadWriteJobsObjectStore();
+  const [store, promise] = await getReadWriteJobsObjectStoreAndTransactionPromise();
   const index = store.index('queueIdTypeIndex');
   // $FlowFixMe
-  const request = index.openCursor(IDBKeyRange.only([queueId, type]));
-  await new Promise((resolve, reject) => {
-    request.onsuccess = function (event) {
-      const cursor = event.target.result;
-      if (cursor) {
-        store.delete(cursor.primaryKey);
-        cursor.continue();
-      } else {
-        resolve();
-      }
-    };
-    request.onerror = function (event) {
-      logger.error(`Request error while removing jobs with queue ${queueId} and type ${type} from jobs database`);
-      logger.errorObject(event);
-      reject(new Error(`Request error while removing jobs with queue ${queueId} and type ${type} from jobs database`));
-    };
-  });
+  const request = index.getAllKeys(IDBKeyRange.only([queueId, type]));
+  request.onsuccess = function (event) {
+    for (const id of event.target.result) {
+      jobEmitter.emit('jobDelete', id, queueId);
+      const deleteRequest = store.delete(id);
+      deleteRequest.onerror = function (deleteEvent) {
+        logger.error(`Request error while removing job ${id} in queue ${queueId} and type ${type} from jobs database`);
+        logger.errorObject(deleteEvent);
+      };
+    }
+  };
+  request.onerror = function (event) {
+    logger.error(`Request error while removing jobs with queue ${queueId} and type ${type} from jobs database`);
+    logger.errorObject(event);
+  };
+  await promise;
 }
 
-async function removeQueueIdFromJobsDatabase(queueId:string) {
-  const store = await getReadWriteJobsObjectStore();
+export async function removeQueueIdFromJobsDatabase(queueId:string) {
+  const [store, promise] = await getReadWriteJobsObjectStoreAndTransactionPromise();
   const index = store.index('queueIdIndex');
   // $FlowFixMe
-  const request = index.openCursor(IDBKeyRange.only(queueId));
-  await new Promise((resolve, reject) => {
-    request.onsuccess = function (event) {
-      const cursor = event.target.result;
-      if (cursor) {
-        store.delete(cursor.primaryKey);
-        cursor.continue();
-      } else {
-        resolve();
-      }
-    };
-    request.onerror = function (event) {
-      logger.error(`Request error while removing queue ${queueId} from jobs database`);
-      logger.errorObject(event);
-      reject(new Error(`Request error while removing queue ${queueId} from jobs database`));
-    };
-  });
+  const request = index.getAllKeys(IDBKeyRange.only(queueId));
+  request.onsuccess = function (event) {
+    for (const id of event.target.result) {
+      jobEmitter.emit('jobDelete', id, queueId);
+      const deleteRequest = store.delete(id);
+      deleteRequest.onerror = function (deleteEvent) {
+        logger.error(`Request error while removing job ${id} in queue ${queueId} from jobs database`);
+        logger.errorObject(deleteEvent);
+      };
+    }
+  };
+  request.onerror = function (event) {
+    logger.error(`Request error while removing queue ${queueId} from jobs database`);
+    logger.errorObject(event);
+  };
+  await promise;
 }
 
 async function removeQueueIdFromCleanupsDatabase(queueId:string) {
@@ -332,31 +381,28 @@ export async function removeQueueIdFromDatabase(queueId:string) {
 }
 
 export async function removeCompletedExpiredItemsFromDatabase(maxAge:number) {
-  const store = await getReadWriteJobsObjectStore();
-  const index = store.index('statusCreatedIndex');
+  const [store, promise] = await getReadWriteJobsObjectStoreAndTransactionPromise();
+  const index = store.index('createdIndex');
   // $FlowFixMe
-  const request = index.openCursor(IDBKeyRange.bound([JOB_COMPLETE_STATUS, 0], [JOB_COMPLETE_STATUS, Date.now() - maxAge]));
-  const queueIds = new Set();
-  await new Promise((resolve, reject) => {
-    request.onsuccess = function (event) {
-      const cursor = event.target.result;
-      if (cursor) {
-        queueIds.add(cursor.value.queueId);
-        store.delete(cursor.primaryKey);
-        cursor.continue();
-      } else {
-        resolve();
+  const request = index.getAll(IDBKeyRange.bound(0, Date.now() - maxAge));
+  request.onsuccess = function (event) {
+    for (const { id, queueId, status } of event.target.result) {
+      if (status !== JOB_COMPLETE_STATUS) {
+        continue;
       }
-    };
-    request.onerror = function (event) {
-      logger.error('Request error while removing completed exired items from jobs database');
-      logger.errorObject(event);
-      reject(new Error('Request error while removing completed exired items from jobs database'));
-    };
-  });
-  for (const queueId of queueIds) {
-    await removeQueueIdFromDatabase(queueId);
-  }
+      jobEmitter.emit('jobDelete', id, queueId);
+      const deleteRequest = store.delete(id);
+      deleteRequest.onerror = function (deleteEvent) {
+        logger.error(`Request error while removing job ${id} in queue ${queueId} from completed exired items from jobs database`);
+        logger.errorObject(deleteEvent);
+      };
+    }
+  };
+  request.onerror = function (event) {
+    logger.error('Request error while removing completed exired items from jobs database');
+    logger.errorObject(event);
+  };
+  await promise;
 }
 
 export async function updateJobInDatabase(id:number, transform:(Job | void) => Object):Promise<Job | void> {
@@ -368,6 +414,7 @@ export async function updateJobInDatabase(id:number, transform:(Job | void) => O
       if (typeof newValue === 'undefined') {
         resolve();
       } else {
+        jobEmitter.emit('jobUpdate', newValue.id, newValue.queueId, newValue.status);
         const putRequest = store.put(newValue);
         putRequest.onsuccess = function () {
           resolve();
@@ -626,6 +673,7 @@ export async function markQueueForCleanupInDatabase(queueId:string) {
             cursor.continue();
             return;
         }
+        jobEmitter.emit('jobUpdate', value.id, value.queueId, value.status);
         const updateRequest = cursor.update(value);
         updateRequest.onsuccess = function () {
           cursor.continue();
@@ -696,6 +744,7 @@ export async function bulkEnqueueToDatabase(queueId: string, items:Array<[string
   if (typeof delay !== 'number') {
     throw new TypeError(`Unable to bulk enqueue in database, received invalid "delay" argument type "${typeof delay}"`);
   }
+  const ids = [];
   const store = await getReadWriteJobsObjectStore();
   await new Promise((resolve, reject) => {
     for (let i = 0; i < items.length; i += 1) {
@@ -710,18 +759,19 @@ export async function bulkEnqueueToDatabase(queueId: string, items:Array<[string
         startAfter: Date.now() + delay,
       };
       const request = store.put(value);
-      if (i === items.length - 1) {
-        request.onsuccess = function () {
-          resolve(request.result);
-        };
-        request.onerror = function (event) {
-          logger.error(`Request error while bulk enqueueing ${items.length} ${items.length === 1 ? 'job' : 'jobs'} in queue ${queueId}`);
-          logger.errorObject(event);
-          reject(new Error(`Request error while bulk enqueueing ${items.length} ${items.length === 1 ? 'job' : 'jobs'} in queue ${queueId}`));
-        };
-      }
+      request.onsuccess = function () {
+        ids.push(request.result);
+        jobEmitter.emit('jobAdd', request.result, queueId);
+        resolve(request.result);
+      };
+      request.onerror = function (event) {
+        logger.error(`Request error while bulk enqueueing ${items.length} ${items.length === 1 ? 'job' : 'jobs'} in queue ${queueId}`);
+        logger.errorObject(event);
+        reject(new Error(`Request error while bulk enqueueing ${items.length} ${items.length === 1 ? 'job' : 'jobs'} in queue ${queueId}`));
+      };
     }
   });
+  return ids;
 }
 
 export async function enqueueToDatabase(queueId: string, type: string, args: Array<any>, delay: number) { // eslint-disable-line no-underscore-dangle
@@ -747,6 +797,7 @@ export async function enqueueToDatabase(queueId: string, type: string, args: Arr
     startAfter: Date.now() + delay,
   };
   const store = await getReadWriteJobsObjectStore();
+
   const request = store.put(value);
   const id = await new Promise((resolve, reject) => {
     request.onsuccess = function () {
@@ -758,6 +809,7 @@ export async function enqueueToDatabase(queueId: string, type: string, args: Arr
       reject(new Error(`Request error while enqueueing ${type} job`));
     };
   });
+  jobEmitter.emit('jobAdd', id, queueId);
   return id;
 }
 
@@ -798,26 +850,9 @@ export async function dequeueFromDatabaseNotIn(ids:Array<number>):Promise<Array<
   if (ids.length === 0) {
     return dequeueFromDatabase();
   }
-  const database = await databasePromise;
-  const transaction = database.transaction(['jobs'], 'readonly');
-  const store = transaction.objectStore('jobs');
+  const [store, promise] = await getReadOnlyJobsObjectStoreAndTransactionPromise();
   const index = store.index('statusIndex');
   const jobs = [];
-  const promise = new Promise((resolve, reject) => {
-    transaction.onabort = (event) => {
-      logger.error('Read-write jobs transaction was aborted');
-      logger.errorObject(event);
-      reject(new Error('Read-write jobs transaction was aborted'));
-    };
-    transaction.onerror = (event) => {
-      logger.error('Error in read-write jobs transaction');
-      logger.errorObject(event);
-      reject(new Error('Error in read-write jobs transaction'));
-    };
-    transaction.oncomplete = () => {
-      resolve();
-    };
-  });
   // $FlowFixMe
   const request = index.getAllKeys(IDBKeyRange.bound(JOB_CLEANUP_STATUS, JOB_PENDING_STATUS));
   request.onsuccess = function (event) {
@@ -840,6 +875,27 @@ export async function dequeueFromDatabaseNotIn(ids:Array<number>):Promise<Array<
     logger.errorObject(event);
   };
   await promise;
+  return jobs;
+}
+
+export async function getJobsFromDatabase(queueId: string):Promise<Array<Job>> { // eslint-disable-line no-underscore-dangle
+  if (typeof queueId !== 'string') {
+    throw new TypeError(`Unable to get completed jobs database, received invalid "queueId" argument type "${typeof queueId}"`);
+  }
+  const store = await getReadOnlyJobsObjectStore();
+  const index = store.index('queueIdIndex');
+  // $FlowFixMe
+  const request = index.getAll(IDBKeyRange.only(queueId));
+  const jobs = await new Promise((resolve, reject) => {
+    request.onsuccess = function (event) {
+      resolve(event.target.result);
+    };
+    request.onerror = function (event) {
+      logger.error('Request error while dequeing');
+      logger.errorObject(event);
+      reject(new Error('Request error while dequeing'));
+    };
+  });
   return jobs;
 }
 
@@ -933,3 +989,92 @@ export async function removeAuthDataFromDatabase(id:string) {
     };
   });
 }
+
+export async function getQueueStatus(queueId:string) {
+  const store = await getReadOnlyJobsObjectStore();
+  const index = store.index('statusQueueIdIndex');
+  // $FlowFixMe
+  const abortedRequest = index.getAllKeys(IDBKeyRange.only([queueId, JOB_ABORTED_STATUS]));
+  // $FlowFixMe
+  const completeRequest = index.getAllKeys(IDBKeyRange.only([queueId, JOB_COMPLETE_STATUS]));
+  // $FlowFixMe
+  const pendingRequest = index.getAllKeys(IDBKeyRange.only([queueId, JOB_PENDING_STATUS]));
+  // $FlowFixMe
+  const errorRequest = index.getAllKeys(IDBKeyRange.only([queueId, JOB_ERROR_STATUS]));
+  // $FlowFixMe
+  const cleanupRequest = index.getAllKeys(IDBKeyRange.only([queueId, JOB_CLEANUP_STATUS]));
+  const abortedCountPromise = new Promise((resolve, reject) => {
+    abortedRequest.onsuccess = function (event) {
+      resolve(event.target.result.length);
+    };
+    abortedRequest.onerror = function (event) {
+      logger.error(`Request error while getting status of queue ${queueId}`);
+      logger.errorObject(event);
+      reject(new Error(`Request error while getting status of queue ${queueId}`));
+    };
+  });
+  const completeCountPromise = new Promise((resolve, reject) => {
+    completeRequest.onsuccess = function (event) {
+      resolve(event.target.result.length);
+    };
+    completeRequest.onerror = function (event) {
+      logger.error(`Request error while getting status of queue ${queueId}`);
+      logger.errorObject(event);
+      reject(new Error(`Request error while getting status of queue ${queueId}`));
+    };
+  });
+  const pendingCountPromise = new Promise((resolve, reject) => {
+    pendingRequest.onsuccess = function (event) {
+      resolve(event.target.result.length);
+    };
+    pendingRequest.onerror = function (event) {
+      logger.error(`Request error while getting status of queue ${queueId}`);
+      logger.errorObject(event);
+      reject(new Error(`Request error while getting status of queue ${queueId}`));
+    };
+  });
+  const errorCountPromise = new Promise((resolve, reject) => {
+    errorRequest.onsuccess = function (event) {
+      resolve(event.target.result.length);
+    };
+    errorRequest.onerror = function (event) {
+      logger.error(`Request error while getting status of queue ${queueId}`);
+      logger.errorObject(event);
+      reject(new Error(`Request error while getting status of queue ${queueId}`));
+    };
+  });
+  const cleanupCountPromise = new Promise((resolve, reject) => {
+    cleanupRequest.onsuccess = function (event) {
+      resolve(event.target.result.length);
+    };
+    cleanupRequest.onerror = function (event) {
+      logger.error(`Request error while getting status of queue ${queueId}`);
+      logger.errorObject(event);
+      reject(new Error(`Request error while getting status of queue ${queueId}`));
+    };
+  });
+  const [
+    abortedCount,
+    completeCount,
+    pendingCount,
+    errorCount,
+    cleanupCount,
+  ] = await Promise.all([
+    abortedCountPromise,
+    completeCountPromise,
+    pendingCountPromise,
+    errorCountPromise,
+    cleanupCountPromise,
+  ]);
+  if (abortedCount > 0 || cleanupCount > 0) {
+    return QUEUE_ERROR_STATUS;
+  }
+  if (errorCount > 0 || pendingCount > 0) {
+    return QUEUE_PENDING_STATUS;
+  }
+  if (completeCount > 0) {
+    return QUEUE_COMPLETE_STATUS;
+  }
+  return QUEUE_EMPTY_STATUS;
+}
+

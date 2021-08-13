@@ -1,7 +1,7 @@
 import PQueue from 'p-queue';
 import EventEmitter from 'events';
 import makeLogger from './logger';
-import { clearDatabase, dequeueFromDatabase, dequeueFromDatabaseNotIn, incrementJobAttemptInDatabase, incrementCleanupAttemptInDatabase, markJobCompleteInDatabase, markJobPendingInDatabase, markJobErrorInDatabase, markJobCleanupInDatabase, markJobAbortedInDatabase, markJobStartAfterInDatabase, markCleanupStartAfterInDatabase, updateCleanupValuesInDatabase, getCleanupFromDatabase, removePathFromCleanupDataInDatabase, markQueueForCleanupInDatabase, removeCleanupFromDatabase, JOB_PENDING_STATUS, JOB_ERROR_STATUS, JOB_CLEANUP_STATUS } from './database';
+import { jobEmitter, clearDatabase, dequeueFromDatabase, dequeueFromDatabaseNotIn, incrementJobAttemptInDatabase, incrementCleanupAttemptInDatabase, markJobCompleteInDatabase, markJobPendingInDatabase, markJobErrorInDatabase, markJobCleanupInDatabase, markJobAbortedInDatabase, markJobStartAfterInDatabase, markCleanupStartAfterInDatabase, updateCleanupValuesInDatabase, getCleanupFromDatabase, removePathFromCleanupDataInDatabase, markQueueForCleanupInDatabase, removeCleanupFromDatabase, JOB_PENDING_STATUS, JOB_ERROR_STATUS, JOB_CLEANUP_STATUS } from './database';
 import { AbortError } from './errors';
 const PRIORITY_OFFSET = Math.floor(Number.MAX_SAFE_INTEGER / 2);
 export default class BatteryQueue extends EventEmitter {
@@ -784,6 +784,10 @@ export default class BatteryQueue extends EventEmitter {
 
   listenForServiceWorkerInterface() {
     let activeEmitCallback;
+    let handleJobAdd;
+    let handleJobDelete;
+    let handleJobUpdate;
+    let handleJobsClear;
     self.addEventListener('message', event => {
       if (!(event instanceof ExtendableMessageEvent)) {
         return;
@@ -823,6 +827,22 @@ export default class BatteryQueue extends EventEmitter {
         previousPort.close();
       }
 
+      if (typeof handleJobAdd === 'function') {
+        jobEmitter.removeListener('jobAdd', handleJobAdd);
+      }
+
+      if (typeof handleJobDelete === 'function') {
+        jobEmitter.removeListener('jobDelete', handleJobDelete);
+      }
+
+      if (typeof handleJobUpdate === 'function') {
+        jobEmitter.removeListener('jobUpdate', handleJobUpdate);
+      }
+
+      if (typeof handleJobsClear === 'function') {
+        jobEmitter.removeListener('jobsClear', handleJobsClear);
+      }
+
       port.postMessage({
         type: 'BATTERY_QUEUE_WORKER_CONFIRMATION'
       });
@@ -836,6 +856,38 @@ export default class BatteryQueue extends EventEmitter {
         });
       };
 
+      handleJobAdd = (...args) => {
+        port.postMessage({
+          type: 'jobAdd',
+          args
+        });
+      };
+
+      handleJobDelete = (...args) => {
+        port.postMessage({
+          type: 'jobDelete',
+          args
+        });
+      };
+
+      handleJobUpdate = (...args) => {
+        port.postMessage({
+          type: 'jobUpdate',
+          args
+        });
+      };
+
+      handleJobsClear = (...args) => {
+        port.postMessage({
+          type: 'jobsClear',
+          args
+        });
+      };
+
+      jobEmitter.addListener('jobAdd', handleJobAdd);
+      jobEmitter.addListener('jobDelete', handleJobDelete);
+      jobEmitter.addListener('jobUpdate', handleJobUpdate);
+      jobEmitter.addListener('jobsClear', handleJobsClear);
       activeEmitCallback = emitCallback;
       this.emitCallbacks.push(emitCallback);
       this.port = port;

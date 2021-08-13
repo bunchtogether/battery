@@ -9,6 +9,8 @@ var _events = _interopRequireDefault(require("events"));
 
 var _logger = _interopRequireDefault(require("./logger"));
 
+var _database = require("./database");
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _unsupportedIterableToArray(arr) || _nonIterableSpread(); }
@@ -197,6 +199,31 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                     _this2.logger.warnObject(event);
 
                     return;
+                  }
+
+                  switch (type) {
+                    case 'jobAdd':
+                      _database.jobEmitter.emit.apply(_database.jobEmitter, ['jobAdd'].concat(_toConsumableArray(args)));
+
+                      return;
+
+                    case 'jobDelete':
+                      _database.jobEmitter.emit.apply(_database.jobEmitter, ['jobDelete'].concat(_toConsumableArray(args)));
+
+                      return;
+
+                    case 'jobUpdate':
+                      _database.jobEmitter.emit.apply(_database.jobEmitter, ['jobUpdate'].concat(_toConsumableArray(args)));
+
+                      return;
+
+                    case 'jobsClear':
+                      _database.jobEmitter.emit.apply(_database.jobEmitter, ['jobsClear'].concat(_toConsumableArray(args)));
+
+                      return;
+
+                    default:
+                      break;
                   }
 
                   _this2.emit.apply(_this2, [type].concat(_toConsumableArray(args)));

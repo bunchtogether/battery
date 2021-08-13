@@ -3,6 +3,7 @@
 import EventEmitter from 'events';
 import type { Logger } from './logger';
 import makeLogger from './logger';
+import { jobEmitter } from './database';
 
 type Options = {
   logger?: Logger
@@ -99,6 +100,22 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
         this.logger.warn('Unknown arguments type');
         this.logger.warnObject(event);
         return;
+      }
+      switch (type) {
+        case 'jobAdd':
+          jobEmitter.emit('jobAdd', ...args);
+          return;
+        case 'jobDelete':
+          jobEmitter.emit('jobDelete', ...args);
+          return;
+        case 'jobUpdate':
+          jobEmitter.emit('jobUpdate', ...args);
+          return;
+        case 'jobsClear':
+          jobEmitter.emit('jobsClear', ...args);
+          return;
+        default:
+          break;
       }
       this.emit(type, ...args);
     };

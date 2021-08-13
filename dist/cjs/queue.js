@@ -1644,6 +1644,10 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
       var _this7 = this;
 
       var activeEmitCallback;
+      var handleJobAdd;
+      var handleJobDelete;
+      var handleJobUpdate;
+      var handleJobsClear;
       self.addEventListener('message', function (event) {
         if (!(event instanceof ExtendableMessageEvent)) {
           return;
@@ -1682,6 +1686,22 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
           previousPort.close();
         }
 
+        if (typeof handleJobAdd === 'function') {
+          _database.jobEmitter.removeListener('jobAdd', handleJobAdd);
+        }
+
+        if (typeof handleJobDelete === 'function') {
+          _database.jobEmitter.removeListener('jobDelete', handleJobDelete);
+        }
+
+        if (typeof handleJobUpdate === 'function') {
+          _database.jobEmitter.removeListener('jobUpdate', handleJobUpdate);
+        }
+
+        if (typeof handleJobsClear === 'function') {
+          _database.jobEmitter.removeListener('jobsClear', handleJobsClear);
+        }
+
         port.postMessage({
           type: 'BATTERY_QUEUE_WORKER_CONFIRMATION'
         });
@@ -1696,6 +1716,58 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
             args: args
           });
         };
+
+        handleJobAdd = function handleJobAdd() {
+          for (var _len2 = arguments.length, args = new Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
+            args[_key2] = arguments[_key2];
+          }
+
+          port.postMessage({
+            type: 'jobAdd',
+            args: args
+          });
+        };
+
+        handleJobDelete = function handleJobDelete() {
+          for (var _len3 = arguments.length, args = new Array(_len3), _key3 = 0; _key3 < _len3; _key3++) {
+            args[_key3] = arguments[_key3];
+          }
+
+          port.postMessage({
+            type: 'jobDelete',
+            args: args
+          });
+        };
+
+        handleJobUpdate = function handleJobUpdate() {
+          for (var _len4 = arguments.length, args = new Array(_len4), _key4 = 0; _key4 < _len4; _key4++) {
+            args[_key4] = arguments[_key4];
+          }
+
+          port.postMessage({
+            type: 'jobUpdate',
+            args: args
+          });
+        };
+
+        handleJobsClear = function handleJobsClear() {
+          for (var _len5 = arguments.length, args = new Array(_len5), _key5 = 0; _key5 < _len5; _key5++) {
+            args[_key5] = arguments[_key5];
+          }
+
+          port.postMessage({
+            type: 'jobsClear',
+            args: args
+          });
+        };
+
+        _database.jobEmitter.addListener('jobAdd', handleJobAdd);
+
+        _database.jobEmitter.addListener('jobDelete', handleJobDelete);
+
+        _database.jobEmitter.addListener('jobUpdate', handleJobUpdate);
+
+        _database.jobEmitter.addListener('jobsClear', handleJobsClear);
 
         activeEmitCallback = emitCallback;
 

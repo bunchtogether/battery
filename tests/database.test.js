@@ -1,10 +1,11 @@
 // @flow
 
 import { v4 as uuidv4 } from 'uuid';
-
+import { getNextEmit } from './lib/emit';
 import {
   enqueueToDatabase,
   bulkEnqueueToDatabase,
+  getJobsFromDatabase,
   dequeueFromDatabase,
   dequeueFromDatabaseNotIn,
   markJobCompleteInDatabase,
@@ -28,6 +29,11 @@ import {
   getAuthDataFromDatabase,
   removeAuthDataFromDatabase,
   getContiguousIds,
+  jobEmitter,
+  removeJobsWithQueueIdAndTypeFromDatabase,
+  removeQueueIdFromJobsDatabase,
+  removeCompletedExpiredItemsFromDatabase,
+  updateJobInDatabase,
   JOB_PENDING_STATUS,
   JOB_COMPLETE_STATUS,
   JOB_ERROR_STATUS,
@@ -42,6 +48,61 @@ describe('IndexedDB Database', () => {
     await clearDatabase();
   });
 
+  it('Job emitter emits job updates', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const jobAddPromiseA = getNextEmit(jobEmitter, 'jobAdd');
+
+    const idA = await enqueueToDatabase(queueId, type, [], 0);
+
+    expect(await jobAddPromiseA).toEqual([idA, queueId]);
+    const jobDeletePromiseA = getNextEmit(jobEmitter, 'jobDelete');
+    await removeJobsWithQueueIdAndTypeFromDatabase(queueId, type);
+
+    expect(await jobDeletePromiseA).toEqual([idA, queueId]);
+
+    const idB = await enqueueToDatabase(queueId, type, [], 0);
+    const jobDeletePromiseB = getNextEmit(jobEmitter, 'jobDelete');
+    await removeQueueIdFromJobsDatabase(queueId);
+
+    expect(await jobDeletePromiseB).toEqual([idB, queueId]);
+
+    const idC = await enqueueToDatabase(queueId, type, [], 0);
+    const jobDeletePromiseC = getNextEmit(jobEmitter, 'jobDelete');
+    await markJobCompleteInDatabase(idC);
+    await removeCompletedExpiredItemsFromDatabase(0);
+
+    expect(await jobDeletePromiseC).toEqual([idC, queueId]);
+
+    const idD = await enqueueToDatabase(queueId, type, [], 0);
+    const jobUpdatePromiseA = getNextEmit(jobEmitter, 'jobUpdate');
+    await updateJobInDatabase(idD, (x) => {
+      if (typeof x === 'undefined') {
+        return;
+      }
+      x.status = JOB_ABORTED_STATUS; // eslint-disable-line no-param-reassign
+      return x; // eslint-disable-line consistent-return
+    });
+
+    expect(await jobUpdatePromiseA).toEqual([idD, queueId, JOB_ABORTED_STATUS]);
+    await removeQueueIdFromJobsDatabase(queueId);
+
+    const idE = await enqueueToDatabase(queueId, type, [], 0);
+    const jobUpdatePromiseB = getNextEmit(jobEmitter, 'jobUpdate');
+    await markQueueForCleanupInDatabase(queueId);
+
+    expect(await jobUpdatePromiseB).toEqual([idE, queueId, JOB_ABORTED_STATUS]);
+
+    const jobAddPromiseB = getNextEmit(jobEmitter, 'jobAdd');
+    const [idF] = await bulkEnqueueToDatabase(queueId, [[type, []]], 0);
+
+    expect(await jobAddPromiseB).toEqual([idF, queueId]);
+
+    const jobsClearPromise = getNextEmit(jobEmitter, 'jobsClear');
+    await clearDatabase();
+
+    expect(await jobsClearPromise).toEqual([]);
+  });
 
   it('Increments cleanup attempts', async () => {
     const id = Math.round(1000 + Math.random() * 1000);
@@ -153,6 +214,70 @@ describe('IndexedDB Database', () => {
     }
 
     expect(cleanupAfterDatabase.startAfter).toBeGreaterThan(Date.now());
+  });
+
+  it('Gets all jobs from the database', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+
+
+    const idA = await enqueueToDatabase(queueId, type, [], 0);
+    const idB = await enqueueToDatabase(queueId, type, [], 0);
+    const idC = await enqueueToDatabase(queueId, type, [], 0);
+    const idD = await enqueueToDatabase(queueId, type, [], 0);
+    const idE = await enqueueToDatabase(queueId, type, [], 0);
+
+    await markJobCompleteInDatabase(idB);
+    await markJobErrorInDatabase(idC);
+    await markJobCleanupInDatabase(idD);
+    await markJobAbortedInDatabase(idE);
+
+    expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+      id: idA,
+      queueId,
+      type,
+      args: [],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    }), jasmine.objectContaining({
+      id: idB,
+      queueId,
+      type,
+      args: [],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_COMPLETE_STATUS,
+      startAfter: jasmine.any(Number),
+    }), jasmine.objectContaining({
+      id: idC,
+      queueId,
+      type,
+      args: [],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_ERROR_STATUS,
+      startAfter: jasmine.any(Number),
+    }), jasmine.objectContaining({
+      id: idD,
+      queueId,
+      type,
+      args: [],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_CLEANUP_STATUS,
+      startAfter: jasmine.any(Number),
+    }), jasmine.objectContaining({
+      id: idE,
+      queueId,
+      type,
+      args: [],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_ABORTED_STATUS,
+      startAfter: jasmine.any(Number),
+    })]);
   });
 
   it('Dequeues items in pending state', async () => {

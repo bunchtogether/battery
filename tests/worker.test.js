@@ -5,6 +5,7 @@ import { serviceWorkerPromise } from './lib/worker-interface';
 import BatteryQueueServiceWorkerInterface from '../src/worker-interface';
 import {
   enqueueToDatabase,
+  jobEmitter,
 } from '../src/database';
 import { expectEmit } from './lib/emit';
 import {
@@ -18,6 +19,10 @@ const queueInterface = new BatteryQueueServiceWorkerInterface();
 
 describe('Worker', () => {
   beforeAll(async () => {
+    jobEmitter.on('jobAdd', (...args) => console.log('jobAdd', ...args));
+    jobEmitter.on('jobDelete', (...args) => console.log('jobDelete', ...args));
+    jobEmitter.on('jobUpdate', (...args) => console.log('jobUpdate', ...args));
+    jobEmitter.on('jobsClear', (...args) => console.log('jobsClear', ...args));
     await serviceWorkerPromise;
   });
 
