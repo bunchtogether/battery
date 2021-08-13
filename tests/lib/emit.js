@@ -3,26 +3,27 @@
 import type EventEmitter from 'events';
 import isEqual from 'lodash/isEqual';
 
-export async function expectEmit(emitter:EventEmitter, name:string, ...values:Array<any>) {
-  let lastValues;
-  await new Promise((resolve, reject) => {
+export async function expectEmit(emitter:EventEmitter, name:string, ...args:Array<any>) {
+  let lastargs;
+  await new Promise((resolve) => {
     const timeout = setTimeout(() => {
       emitter.removeListener(name, handle);
-      try {
-        expect(lastValues).toEqual(values);
-      } catch (error) {
-        reject(error);
-        return;
+      if (typeof lastargs !== 'undefined') {
+        expect(lastargs).toEqual(args);
+        fail(new Error(`Most recent "${name}" event did not match arguments ${JSON.stringify(args)}`));
+        resolve();
+      } else {
+        fail(new Error(`Did not receive "${name}" event in 5000ms`));
+        resolve();
       }
-      reject(new Error(`Timeout waiting for ${name} with values ${JSON.stringify(values)}`));
     }, 5000);
     const handle = (...vs:Array<any>) => {
-      lastValues = vs;
+      lastargs = vs;
       try {
-        if (!isEqual(values, vs)) {
+        if (!isEqual(args, vs)) {
           return;
         }
-        expect(values).toEqual(vs);
+        expect(args).toEqual(vs);
         clearTimeout(timeout);
         emitter.removeListener(name, handle);
         resolve();
@@ -35,15 +36,16 @@ export async function expectEmit(emitter:EventEmitter, name:string, ...values:Ar
 }
 
 export function getNextEmit(emitter:EventEmitter, name:string, duration?:number = 5000):Promise<any> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const timeout = setTimeout(() => {
       emitter.removeListener(name, handle);
-      reject(new Error(`Timeout waiting for emit of ${name}`));
+      fail(new Error(`Timeout waiting for emit of ${name}`));
+      resolve([]);
     }, duration);
-    const handle = (...values:Array<any>) => {
+    const handle = (...args:Array<any>) => {
       clearTimeout(timeout);
       emitter.removeListener(name, handle);
-      resolve(values);
+      resolve(args);
     };
     emitter.addListener(name, handle);
   });

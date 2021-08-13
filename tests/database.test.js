@@ -55,7 +55,7 @@ describe('IndexedDB Database', () => {
 
     const idA = await enqueueToDatabase(queueId, type, [], 0);
 
-    expect(await jobAddPromiseA).toEqual([idA, queueId]);
+    expect(await jobAddPromiseA).toEqual([idA, queueId, type]);
     const jobDeletePromiseA = getNextEmit(jobEmitter, 'jobDelete');
     await removeJobsWithQueueIdAndTypeFromDatabase(queueId, type);
 
@@ -84,19 +84,19 @@ describe('IndexedDB Database', () => {
       return x; // eslint-disable-line consistent-return
     });
 
-    expect(await jobUpdatePromiseA).toEqual([idD, queueId, JOB_ABORTED_STATUS]);
+    expect(await jobUpdatePromiseA).toEqual([idD, queueId, type, JOB_ABORTED_STATUS]);
     await removeQueueIdFromJobsDatabase(queueId);
 
     const idE = await enqueueToDatabase(queueId, type, [], 0);
     const jobUpdatePromiseB = getNextEmit(jobEmitter, 'jobUpdate');
     await markQueueForCleanupInDatabase(queueId);
 
-    expect(await jobUpdatePromiseB).toEqual([idE, queueId, JOB_ABORTED_STATUS]);
+    expect(await jobUpdatePromiseB).toEqual([idE, queueId, type, JOB_ABORTED_STATUS]);
 
     const jobAddPromiseB = getNextEmit(jobEmitter, 'jobAdd');
     const [idF] = await bulkEnqueueToDatabase(queueId, [[type, []]], 0);
 
-    expect(await jobAddPromiseB).toEqual([idF, queueId]);
+    expect(await jobAddPromiseB).toEqual([idF, queueId, type]);
 
     const jobsClearPromise = getNextEmit(jobEmitter, 'jobsClear');
     await clearDatabase();

@@ -6,11 +6,18 @@ import BatteryQueueServiceWorkerInterface from '../src/worker-interface';
 import {
   enqueueToDatabase,
   jobEmitter,
+  // JOB_ABORTED_STATUS,
+  JOB_COMPLETE_STATUS,
+  // JOB_PENDING_STATUS,
+  JOB_ERROR_STATUS,
+  // JOB_CLEANUP_STATUS,
+
 } from '../src/database';
-import { expectEmit } from './lib/emit';
+import { expectEmit, getNextEmit } from './lib/emit';
 import {
   TRIGGER_ERROR,
   TRIGGER_NO_ERROR,
+  TRIGGER_100MS_DELAY,
 } from './lib/echo-handler';
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
@@ -19,10 +26,6 @@ const queueInterface = new BatteryQueueServiceWorkerInterface();
 
 describe('Worker', () => {
   beforeAll(async () => {
-    jobEmitter.on('jobAdd', (...args) => console.log('jobAdd', ...args));
-    jobEmitter.on('jobDelete', (...args) => console.log('jobDelete', ...args));
-    jobEmitter.on('jobUpdate', (...args) => console.log('jobUpdate', ...args));
-    jobEmitter.on('jobsClear', (...args) => console.log('jobsClear', ...args));
     await serviceWorkerPromise;
   });
 
@@ -31,8 +34,10 @@ describe('Worker', () => {
   });
 
   it('Should clear the service worker', async () => {
+    const jobsClearPromise = expectEmit(jobEmitter, 'jobsClear');
     const clearedPromise = expectEmit(queueInterface, 'clearing');
     await queueInterface.clear();
+    await jobsClearPromise;
     await clearedPromise;
   });
 
@@ -40,9 +45,34 @@ describe('Worker', () => {
     const queueId = uuidv4();
     const value = uuidv4();
     const args = [TRIGGER_NO_ERROR, value];
+    const jobAddPromise = getNextEmit(jobEmitter, 'jobAdd');
     const id = await enqueueToDatabase(queueId, 'echo', args, 0);
+
+    expect(await jobAddPromise).toEqual([id, queueId, 'echo']);
+    queueInterface.dequeue();
+    await expectEmit(jobEmitter, 'jobUpdate', id, queueId, 'echo', JOB_ERROR_STATUS);
+    await expectEmit(jobEmitter, 'jobUpdate', id, queueId, 'echo', JOB_COMPLETE_STATUS);
+  });
+
+  it('Gets active and inactive queueIds', async () => {
+    const queueIdA = uuidv4();
+    const queueIdB = uuidv4();
+    const value = uuidv4();
+    await enqueueToDatabase(queueIdA, 'echo', [TRIGGER_100MS_DELAY, value], 0);
+
+    expect(await queueInterface.getQueueIds()).toEqual(new Set([queueIdA]));
+    await enqueueToDatabase(queueIdB, 'echo', [TRIGGER_100MS_DELAY, value], 0);
     await queueInterface.dequeue();
-    await expectEmit(queueInterface, 'complete', { id });
+
+    expect(await queueInterface.getQueueIds()).toEqual(new Set([queueIdA, queueIdB]));
+    await queueInterface.onIdle();
+    await queueInterface.clear();
+
+    expect(await queueInterface.getQueueIds()).toEqual(new Set([]));
+    await queueInterface.onIdle();
+    await enqueueToDatabase(queueIdA, 'echo', [TRIGGER_NO_ERROR, value], 0);
+
+    expect(await queueInterface.getQueueIds()).toEqual(new Set([queueIdA]));
   });
 
   it('Enqueues to the database and throws an error', async () => {
@@ -50,7 +80,7 @@ describe('Worker', () => {
     const value = uuidv4();
     const args = [TRIGGER_ERROR, value];
     await enqueueToDatabase(queueId, 'echo', args, 0);
-    await queueInterface.dequeue();
+    queueInterface.dequeue();
     await expectEmit(queueInterface, 'fatalError', { queueId });
   });
 
@@ -59,10 +89,9 @@ describe('Worker', () => {
     const value = uuidv4();
     const args = [TRIGGER_NO_ERROR, value];
     const id = await enqueueToDatabase(queueId, 'echo', args, 0);
-    const idlePromise = expectEmit(queueInterface, 'idle');
-    await queueInterface.dequeue();
-    await expectEmit(queueInterface, 'complete', { id });
-    await queueInterface.onIdle(5000);
-    await idlePromise;
+    queueInterface.dequeue();
+    await expectEmit(jobEmitter, 'jobUpdate', id, queueId, 'echo', JOB_COMPLETE_STATUS);
+    queueInterface.onIdle(5000);
+    await expectEmit(queueInterface, 'idle');
   });
 });

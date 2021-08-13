@@ -28,7 +28,7 @@ export default class BatteryQueueWatcher extends EventEmitter {
     this.handleJobDelete = handleJobDelete;
     jobEmitter.addListener('jobDelete', handleJobDelete);
 
-    const handleJobUpdate = (id, qId, status) => {
+    const handleJobUpdate = (id, qId, type, status) => {
       if (queueId !== qId) {
         return;
       }

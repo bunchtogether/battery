@@ -75,7 +75,7 @@ var BatteryQueueWatcher = /*#__PURE__*/function (_EventEmitter) {
 
     _database.jobEmitter.addListener('jobDelete', handleJobDelete);
 
-    var handleJobUpdate = function handleJobUpdate(id, qId, status) {
+    var handleJobUpdate = function handleJobUpdate(id, qId, type, status) {
       if (queueId !== qId) {
         return;
       }

@@ -2,10 +2,12 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import {
+  jobEmitter,
   enqueueToDatabase,
   getCompletedJobsCountFromDatabase,
   removeCompletedExpiredItemsFromDatabase,
   markCleanupStartAfterInDatabase,
+  JOB_COMPLETE_STATUS,
 } from '../src/database';
 import {
   TRIGGER_NO_ERROR,
@@ -34,6 +36,19 @@ describe('Queue', () => {
     queue.dequeue();
     await expectEmit(queue, 'dequeue', { id });
     await expectEmit(echoEmitter, 'echo', { value });
+  });
+
+  it('Gets active queueIds', async () => {
+    const queueId = uuidv4();
+    const value = uuidv4();
+    const args = [TRIGGER_NO_ERROR, value];
+    await enqueueToDatabase(queueId, 'echo', args, 0);
+
+    expect(await queue.getQueueIds()).toEqual(new Set([queueId]));
+    await queue.onIdle();
+    await queue.clear();
+
+    expect(await queue.getQueueIds()).toEqual(new Set([]));
   });
 
   it('Enqueues to the database and is cleaned up after an error without retrying', async () => {
@@ -728,5 +743,17 @@ describe('Queue', () => {
     expect(handlerCount).toEqual(1);
     expect(cleanupCount).toEqual(1);
     expect(retryCount).toEqual(0);
+  });
+
+
+  it('Emits queueActive and queueInactive events when a queue becomes active or inactive', async () => {
+    const queueId = uuidv4();
+    const value = uuidv4();
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, value], 0);
+    queue.dequeue();
+    await expectEmit(queue, 'queueActive', queueId);
+    await expectEmit(jobEmitter, 'jobUpdate', id, queueId, 'echo', JOB_COMPLETE_STATUS);
+    queue.clear();
+    await expectEmit(queue, 'queueInactive', queueId); // Triggers after 5s or on a 'clearing' event
   });
 });

@@ -40,7 +40,7 @@ exports.storeAuthDataInDatabase = _storeAuthDataInDatabase2;
 exports.getAuthDataFromDatabase = _getAuthDataFromDatabase2;
 exports.removeAuthDataFromDatabase = _removeAuthDataFromDatabase2;
 exports.getQueueStatus = _getQueueStatus2;
-exports.databasePromise = exports.JOB_CLEANUP_STATUS = exports.JOB_ERROR_STATUS = exports.JOB_PENDING_STATUS = exports.JOB_COMPLETE_STATUS = exports.JOB_ABORTED_STATUS = exports.QUEUE_EMPTY_STATUS = exports.QUEUE_COMPLETE_STATUS = exports.QUEUE_PENDING_STATUS = exports.QUEUE_ERROR_STATUS = exports.jobEmitter = void 0;
+exports.databasePromise = exports.JOB_CLEANUP_STATUS = exports.JOB_ERROR_STATUS = exports.JOB_PENDING_STATUS = exports.JOB_COMPLETE_STATUS = exports.JOB_ABORTED_STATUS = exports.QUEUE_EMPTY_STATUS = exports.QUEUE_COMPLETE_STATUS = exports.QUEUE_PENDING_STATUS = exports.QUEUE_ERROR_STATUS = exports.jobEmitter = exports.localJobEmitter = void 0;
 
 var _merge = _interopRequireDefault(require("lodash/merge"));
 
@@ -71,6 +71,12 @@ function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
 function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { Promise.resolve(value).then(_next, _throw); } }
 
 function _asyncToGenerator(fn) { return function () { var self = this, args = arguments; return new Promise(function (resolve, reject) { var gen = fn.apply(self, args); function _next(value) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value); } function _throw(err) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err); } _next(undefined); }); }; }
+
+// Local job emitter is for this process only,
+// jobEmitter is bridged when a MessagePort is open
+var _localJobEmitter = new _events.default();
+
+exports.localJobEmitter = _localJobEmitter;
 
 var _jobEmitter = new _events.default();
 
@@ -687,9 +693,11 @@ function _clearJobsDatabase() {
             });
 
           case 6:
+            _localJobEmitter.emit('jobsClear');
+
             _jobEmitter.emit('jobsClear');
 
-          case 7:
+          case 8:
           case "end":
             return _context13.stop();
         }
@@ -802,6 +810,8 @@ function _removeJobsWithQueueIdAndTypeFromDatabase() {
                 var _loop = function _loop() {
                   var id = _step.value;
 
+                  _localJobEmitter.emit('jobDelete', id, queueId);
+
                   _jobEmitter.emit('jobDelete', id, queueId);
 
                   var deleteRequest = store.delete(id);
@@ -871,6 +881,8 @@ function _removeQueueIdFromJobsDatabase() {
               try {
                 var _loop2 = function _loop2() {
                   var id = _step2.value;
+
+                  _localJobEmitter.emit('jobDelete', id, queueId);
 
                   _jobEmitter.emit('jobDelete', id, queueId);
 
@@ -1025,9 +1037,13 @@ function _removeCompletedExpiredItemsFromDatabase() {
                     return "continue";
                   }
 
-                  _jobEmitter.emit('jobDelete', id, queueId);
-
                   var deleteRequest = store.delete(id);
+
+                  deleteRequest.onsuccess = function () {
+                    _localJobEmitter.emit('jobDelete', id, queueId);
+
+                    _jobEmitter.emit('jobDelete', id, queueId);
+                  };
 
                   deleteRequest.onerror = function (deleteEvent) {
                     logger.error("Request error while removing job ".concat(id, " in queue ").concat(queueId, " from completed exired items from jobs database"));
@@ -1090,11 +1106,13 @@ function _updateJobInDatabase() {
                 if (typeof newValue === 'undefined') {
                   resolve();
                 } else {
-                  _jobEmitter.emit('jobUpdate', newValue.id, newValue.queueId, newValue.status);
-
                   var putRequest = store.put(newValue);
 
                   putRequest.onsuccess = function () {
+                    _localJobEmitter.emit('jobUpdate', newValue.id, newValue.queueId, newValue.type, newValue.status);
+
+                    _jobEmitter.emit('jobUpdate', newValue.id, newValue.queueId, newValue.type, newValue.status);
+
                     resolve();
                   };
 
@@ -1663,11 +1681,13 @@ function _markQueueForCleanupInDatabase() {
                       return;
                   }
 
-                  _jobEmitter.emit('jobUpdate', value.id, value.queueId, value.status);
-
                   var updateRequest = cursor.update(value);
 
                   updateRequest.onsuccess = function () {
+                    _localJobEmitter.emit('jobUpdate', value.id, value.queueId, value.type, value.status);
+
+                    _jobEmitter.emit('jobUpdate', value.id, value.queueId, value.type, value.status);
+
                     cursor.continue();
                   };
 
@@ -1869,9 +1889,12 @@ function _bulkEnqueueToDatabase() {
                 var request = store.put(value);
 
                 request.onsuccess = function () {
+                  var id = request.result;
                   ids.push(request.result);
 
-                  _jobEmitter.emit('jobAdd', request.result, queueId);
+                  _localJobEmitter.emit('jobAdd', id, queueId, type);
+
+                  _jobEmitter.emit('jobAdd', id, queueId, type);
 
                   resolve(request.result);
                 };
@@ -1975,11 +1998,13 @@ function _enqueueToDatabase() {
           case 15:
             id = _context37.sent;
 
-            _jobEmitter.emit('jobAdd', id, queueId);
+            _localJobEmitter.emit('jobAdd', id, queueId, type);
+
+            _jobEmitter.emit('jobAdd', id, queueId, type);
 
             return _context37.abrupt("return", id);
 
-          case 18:
+          case 19:
           case "end":
             return _context37.stop();
         }
@@ -2576,6 +2601,7 @@ function _getQueueStatus() {
   return _getQueueStatus.apply(this, arguments);
 }
 
+export var localJobEmitter = exports.localJobEmitter;
 export var jobEmitter = exports.jobEmitter;
 export var QUEUE_ERROR_STATUS = exports.QUEUE_ERROR_STATUS;
 export var QUEUE_PENDING_STATUS = exports.QUEUE_PENDING_STATUS;

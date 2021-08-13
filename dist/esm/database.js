@@ -1,7 +1,10 @@
 import merge from 'lodash/merge';
 import unset from 'lodash/unset';
 import EventEmitter from 'events';
-import makeLogger from './logger';
+import makeLogger from './logger'; // Local job emitter is for this process only,
+// jobEmitter is bridged when a MessagePort is open
+
+export const localJobEmitter = new EventEmitter();
 export const jobEmitter = new EventEmitter();
 const logger = makeLogger('Jobs Database');
 export const QUEUE_ERROR_STATUS = 0;
@@ -311,6 +314,7 @@ async function clearJobsDatabase() {
       reject(new Error('Error while clearing jobs database'));
     };
   });
+  localJobEmitter.emit('jobsClear');
   jobEmitter.emit('jobsClear');
 }
 
@@ -343,6 +347,7 @@ export async function removeJobsWithQueueIdAndTypeFromDatabase(queueId, type) {
 
   request.onsuccess = function (event) {
     for (const id of event.target.result) {
+      localJobEmitter.emit('jobDelete', id, queueId);
       jobEmitter.emit('jobDelete', id, queueId);
       const deleteRequest = store.delete(id);
 
@@ -368,6 +373,7 @@ export async function removeQueueIdFromJobsDatabase(queueId) {
 
   request.onsuccess = function (event) {
     for (const id of event.target.result) {
+      localJobEmitter.emit('jobDelete', id, queueId);
       jobEmitter.emit('jobDelete', id, queueId);
       const deleteRequest = store.delete(id);
 
@@ -431,8 +437,12 @@ export async function removeCompletedExpiredItemsFromDatabase(maxAge) {
         continue;
       }
 
-      jobEmitter.emit('jobDelete', id, queueId);
       const deleteRequest = store.delete(id);
+
+      deleteRequest.onsuccess = function () {
+        localJobEmitter.emit('jobDelete', id, queueId);
+        jobEmitter.emit('jobDelete', id, queueId);
+      };
 
       deleteRequest.onerror = function (deleteEvent) {
         logger.error(`Request error while removing job ${id} in queue ${queueId} from completed exired items from jobs database`);
@@ -458,10 +468,11 @@ export async function updateJobInDatabase(id, transform) {
       if (typeof newValue === 'undefined') {
         resolve();
       } else {
-        jobEmitter.emit('jobUpdate', newValue.id, newValue.queueId, newValue.status);
         const putRequest = store.put(newValue);
 
         putRequest.onsuccess = function () {
+          localJobEmitter.emit('jobUpdate', newValue.id, newValue.queueId, newValue.type, newValue.status);
+          jobEmitter.emit('jobUpdate', newValue.id, newValue.queueId, newValue.type, newValue.status);
           resolve();
         };
 
@@ -736,10 +747,11 @@ export async function markQueueForCleanupInDatabase(queueId) {
             return;
         }
 
-        jobEmitter.emit('jobUpdate', value.id, value.queueId, value.status);
         const updateRequest = cursor.update(value);
 
         updateRequest.onsuccess = function () {
+          localJobEmitter.emit('jobUpdate', value.id, value.queueId, value.type, value.status);
+          jobEmitter.emit('jobUpdate', value.id, value.queueId, value.type, value.status);
           cursor.continue();
         };
 
@@ -835,8 +847,10 @@ export async function bulkEnqueueToDatabase(queueId, items, delay) {
       const request = store.put(value);
 
       request.onsuccess = function () {
+        const id = request.result;
         ids.push(request.result);
-        jobEmitter.emit('jobAdd', request.result, queueId);
+        localJobEmitter.emit('jobAdd', id, queueId, type);
+        jobEmitter.emit('jobAdd', id, queueId, type);
         resolve(request.result);
       };
 
@@ -889,7 +903,8 @@ export async function enqueueToDatabase(queueId, type, args, delay) {
       reject(new Error(`Request error while enqueueing ${type} job`));
     };
   });
-  jobEmitter.emit('jobAdd', id, queueId);
+  localJobEmitter.emit('jobAdd', id, queueId, type);
+  jobEmitter.emit('jobAdd', id, queueId, type);
   return id;
 }
 export async function dequeueFromDatabase() {

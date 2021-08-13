@@ -1,6 +1,6 @@
 import EventEmitter from 'events';
 import makeLogger from './logger';
-import { jobEmitter } from './database';
+import { jobEmitter, localJobEmitter } from './database';
 export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
   constructor(options = {}) {
     super();
@@ -76,7 +76,6 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
         type: 'BATTERY_QUEUE_WORKER_INITIALIZATION'
       }, [messageChannel.port2]);
     });
-    this.logger.info('Linked to worker');
 
     messageChannel.port1.onmessage = event => {
       if (!(event instanceof MessageEvent)) {
@@ -110,6 +109,8 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
         return;
       }
 
+      const queueIds = this.queueIds;
+
       switch (type) {
         case 'jobAdd':
           jobEmitter.emit('jobAdd', ...args);
@@ -127,6 +128,32 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
           jobEmitter.emit('jobsClear', ...args);
           return;
 
+        case 'queueActive':
+          if (queueIds instanceof Set) {
+            const queueId = args[0];
+
+            if (typeof queueId === 'string') {
+              queueIds.add(queueId);
+            }
+          }
+
+          break;
+
+        case 'queueInactive':
+          if (queueIds instanceof Set) {
+            const queueId = args[0];
+
+            if (typeof queueId === 'string') {
+              queueIds.delete(queueId);
+
+              if (queueIds.size === 0) {
+                delete this.queueIds;
+              }
+            }
+          }
+
+          break;
+
         default:
           break;
       }
@@ -134,24 +161,57 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
       this.emit(type, ...args);
     };
 
+    const port = messageChannel.port1;
+
+    const handleJobAdd = (...args) => {
+      port.postMessage({
+        type: 'jobAdd',
+        args
+      });
+    };
+
+    const handleJobDelete = (...args) => {
+      port.postMessage({
+        type: 'jobDelete',
+        args
+      });
+    };
+
+    const handleJobUpdate = (...args) => {
+      port.postMessage({
+        type: 'jobUpdate',
+        args
+      });
+    };
+
+    const handleJobsClear = (...args) => {
+      port.postMessage({
+        type: 'jobsClear',
+        args
+      });
+    };
+
+    localJobEmitter.addListener('jobAdd', handleJobAdd);
+    localJobEmitter.addListener('jobDelete', handleJobDelete);
+    localJobEmitter.addListener('jobUpdate', handleJobUpdate);
+    localJobEmitter.addListener('jobsClear', handleJobsClear);
     this.port = messageChannel.port1;
+    this.logger.info('Linked to worker');
     return messageChannel.port1;
   }
 
   async clear(maxDuration = 1000) {
     const port = await this.link();
     await new Promise((resolve, reject) => {
-      const id = Math.random();
+      const requestId = Math.random();
       const timeout = setTimeout(() => {
         this.removeListener('clearComplete', handleClearComplete);
         this.removeListener('clearError', handleClearError);
         reject(new Error(`Did not receive clear response within ${maxDuration}ms`));
       }, maxDuration);
 
-      const handleClearComplete = ({
-        id: responseId
-      }) => {
-        if (id !== responseId) {
+      const handleClearComplete = responseId => {
+        if (responseId !== requestId) {
           return;
         }
 
@@ -161,11 +221,8 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
         resolve();
       };
 
-      const handleClearError = ({
-        id: responseId,
-        error
-      }) => {
-        if (id !== responseId) {
+      const handleClearError = (responseId, error) => {
+        if (responseId !== requestId) {
           return;
         }
 
@@ -179,9 +236,7 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
       this.addListener('clearError', handleClearError);
       port.postMessage({
         type: 'clear',
-        value: {
-          id
-        }
+        args: [requestId]
       });
     });
   }
@@ -189,17 +244,15 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
   async abortQueue(queueId, maxDuration = 1000) {
     const port = await this.link();
     await new Promise((resolve, reject) => {
-      const id = Math.random();
+      const requestId = Math.random();
       const timeout = setTimeout(() => {
         this.removeListener('abortQueueComplete', handleAbortQueueComplete);
         this.removeListener('abortQueueError', handleAbortQueueError);
         reject(new Error(`Did not receive abort queue response within ${maxDuration}ms`));
       }, maxDuration);
 
-      const handleAbortQueueComplete = ({
-        id: responseId
-      }) => {
-        if (id !== responseId) {
+      const handleAbortQueueComplete = responseId => {
+        if (responseId !== requestId) {
           return;
         }
 
@@ -209,11 +262,8 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
         resolve();
       };
 
-      const handleAbortQueueError = ({
-        id: responseId,
-        error
-      }) => {
-        if (id !== responseId) {
+      const handleAbortQueueError = (responseId, error) => {
+        if (responseId !== requestId) {
           return;
         }
 
@@ -227,10 +277,7 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
       this.addListener('abortQueueError', handleAbortQueueError);
       port.postMessage({
         type: 'abortQueue',
-        value: {
-          id,
-          queueId
-        }
+        args: [requestId, queueId]
       });
     });
   }
@@ -238,17 +285,15 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
   async dequeue(maxDuration = 1000) {
     const port = await this.link();
     await new Promise((resolve, reject) => {
-      const id = Math.random();
+      const requestId = Math.random();
       const timeout = setTimeout(() => {
         this.removeListener('dequeueComplete', handleDequeueComplete);
         this.removeListener('dequeueError', handleDequeueError);
         reject(new Error(`Did not receive dequeue response within ${maxDuration}ms`));
       }, maxDuration);
 
-      const handleDequeueComplete = ({
-        id: responseId
-      }) => {
-        if (id !== responseId) {
+      const handleDequeueComplete = responseId => {
+        if (responseId !== requestId) {
           return;
         }
 
@@ -258,11 +303,8 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
         resolve();
       };
 
-      const handleDequeueError = ({
-        id: responseId,
-        error
-      }) => {
-        if (id !== responseId) {
+      const handleDequeueError = (responseId, error) => {
+        if (responseId !== requestId) {
           return;
         }
 
@@ -276,9 +318,7 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
       this.addListener('dequeueError', handleDequeueError);
       port.postMessage({
         type: 'dequeue',
-        value: {
-          id
-        }
+        args: [requestId]
       });
     });
   }
@@ -286,17 +326,15 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
   async onIdle(maxDuration = 1000) {
     const port = await this.link();
     await new Promise((resolve, reject) => {
-      const id = Math.random();
+      const requestId = Math.random();
       const timeout = setTimeout(() => {
         this.removeListener('idleComplete', handleIdleComplete);
         this.removeListener('idleError', handleIdleError);
         reject(new Error(`Did not receive idle response within ${maxDuration}ms`));
       }, maxDuration);
 
-      const handleIdleComplete = ({
-        id: responseId
-      }) => {
-        if (id !== responseId) {
+      const handleIdleComplete = responseId => {
+        if (responseId !== requestId) {
           return;
         }
 
@@ -306,11 +344,8 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
         resolve();
       };
 
-      const handleIdleError = ({
-        id: responseId,
-        error
-      }) => {
-        if (id !== responseId) {
+      const handleIdleError = (responseId, error) => {
+        if (responseId !== requestId) {
           return;
         }
 
@@ -324,13 +359,60 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
       this.addListener('idleError', handleIdleError);
       port.postMessage({
         type: 'idle',
-        value: {
-          id,
-          maxDuration,
-          start: Date.now()
-        }
+        args: [requestId, maxDuration, Date.now()]
       });
     });
+  }
+
+  async getQueueIds(maxDuration = 1000) {
+    if (this.queueIds instanceof Set) {
+      return this.queueIds;
+    }
+
+    const port = await this.link();
+    const queueIds = await new Promise((resolve, reject) => {
+      const requestId = Math.random();
+      const timeout = setTimeout(() => {
+        this.removeListener('getQueuesComplete', handleGetQueuesComplete);
+        this.removeListener('getQueuesError', handleGetQueuesError);
+        reject(new Error(`Did not receive idle response within ${maxDuration}ms`));
+      }, maxDuration);
+
+      const handleGetQueuesComplete = (responseId, qIds) => {
+        if (responseId !== requestId) {
+          return;
+        }
+
+        clearTimeout(timeout);
+        this.removeListener('getQueuesComplete', handleGetQueuesComplete);
+        this.removeListener('getQueuesError', handleGetQueuesError);
+        resolve(new Set(qIds));
+      };
+
+      const handleGetQueuesError = (responseId, error) => {
+        if (responseId !== requestId) {
+          return;
+        }
+
+        clearTimeout(timeout);
+        this.removeListener('getQueuesComplete', handleGetQueuesComplete);
+        this.removeListener('getQueuesError', handleGetQueuesError);
+        reject(error);
+      };
+
+      this.addListener('getQueuesComplete', handleGetQueuesComplete);
+      this.addListener('getQueuesError', handleGetQueuesError);
+      port.postMessage({
+        type: 'getQueueIds',
+        args: [requestId]
+      });
+    });
+
+    if (queueIds.size > 0) {
+      this.queueIds = queueIds;
+    }
+
+    return queueIds;
   }
 
 }

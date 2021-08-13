@@ -20,7 +20,7 @@ export default class BatteryQueueWatcher extends EventEmitter {
   declare statusRequested: boolean;
   declare handleJobAdd: (number, string) => void;
   declare handleJobDelete: (number, string) => void;
-  declare handleJobUpdate: (number, string, number) => void;
+  declare handleJobUpdate: (number, string, string, number) => void;
   declare handleJobsClear: () => void;
 
   constructor(queueId: string) {
@@ -43,7 +43,7 @@ export default class BatteryQueueWatcher extends EventEmitter {
     };
     this.handleJobDelete = handleJobDelete;
     jobEmitter.addListener('jobDelete', handleJobDelete);
-    const handleJobUpdate = (id:number, qId:string, status:number) => {
+    const handleJobUpdate = (id:number, qId:string, type:string, status:number) => {
       if (queueId !== qId) {
         return;
       }
