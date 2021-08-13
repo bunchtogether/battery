@@ -1,7 +1,7 @@
 import EventEmitter from 'events';
 import makeLogger from './logger';
 import { jobEmitter, localJobEmitter } from './database';
-// export const canUseSyncManager = 'serviceWorker' in navigator && 'SyncManager' in window;
+const canUseSyncManager = 'serviceWorker' in navigator && 'SyncManager' in window;
 export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
   constructor(options = {}) {
     super();
@@ -9,6 +9,7 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
     // Errors are logged in the worker.
 
     this.on('error', () => {});
+    this.isSyncing = false;
   }
 
   getController() {
@@ -34,6 +35,30 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
 
     await serviceWorker.ready;
     const messageChannel = new MessageChannel();
+    const controller = this.getController();
+    controller.addEventListener('statechange', () => {
+      this.logger.warn(`Service worker state change to ${controller.state}`);
+
+      if (controller.state !== 'redundant') {
+        return;
+      }
+
+      this.logger.warn('Detected redundant service worker, unlinking');
+      messageChannel.port1.close();
+      messageChannel.port2.close();
+      port.postMessage({
+        type: 'unlink',
+        args: []
+      });
+      delete this.port;
+      this.emit('unlink');
+      self.queueMicrotask(() => {
+        this.link().catch(error => {
+          this.logger.error('Unable to re-link service worker');
+          this.logger.errorStack(error);
+        });
+      });
+    });
     await new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         messageChannel.port1.onmessage = null;
@@ -69,9 +94,8 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
           clearTimeout(timeout);
           resolve();
         }
-      };
+      }; // $FlowFixMe
 
-      const controller = this.getController(); // $FlowFixMe
 
       controller.postMessage({
         type: 'BATTERY_QUEUE_WORKER_INITIALIZATION'
@@ -198,6 +222,7 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
     localJobEmitter.addListener('jobsClear', handleJobsClear);
     this.port = messageChannel.port1;
     this.logger.info('Linked to worker');
+    this.emit('link');
     return messageChannel.port1;
   }
 
@@ -455,9 +480,22 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
         args: [requestId]
       });
     });
+
+    const handleJobAdd = () => {
+      this.sync();
+    };
+
+    jobEmitter.addListener('jobAdd', handleJobAdd);
+    this.handleJobAdd = handleJobAdd;
   }
 
   async disableStartOnJob(maxDuration = 1000) {
+    const handleJobAdd = this.handleJobAdd;
+
+    if (typeof handleJobAdd === 'function') {
+      jobEmitter.removeListener('jobAdd', handleJobAdd);
+    }
+
     const port = await this.link();
     await new Promise((resolve, reject) => {
       const requestId = Math.random();
@@ -496,6 +534,68 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
         args: [requestId]
       });
     });
+  }
+
+  async sync() {
+    if (!canUseSyncManager) {
+      return;
+    }
+
+    if (this.isSyncing) {
+      return;
+    }
+
+    this.isSyncing = true;
+
+    try {
+      await this.link();
+      this.logger.info('Sending sync event');
+      const serviceWorker = navigator && navigator.serviceWorker;
+
+      if (!serviceWorker) {
+        throw new Error('Service worker not available');
+      }
+
+      const registration = await serviceWorker.ready; // $FlowFixMe
+
+      registration.sync.register('syncManagerOnIdle');
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          this.removeListener('syncManagerOnIdle');
+          reject(new Error('Unable to sync, did not receive syncManagerOnIdle acknowledgement'));
+        }, 5000);
+
+        const handleOnIdleSync = () => {
+          clearTimeout(timeout);
+          this.removeListener('syncManagerOnIdle', handleOnIdleSync);
+          resolve();
+        };
+
+        this.addListener('syncManagerOnIdle', handleOnIdleSync);
+      });
+      await new Promise(resolve => {
+        const handleIdle = () => {
+          this.removeListener('idle', handleIdle);
+          this.removeListener('unlink', handleUnlink);
+          resolve();
+        };
+
+        const handleUnlink = () => {
+          this.removeListener('idle', handleIdle);
+          this.removeListener('unlink', handleUnlink);
+          resolve();
+        };
+
+        this.addListener('idle', handleIdle);
+        this.addListener('unlink', handleUnlink);
+      });
+    } catch (error) {
+      this.logger.error('Unable to sync');
+      this.emit('error', error);
+      this.logger.errorStack(error);
+    }
+
+    this.isSyncing = false;
   }
 
 }

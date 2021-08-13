@@ -56,7 +56,7 @@ export default class BatteryQueue extends EventEmitter {
   declare onIdlePromise: Promise<void> | void;
   declare jobIds: Set<number>;
   declare emitCallbacks: Array<EmitCallback>;
-  declare port: MessagePort;
+  declare port: MessagePort | void;
   declare handleJobAdd: void | () => void;
 
   constructor(options?: Options = {}) {
@@ -319,13 +319,14 @@ export default class BatteryQueue extends EventEmitter {
     }
   }
 
-  async onIdle(maxDuration?: number = 5000) {
+  async onIdle(maxDuration?: number) {
     if (typeof this.onIdlePromise === 'undefined') {
       this.onIdlePromise = (async () => {
-        const timeout = Date.now() + maxDuration;
+        const timeout = typeof maxDuration === 'number' ? Date.now() + maxDuration : -1;
+        const start = Date.now();
         while (true) { // eslint-disable-line no-constant-condition
-          if (Date.now() > timeout) {
-            this.logger.warn(`Idle timeout after ${maxDuration}ms`);
+          if (timeout !== -1 && Date.now() > timeout) {
+            this.logger.warn(`Idle timeout after ${Date.now() - start}ms`);
             break;
           }
           await this.dequeueQueue.onIdle();
@@ -610,7 +611,15 @@ export default class BatteryQueue extends EventEmitter {
       this.logger.warnObject(event);
       return;
     }
+    const port = this.port;
     switch (type) {
+      case 'unlink':
+        this.logger.warn('Unlinking worker interface');
+        if (port instanceof MessagePort) {
+          port.onmessage = null;
+          delete this.port;
+        }
+        return;
       case 'jobAdd':
         jobEmitter.emit('jobAdd', ...args);
         return;
@@ -724,6 +733,20 @@ export default class BatteryQueue extends EventEmitter {
     let handleJobUpdate;
     let handleJobsClear;
 
+    self.addEventListener('sync', (event) => {
+      this.logger.info(`SyncManager event ${event.tag}${event.lastChance ? ', last chance' : ''}`);
+      if (event.tag === 'syncManagerOnIdle') {
+        this.logger.info('Starting SyncManager handler');
+        this.emit('syncManagerOnIdle');
+        event.waitUntil(this.onIdle().catch((error) => {
+          this.logger.error(`SyncManager event handler failed${event.lastChance ? ' on last chance' : ''}`);
+          this.logger.errorStack(error);
+        }));
+      } else {
+        this.logger.warn(`Received unknown SyncManager event tag ${event.tag}`);
+      }
+    });
+
     self.addEventListener('message', (event:ExtendableMessageEvent) => {
       if (!(event instanceof ExtendableMessageEvent)) {
         return;
@@ -781,7 +804,6 @@ export default class BatteryQueue extends EventEmitter {
       localJobEmitter.addListener('jobDelete', handleJobDelete);
       localJobEmitter.addListener('jobUpdate', handleJobUpdate);
       localJobEmitter.addListener('jobsClear', handleJobsClear);
-
       const emitCallback = (t:string, args:Array<any>) => {
         port.postMessage({ type: t, args });
       };

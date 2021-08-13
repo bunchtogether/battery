@@ -1,7 +1,7 @@
 // @flow
 
 import { v4 as uuidv4 } from 'uuid';
-import { serviceWorkerPromise } from './lib/worker-interface';
+import { getServiceWorkerAndRegistration, unregister } from './lib/worker-interface';
 import BatteryQueueServiceWorkerInterface from '../src/worker-interface';
 import {
   enqueueToDatabase,
@@ -20,13 +20,13 @@ import {
   TRIGGER_100MS_DELAY,
 } from './lib/echo-handler';
 
-jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
+jasmine.DEFAULT_TIMEOUT_INTERVAL = 20000;
 
 const queueInterface = new BatteryQueueServiceWorkerInterface();
 
 describe('Worker', () => {
   beforeAll(async () => {
-    await serviceWorkerPromise;
+    await getServiceWorkerAndRegistration();
     await queueInterface.enableStartOnJob();
   });
 
@@ -36,6 +36,21 @@ describe('Worker', () => {
 
   afterEach(async () => {
     await queueInterface.clear();
+  });
+
+  it('Should send a sync event', async () => {
+    queueInterface.sync();
+    await expectEmit(queueInterface, 'syncManagerOnIdle');
+  });
+
+  it('Detects when a service worker unregisters and attempts to re-link', async () => {
+    await unregister();
+    getServiceWorkerAndRegistration('/worker-alt.js');
+    await expectEmit(queueInterface, 'unlink');
+    await unregister();
+    await getServiceWorkerAndRegistration();
+    queueInterface.link();
+    await expectEmit(queueInterface, 'link');
   });
 
   it('Should clear the service worker', async () => {

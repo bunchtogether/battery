@@ -51,7 +51,8 @@ function _isNativeReflectConstruct() { if (typeof Reflect === "undefined" || !Re
 
 function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
 
-// export const canUseSyncManager = 'serviceWorker' in navigator && 'SyncManager' in window;
+var canUseSyncManager = 'serviceWorker' in navigator && 'SyncManager' in window;
+
 var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
   _inherits(BatteryQueueServiceWorkerInterface, _EventEmitter);
 
@@ -70,6 +71,7 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
 
     _this.on('error', function () {});
 
+    _this.isSyncing = false;
     return _this;
   }
 
@@ -90,7 +92,7 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
       var _link = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee() {
         var _this2 = this;
 
-        var serviceWorker, messageChannel, port, handleJobAdd, handleJobDelete, handleJobUpdate, handleJobsClear;
+        var serviceWorker, messageChannel, controller, port, handleJobAdd, handleJobDelete, handleJobUpdate, handleJobsClear;
         return regeneratorRuntime.wrap(function _callee$(_context) {
           while (1) {
             switch (_context.prev = _context.next) {
@@ -118,7 +120,35 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
 
               case 7:
                 messageChannel = new MessageChannel();
-                _context.next = 10;
+                controller = this.getController();
+                controller.addEventListener('statechange', function () {
+                  _this2.logger.warn("Service worker state change to ".concat(controller.state));
+
+                  if (controller.state !== 'redundant') {
+                    return;
+                  }
+
+                  _this2.logger.warn('Detected redundant service worker, unlinking');
+
+                  messageChannel.port1.close();
+                  messageChannel.port2.close();
+                  port.postMessage({
+                    type: 'unlink',
+                    args: []
+                  });
+                  delete _this2.port;
+
+                  _this2.emit('unlink');
+
+                  self.queueMicrotask(function () {
+                    _this2.link().catch(function (error) {
+                      _this2.logger.error('Unable to re-link service worker');
+
+                      _this2.logger.errorStack(error);
+                    });
+                  });
+                });
+                _context.next = 12;
                 return new Promise(function (resolve, reject) {
                   var timeout = setTimeout(function () {
                     messageChannel.port1.onmessage = null;
@@ -154,9 +184,7 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                       clearTimeout(timeout);
                       resolve();
                     }
-                  };
-
-                  var controller = _this2.getController(); // $FlowFixMe
+                  }; // $FlowFixMe
 
 
                   // $FlowFixMe
@@ -165,7 +193,7 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                   }, [messageChannel.port2]);
                 });
 
-              case 10:
+              case 12:
                 messageChannel.port1.onmessage = function (event) {
                   if (!(event instanceof MessageEvent)) {
                     return;
@@ -312,9 +340,10 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
 
                 this.port = messageChannel.port1;
                 this.logger.info('Linked to worker');
+                this.emit('link');
                 return _context.abrupt("return", messageChannel.port1);
 
-              case 23:
+              case 26:
               case "end":
                 return _context.stop();
             }
@@ -765,6 +794,7 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
 
         var maxDuration,
             port,
+            handleJobAdd,
             _args7 = arguments;
         return regeneratorRuntime.wrap(function _callee7$(_context7) {
           while (1) {
@@ -826,6 +856,15 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                 });
 
               case 6:
+                handleJobAdd = function handleJobAdd() {
+                  _this8.sync();
+                };
+
+                _database.jobEmitter.addListener('jobAdd', handleJobAdd);
+
+                this.handleJobAdd = handleJobAdd;
+
+              case 9:
               case "end":
                 return _context7.stop();
             }
@@ -846,6 +885,7 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
         var _this9 = this;
 
         var maxDuration,
+            handleJobAdd,
             port,
             _args8 = arguments;
         return regeneratorRuntime.wrap(function _callee8$(_context8) {
@@ -853,12 +893,18 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
             switch (_context8.prev = _context8.next) {
               case 0:
                 maxDuration = _args8.length > 0 && _args8[0] !== undefined ? _args8[0] : 1000;
-                _context8.next = 3;
+                handleJobAdd = this.handleJobAdd;
+
+                if (typeof handleJobAdd === 'function') {
+                  _database.jobEmitter.removeListener('jobAdd', handleJobAdd);
+                }
+
+                _context8.next = 5;
                 return this.link();
 
-              case 3:
+              case 5:
                 port = _context8.sent;
-                _context8.next = 6;
+                _context8.next = 8;
                 return new Promise(function (resolve, reject) {
                   var requestId = Math.random();
                   var timeout = setTimeout(function () {
@@ -907,7 +953,7 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                   });
                 });
 
-              case 6:
+              case 8:
               case "end":
                 return _context8.stop();
             }
@@ -920,6 +966,128 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
       }
 
       return disableStartOnJob;
+    }()
+  }, {
+    key: "sync",
+    value: function () {
+      var _sync = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee9() {
+        var _this10 = this;
+
+        var serviceWorker, registration;
+        return regeneratorRuntime.wrap(function _callee9$(_context9) {
+          while (1) {
+            switch (_context9.prev = _context9.next) {
+              case 0:
+                if (canUseSyncManager) {
+                  _context9.next = 2;
+                  break;
+                }
+
+                return _context9.abrupt("return");
+
+              case 2:
+                if (!this.isSyncing) {
+                  _context9.next = 4;
+                  break;
+                }
+
+                return _context9.abrupt("return");
+
+              case 4:
+                this.isSyncing = true;
+                _context9.prev = 5;
+                _context9.next = 8;
+                return this.link();
+
+              case 8:
+                this.logger.info('Sending sync event');
+                serviceWorker = navigator && navigator.serviceWorker;
+
+                if (serviceWorker) {
+                  _context9.next = 12;
+                  break;
+                }
+
+                throw new Error('Service worker not available');
+
+              case 12:
+                _context9.next = 14;
+                return serviceWorker.ready;
+
+              case 14:
+                registration = _context9.sent;
+                // $FlowFixMe
+                registration.sync.register('syncManagerOnIdle');
+                _context9.next = 18;
+                return new Promise(function (resolve, reject) {
+                  var timeout = setTimeout(function () {
+                    _this10.removeListener('syncManagerOnIdle');
+
+                    reject(new Error('Unable to sync, did not receive syncManagerOnIdle acknowledgement'));
+                  }, 5000);
+
+                  var handleOnIdleSync = function handleOnIdleSync() {
+                    clearTimeout(timeout);
+
+                    _this10.removeListener('syncManagerOnIdle', handleOnIdleSync);
+
+                    resolve();
+                  };
+
+                  _this10.addListener('syncManagerOnIdle', handleOnIdleSync);
+                });
+
+              case 18:
+                _context9.next = 20;
+                return new Promise(function (resolve) {
+                  var handleIdle = function handleIdle() {
+                    _this10.removeListener('idle', handleIdle);
+
+                    _this10.removeListener('unlink', handleUnlink);
+
+                    resolve();
+                  };
+
+                  var handleUnlink = function handleUnlink() {
+                    _this10.removeListener('idle', handleIdle);
+
+                    _this10.removeListener('unlink', handleUnlink);
+
+                    resolve();
+                  };
+
+                  _this10.addListener('idle', handleIdle);
+
+                  _this10.addListener('unlink', handleUnlink);
+                });
+
+              case 20:
+                _context9.next = 27;
+                break;
+
+              case 22:
+                _context9.prev = 22;
+                _context9.t0 = _context9["catch"](5);
+                this.logger.error('Unable to sync');
+                this.emit('error', _context9.t0);
+                this.logger.errorStack(_context9.t0);
+
+              case 27:
+                this.isSyncing = false;
+
+              case 28:
+              case "end":
+                return _context9.stop();
+            }
+          }
+        }, _callee9, this, [[5, 22]]);
+      }));
+
+      function sync() {
+        return _sync.apply(this, arguments);
+      }
+
+      return sync;
     }()
   }]);
 

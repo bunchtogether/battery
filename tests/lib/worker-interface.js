@@ -11,7 +11,7 @@ const loadPromise = new Promise((resolve) => {
 
 export const serviceWorkerEmitter = new EventEmitter();
 
-export const serviceWorkerPromise = (async () => {
+const register = async (url?:string = '/worker.js') => {
   const { navigator } = window;
   if (typeof navigator !== 'object') {
     throw new Error('Navigator does not exist');
@@ -32,7 +32,7 @@ export const serviceWorkerPromise = (async () => {
   let registration;
 
   try {
-    registration = await navigator.serviceWorker.register('/worker.js', { type: 'module', scope: '/' });
+    registration = await navigator.serviceWorker.register(url, { type: 'module', scope: '/' });
   } catch (error) {
     logger.error('Unable to load service worker');
     logger.errorStack(error);
@@ -102,11 +102,25 @@ export const serviceWorkerPromise = (async () => {
   };
 
   return [serviceWorker, registration];
-})();
+};
+
+let serviceWorkerPromise = null;
+
+export const getServiceWorkerAndRegistration = (url?:string) => {
+  if (serviceWorkerPromise !== null) {
+    return serviceWorkerPromise;
+  }
+  serviceWorkerPromise = register(url);
+  return serviceWorkerPromise;
+};
 
 export async function unregister() {
+  if (serviceWorkerPromise === null) {
+    return;
+  }
   const [serviceWorker, registration] = await serviceWorkerPromise; // eslint-disable-line no-unused-vars
   await registration.unregister();
+  serviceWorkerPromise = null;
 }
 
 export async function postMessage(type:string, value:Object) {

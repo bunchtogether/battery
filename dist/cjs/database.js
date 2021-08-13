@@ -111,7 +111,7 @@ var _databasePromise = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(f
     while (1) {
       switch (_context.prev = _context.next) {
         case 0:
-          request = self.indexedDB.open('battery-queue-01', 2);
+          request = self.indexedDB.open('battery-queue-02', 1);
 
           request.onupgradeneeded = function (e) {
             try {

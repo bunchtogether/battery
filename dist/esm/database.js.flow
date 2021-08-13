@@ -45,7 +45,7 @@ export const JOB_CLEANUP_STATUS = -2;
 
 
 export const databasePromise = (async () => {
-  const request = self.indexedDB.open('battery-queue-01', 2);
+  const request = self.indexedDB.open('battery-queue-02', 1);
 
   request.onupgradeneeded = function (e) {
     try {

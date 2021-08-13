@@ -35,6 +35,13 @@ module.exports = function (config) {
         included: false,
         type: 'module'
       },
+      { 
+        pattern: 'tests/lib/worker-alt.js', 
+        watched: true, 
+        served: true, 
+        included: false,
+        type: 'module'
+      },
     ],
     autoWatch: true,
     singleRun: !!process.env.SINGLE_RUN,
@@ -116,10 +123,12 @@ module.exports = function (config) {
     },
     proxies: {
       '/worker.js': 'http://localhost:9888/base/tests/lib/worker.js',
+      '/worker-alt.js': 'http://localhost:9888/base/tests/lib/worker-alt.js',
     },
     preprocessors: {
       'karma.entry.js': ['rollup'],
       'tests/lib/worker.js': ['rollup'],
+      'tests/lib/worker-alt.js': ['rollup'],
     },
   });
 };
