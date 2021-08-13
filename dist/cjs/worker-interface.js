@@ -51,6 +51,7 @@ function _isNativeReflectConstruct() { if (typeof Reflect === "undefined" || !Re
 
 function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
 
+// export const canUseSyncManager = 'serviceWorker' in navigator && 'SyncManager' in window;
 var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
   _inherits(BatteryQueueServiceWorkerInterface, _EventEmitter);
 
@@ -755,6 +756,170 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
       }
 
       return getQueueIds;
+    }()
+  }, {
+    key: "enableStartOnJob",
+    value: function () {
+      var _enableStartOnJob = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee7() {
+        var _this8 = this;
+
+        var maxDuration,
+            port,
+            _args7 = arguments;
+        return regeneratorRuntime.wrap(function _callee7$(_context7) {
+          while (1) {
+            switch (_context7.prev = _context7.next) {
+              case 0:
+                maxDuration = _args7.length > 0 && _args7[0] !== undefined ? _args7[0] : 1000;
+                _context7.next = 3;
+                return this.link();
+
+              case 3:
+                port = _context7.sent;
+                _context7.next = 6;
+                return new Promise(function (resolve, reject) {
+                  var requestId = Math.random();
+                  var timeout = setTimeout(function () {
+                    _this8.removeListener('enableStartOnJobComplete', handleenableStartOnJobComplete);
+
+                    _this8.removeListener('enableStartOnJobError', handleenableStartOnJobError);
+
+                    reject(new Error("Did not receive enableStartOnJob response within ".concat(maxDuration, "ms")));
+                  }, maxDuration);
+
+                  var handleenableStartOnJobComplete = function handleenableStartOnJobComplete(responseId) {
+                    if (responseId !== requestId) {
+                      return;
+                    }
+
+                    clearTimeout(timeout);
+
+                    _this8.removeListener('enableStartOnJobComplete', handleenableStartOnJobComplete);
+
+                    _this8.removeListener('enableStartOnJobError', handleenableStartOnJobError);
+
+                    resolve();
+                  };
+
+                  var handleenableStartOnJobError = function handleenableStartOnJobError(responseId, error) {
+                    if (responseId !== requestId) {
+                      return;
+                    }
+
+                    clearTimeout(timeout);
+
+                    _this8.removeListener('enableStartOnJobComplete', handleenableStartOnJobComplete);
+
+                    _this8.removeListener('enableStartOnJobError', handleenableStartOnJobError);
+
+                    reject(error);
+                  };
+
+                  _this8.addListener('enableStartOnJobComplete', handleenableStartOnJobComplete);
+
+                  _this8.addListener('enableStartOnJobError', handleenableStartOnJobError);
+
+                  port.postMessage({
+                    type: 'enableStartOnJob',
+                    args: [requestId]
+                  });
+                });
+
+              case 6:
+              case "end":
+                return _context7.stop();
+            }
+          }
+        }, _callee7, this);
+      }));
+
+      function enableStartOnJob() {
+        return _enableStartOnJob.apply(this, arguments);
+      }
+
+      return enableStartOnJob;
+    }()
+  }, {
+    key: "disableStartOnJob",
+    value: function () {
+      var _disableStartOnJob = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee8() {
+        var _this9 = this;
+
+        var maxDuration,
+            port,
+            _args8 = arguments;
+        return regeneratorRuntime.wrap(function _callee8$(_context8) {
+          while (1) {
+            switch (_context8.prev = _context8.next) {
+              case 0:
+                maxDuration = _args8.length > 0 && _args8[0] !== undefined ? _args8[0] : 1000;
+                _context8.next = 3;
+                return this.link();
+
+              case 3:
+                port = _context8.sent;
+                _context8.next = 6;
+                return new Promise(function (resolve, reject) {
+                  var requestId = Math.random();
+                  var timeout = setTimeout(function () {
+                    _this9.removeListener('disableStartOnJobComplete', handledisableStartOnJobComplete);
+
+                    _this9.removeListener('disableStartOnJobError', handledisableStartOnJobError);
+
+                    reject(new Error("Did not receive disableStartOnJob response within ".concat(maxDuration, "ms")));
+                  }, maxDuration);
+
+                  var handledisableStartOnJobComplete = function handledisableStartOnJobComplete(responseId) {
+                    if (responseId !== requestId) {
+                      return;
+                    }
+
+                    clearTimeout(timeout);
+
+                    _this9.removeListener('disableStartOnJobComplete', handledisableStartOnJobComplete);
+
+                    _this9.removeListener('disableStartOnJobError', handledisableStartOnJobError);
+
+                    resolve();
+                  };
+
+                  var handledisableStartOnJobError = function handledisableStartOnJobError(responseId, error) {
+                    if (responseId !== requestId) {
+                      return;
+                    }
+
+                    clearTimeout(timeout);
+
+                    _this9.removeListener('disableStartOnJobComplete', handledisableStartOnJobComplete);
+
+                    _this9.removeListener('disableStartOnJobError', handledisableStartOnJobError);
+
+                    reject(error);
+                  };
+
+                  _this9.addListener('disableStartOnJobComplete', handledisableStartOnJobComplete);
+
+                  _this9.addListener('disableStartOnJobError', handledisableStartOnJobError);
+
+                  port.postMessage({
+                    type: 'disableStartOnJob',
+                    args: [requestId]
+                  });
+                });
+
+              case 6:
+              case "end":
+                return _context8.stop();
+            }
+          }
+        }, _callee8, this);
+      }));
+
+      function disableStartOnJob() {
+        return _disableStartOnJob.apply(this, arguments);
+      }
+
+      return disableStartOnJob;
     }()
   }]);
 

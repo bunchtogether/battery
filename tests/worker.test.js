@@ -27,6 +27,11 @@ const queueInterface = new BatteryQueueServiceWorkerInterface();
 describe('Worker', () => {
   beforeAll(async () => {
     await serviceWorkerPromise;
+    await queueInterface.enableStartOnJob();
+  });
+
+  afterAll(async () => {
+    await queueInterface.disableStartOnJob();
   });
 
   afterEach(async () => {
@@ -47,11 +52,10 @@ describe('Worker', () => {
     const args = [TRIGGER_NO_ERROR, value];
     const jobAddPromise = getNextEmit(jobEmitter, 'jobAdd');
     const id = await enqueueToDatabase(queueId, 'echo', args, 0);
-
-    expect(await jobAddPromise).toEqual([id, queueId, 'echo']);
-    queueInterface.dequeue();
     await expectEmit(jobEmitter, 'jobUpdate', id, queueId, 'echo', JOB_ERROR_STATUS);
     await expectEmit(jobEmitter, 'jobUpdate', id, queueId, 'echo', JOB_COMPLETE_STATUS);
+
+    expect(await jobAddPromise).toEqual([id, queueId, 'echo']);
   });
 
   it('Gets active and inactive queueIds', async () => {
@@ -61,8 +65,9 @@ describe('Worker', () => {
     await enqueueToDatabase(queueIdA, 'echo', [TRIGGER_100MS_DELAY, value], 0);
 
     expect(await queueInterface.getQueueIds()).toEqual(new Set([queueIdA]));
+
     await enqueueToDatabase(queueIdB, 'echo', [TRIGGER_100MS_DELAY, value], 0);
-    await queueInterface.dequeue();
+    await getNextEmit(queueInterface, 'dequeue');
 
     expect(await queueInterface.getQueueIds()).toEqual(new Set([queueIdA, queueIdB]));
     await queueInterface.onIdle();
@@ -80,7 +85,6 @@ describe('Worker', () => {
     const value = uuidv4();
     const args = [TRIGGER_ERROR, value];
     await enqueueToDatabase(queueId, 'echo', args, 0);
-    queueInterface.dequeue();
     await expectEmit(queueInterface, 'fatalError', { queueId });
   });
 
@@ -89,7 +93,6 @@ describe('Worker', () => {
     const value = uuidv4();
     const args = [TRIGGER_NO_ERROR, value];
     const id = await enqueueToDatabase(queueId, 'echo', args, 0);
-    queueInterface.dequeue();
     await expectEmit(jobEmitter, 'jobUpdate', id, queueId, 'echo', JOB_COMPLETE_STATUS);
     queueInterface.onIdle(5000);
     await expectEmit(queueInterface, 'idle');

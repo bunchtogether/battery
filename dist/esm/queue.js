@@ -20,9 +20,37 @@ export default class BatteryQueue extends EventEmitter {
     this.isClearing = false;
     this.emitCallbacks = [];
     this.logger = options.logger || makeLogger('Battery Queue');
-    this.on('error', error => {
+    this.addListener('error', error => {
       this.logger.errorStack(error);
     });
+  }
+
+  enableStartOnJob() {
+    let didRequestDequeue = false;
+
+    const handleJobAdd = () => {
+      if (didRequestDequeue) {
+        return;
+      }
+
+      didRequestDequeue = true;
+      self.queueMicrotask(() => {
+        didRequestDequeue = false;
+        this.dequeue();
+      });
+    };
+
+    jobEmitter.addListener('jobAdd', handleJobAdd);
+    this.handleJobAdd = handleJobAdd;
+  }
+
+  disableStartOnJob() {
+    const handleJobAdd = this.handleJobAdd;
+
+    if (typeof handleJobAdd === 'function') {
+      jobEmitter.removeListener('jobAdd', handleJobAdd);
+      delete this.handleJobAdd;
+    }
   }
 
   emit(type, ...args) {
@@ -751,6 +779,30 @@ export default class BatteryQueue extends EventEmitter {
         } catch (error) {
           this.emit('dequeueError', requestId, error);
           this.logger.error('Unable to handle dequeue message');
+          this.emit('error', error);
+        }
+
+        break;
+
+      case 'enableStartOnJob':
+        try {
+          this.enableStartOnJob();
+          this.emit('enableStartOnJobComplete', requestId);
+        } catch (error) {
+          this.emit('enableStartOnJobError', requestId, error);
+          this.logger.error('Unable to handle enableStartOnJob message');
+          this.emit('error', error);
+        }
+
+        break;
+
+      case 'disableStartOnJob':
+        try {
+          this.disableStartOnJob();
+          this.emit('disableStartOnJobComplete', requestId);
+        } catch (error) {
+          this.emit('disableStartOnJobError', requestId, error);
+          this.logger.error('Unable to handle disableStartOnJob message');
           this.emit('error', error);
         }
 

@@ -1,6 +1,7 @@
 import EventEmitter from 'events';
 import makeLogger from './logger';
 import { jobEmitter, localJobEmitter } from './database';
+// export const canUseSyncManager = 'serviceWorker' in navigator && 'SyncManager' in window;
 export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
   constructor(options = {}) {
     super();
@@ -413,6 +414,88 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
     }
 
     return queueIds;
+  }
+
+  async enableStartOnJob(maxDuration = 1000) {
+    const port = await this.link();
+    await new Promise((resolve, reject) => {
+      const requestId = Math.random();
+      const timeout = setTimeout(() => {
+        this.removeListener('enableStartOnJobComplete', handleenableStartOnJobComplete);
+        this.removeListener('enableStartOnJobError', handleenableStartOnJobError);
+        reject(new Error(`Did not receive enableStartOnJob response within ${maxDuration}ms`));
+      }, maxDuration);
+
+      const handleenableStartOnJobComplete = responseId => {
+        if (responseId !== requestId) {
+          return;
+        }
+
+        clearTimeout(timeout);
+        this.removeListener('enableStartOnJobComplete', handleenableStartOnJobComplete);
+        this.removeListener('enableStartOnJobError', handleenableStartOnJobError);
+        resolve();
+      };
+
+      const handleenableStartOnJobError = (responseId, error) => {
+        if (responseId !== requestId) {
+          return;
+        }
+
+        clearTimeout(timeout);
+        this.removeListener('enableStartOnJobComplete', handleenableStartOnJobComplete);
+        this.removeListener('enableStartOnJobError', handleenableStartOnJobError);
+        reject(error);
+      };
+
+      this.addListener('enableStartOnJobComplete', handleenableStartOnJobComplete);
+      this.addListener('enableStartOnJobError', handleenableStartOnJobError);
+      port.postMessage({
+        type: 'enableStartOnJob',
+        args: [requestId]
+      });
+    });
+  }
+
+  async disableStartOnJob(maxDuration = 1000) {
+    const port = await this.link();
+    await new Promise((resolve, reject) => {
+      const requestId = Math.random();
+      const timeout = setTimeout(() => {
+        this.removeListener('disableStartOnJobComplete', handledisableStartOnJobComplete);
+        this.removeListener('disableStartOnJobError', handledisableStartOnJobError);
+        reject(new Error(`Did not receive disableStartOnJob response within ${maxDuration}ms`));
+      }, maxDuration);
+
+      const handledisableStartOnJobComplete = responseId => {
+        if (responseId !== requestId) {
+          return;
+        }
+
+        clearTimeout(timeout);
+        this.removeListener('disableStartOnJobComplete', handledisableStartOnJobComplete);
+        this.removeListener('disableStartOnJobError', handledisableStartOnJobError);
+        resolve();
+      };
+
+      const handledisableStartOnJobError = (responseId, error) => {
+        if (responseId !== requestId) {
+          return;
+        }
+
+        clearTimeout(timeout);
+        this.removeListener('disableStartOnJobComplete', handledisableStartOnJobComplete);
+        this.removeListener('disableStartOnJobError', handledisableStartOnJobError);
+        reject(error);
+      };
+
+      this.addListener('disableStartOnJobComplete', handledisableStartOnJobComplete);
+      this.addListener('disableStartOnJobError', handledisableStartOnJobError);
+      port.postMessage({
+        type: 'disableStartOnJob',
+        args: [requestId]
+      });
+    });
   }
 
 }

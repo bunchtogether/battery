@@ -13,6 +13,14 @@ const JOB_COUNT = 40;
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 30000;
 
 describe('Fuzz', () => {
+  beforeAll(() => {
+    queue.enableStartOnJob();
+  });
+
+  afterAll(() => {
+    queue.disableStartOnJob();
+  });
+
   afterEach(async () => {
     await queue.clear();
   });
@@ -31,18 +39,6 @@ describe('Fuzz', () => {
       } else {
         await enqueueToDatabase(queueId, 'fuzz', args, 0);
       }
-      if (oneOutOf(JOB_COUNT / 3)) {
-        if (oneOutOf(2)) {
-          queue.dequeue();
-        } else {
-          await queue.dequeue();
-        }
-      }
-    }
-    if (oneOutOf(2)) {
-      queue.dequeue();
-    } else {
-      await queue.dequeue();
     }
     await queue.onIdle();
 
@@ -58,11 +54,7 @@ describe('Fuzz', () => {
       const queueId = queueIds[Math.floor(Math.random() * queueIds.length)];
       const args = [];
       enqueueToDatabase(queueId, 'fuzz', args, 0);
-      if (oneOutOf(JOB_COUNT / 3)) {
-        queue.dequeue();
-      }
     }
-    queue.dequeue();
     await queue.onIdle();
 
     expect(true).toEqual(true);
@@ -77,11 +69,7 @@ describe('Fuzz', () => {
       const queueId = queueIds[Math.floor(Math.random() * queueIds.length)];
       const args = [];
       await enqueueToDatabase(queueId, 'fuzz', args, 0);
-      if (oneOutOf(JOB_COUNT / 3)) {
-        await queue.dequeue();
-      }
     }
-    await queue.dequeue();
     await queue.onIdle();
 
     expect(true).toEqual(true);
