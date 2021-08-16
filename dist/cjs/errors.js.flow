@@ -7,6 +7,13 @@ export class AbortError extends DOMException {
   }
 }
 
+// $FlowFixMe
+export class TimeoutError extends DOMException {
+  constructor(message:string) {
+    super(message, 'TimeoutError');
+  }
+}
+
 export class FatalQueueError extends Error {
   constructor(message:string) {
     super(message);

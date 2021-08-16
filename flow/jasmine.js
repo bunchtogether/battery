@@ -1,5 +1,3 @@
-// flow-typed signature: 391427abe3b0849a7f2dacbe35193ca6
-// flow-typed version: ece2373aeb/jasmine_v3.x.x/flow_>=v0.125.x
 
 type JasmineExpectType = {|
   not: JasmineExpectType,
@@ -35,6 +33,7 @@ type JasmineExpectType = {|
   toThrowError(val: mixed): void,
   toThrowMatching(predicate: (...any) => boolean): void,
   withContext(message: string): JasmineExpectType,
+  toEmit(string, ...Array<any>): Promise<void>
 |};
 
 declare function describe(name: string, fn: (...any) => any): void;
@@ -51,6 +50,7 @@ declare function fit(name: string, fn: (...any) => any, timeout?: number): void;
 declare function xit(name: string, fn: (...any) => any): void;
 
 declare function expect(value: mixed): JasmineExpectType;
+declare function expectAsync(value: mixed): JasmineExpectType;
 declare function pending(message?: string): void;
 declare function fail(err?: Error | string): void;
 
@@ -126,7 +126,28 @@ declare type JasmineMatcher = (
 
 declare type JasmineMatchers = { [key: string]: JasmineMatcher, ... };
 
+declare class DiffBuilder {
+  setRoots(any, any): void,
+  recordMismatch((any, any, any, any) => string): void,
+  withPath(string,() => void): void,
+  getMessage(): string
+}
+
+type CustomEqualityTester = (any, any) => boolean | void;
+
+declare class MatchersUtil {
+    equals(any, any, Array<CustomEqualityTester> | DiffBuilder | void): boolean;
+    contains<T>(
+        haystack: ArrayLike<T> | string,
+        needle: any,
+        customTesters?: ReadonlyArray<CustomEqualityTester>,
+    ): boolean;
+    buildFailureMessage(matcherName: string, isNot: boolean, actual: any, ...expected: any[]): string;
+    pp: (any) => string
+}
+
 declare var jasmine: {|
+  DiffBuilder: ({prettyPrinter?: any}) => DiffBuilder,
   DEFAULT_TIMEOUT_INTERVAL: number,
   MAX_PRETTY_PRINT_ARRAY_LENGTH: number,
   MAX_PRETTY_PRINT_CHARS: number,

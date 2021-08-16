@@ -4,6 +4,13 @@ export class AbortError extends DOMException {
     super(message, 'AbortError');
   }
 
+} // $FlowFixMe
+
+export class TimeoutError extends DOMException {
+  constructor(message) {
+    super(message, 'TimeoutError');
+  }
+
 }
 export class FatalQueueError extends Error {
   constructor(message) {
