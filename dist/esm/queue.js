@@ -577,6 +577,11 @@ export default class BatteryQueue extends EventEmitter {
 
     const run = async () => {
       if (abortController.signal.aborted) {
+        this.emit('fatalError', {
+          id,
+          queueId,
+          error: new AbortError(`Queue ${queueId} was aborted`)
+        });
         this.removeAbortController(id, queueId);
         return;
       }
@@ -614,6 +619,11 @@ export default class BatteryQueue extends EventEmitter {
         if (error.name === 'AbortError') {
           this.logger.error(`Abort error in ${type} job #${id} in queue ${queueId} attempt ${attempt}`);
           this.emit('error', error);
+          this.emit('fatalError', {
+            id,
+            queueId,
+            error
+          });
           await markJobCleanupInDatabase(id);
           this.removeAbortController(id, queueId);
           this.jobIds.delete(id);
@@ -624,6 +634,11 @@ export default class BatteryQueue extends EventEmitter {
         if (abortController.signal.aborted) {
           this.logger.error(`Abort signal following error in ${type} job #${id} in queue ${queueId} attempt ${attempt}`);
           this.emit('error', error);
+          this.emit('fatalError', {
+            id,
+            queueId,
+            error
+          });
           await markJobCleanupInDatabase(id);
           this.removeAbortController(id, queueId);
           this.jobIds.delete(id);
@@ -635,7 +650,9 @@ export default class BatteryQueue extends EventEmitter {
           this.logger.error(`Fatal error in ${type} job #${id} in queue ${queueId} attempt ${attempt}`);
           this.emit('error', error);
           this.emit('fatalError', {
-            queueId
+            id,
+            queueId,
+            error
           });
           this.jobIds.delete(id);
           this.removeAbortController(id, queueId);
@@ -649,7 +666,9 @@ export default class BatteryQueue extends EventEmitter {
           this.logger.error(`Error in ${type} job #${id} in queue ${queueId} attempt ${attempt} with no additional attempts requested`);
           this.emit('error', error);
           this.emit('fatalError', {
-            queueId
+            id,
+            queueId,
+            error
           });
           this.jobIds.delete(id);
           this.removeAbortController(id, queueId);

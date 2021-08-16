@@ -99,8 +99,8 @@ describe('Worker', () => {
     const queueId = uuidv4();
     const value = uuidv4();
     const args = [TRIGGER_ERROR, value];
-    await enqueueToDatabase(queueId, 'echo', args, 0);
-    await expectAsync(queueInterface).toEmit('fatalError', { queueId });
+    const id = await enqueueToDatabase(queueId, 'echo', args, 0);
+    await expectAsync(queueInterface).toEmit('fatalError', { queueId, id, error: jasmine.any(Error) });
   });
 
   it('Waits for the queue to idle', async () => {

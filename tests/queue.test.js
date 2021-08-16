@@ -1,12 +1,14 @@
 // @flow
 
 import { v4 as uuidv4 } from 'uuid';
+import { AbortError } from '../src/errors';
 import {
   jobEmitter,
   enqueueToDatabase,
   getCompletedJobsCountFromDatabase,
   removeCompletedExpiredItemsFromDatabase,
   markCleanupStartAfterInDatabase,
+  JOB_ERROR_STATUS,
   JOB_COMPLETE_STATUS,
 } from '../src/database';
 import {
@@ -15,6 +17,7 @@ import {
   TRIGGER_FATAL_ERROR,
   TRIGGER_ERROR_IN_CLEANUP,
   TRIGGER_FATAL_ERROR_IN_CLEANUP,
+  TRIGGER_100MS_DELAY,
   emitter as echoEmitter,
 } from './lib/echo-handler';
 import { asyncEmitMatchers } from './lib/emit';
@@ -71,11 +74,31 @@ describe('Queue', () => {
     };
     queue.addListener('retry', handleRetry);
 
-    await expectAsync(queue).toEmit('fatalError', { queueId });
+    await expectAsync(queue).toEmit('fatalError', { queueId, id, error: jasmine.any(Error) });
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value, cleanupData: { value } });
 
     expect(retries).toEqual(0);
     queue.removeListener('retry', handleRetry);
+  });
+
+  it('Emits fatalError if the queue is aborted before starting', async () => {
+    const queueId = uuidv4();
+    const value = uuidv4();
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, value], 100);
+    await expectAsync(queue).toEmit('dequeue', { id });
+    await queue.abortQueue(queueId);
+    await expectAsync(queue).toEmit('fatalError', { queueId, id, error: jasmine.any(AbortError) });
+  });
+
+  it('Emits fatalError if the queue is aborted while running', async () => {
+    const queueId = uuidv4();
+    const value = uuidv4();
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_100MS_DELAY, value], 0);
+    // Jobs are put into error status in case the process stops during execution
+    // to trigger subsequent cleanup
+    await expectAsync(jobEmitter).toEmit('jobUpdate', id, queueId, 'echo', JOB_ERROR_STATUS);
+    await queue.abortQueue(queueId);
+    await expectAsync(queue).toEmit('fatalError', { queueId, id, error: jasmine.any(AbortError) });
   });
 
   it('Aborts retry delay', async () => {
@@ -111,7 +134,7 @@ describe('Queue', () => {
     };
     queue.addListener('retry', handleRetry);
 
-    await expectAsync(queue).toEmit('fatalError', { queueId });
+    await expectAsync(queue).toEmit('fatalError', { queueId, id, error: jasmine.any(Error) });
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value, cleanupData: { value } });
 
     expect(retries).toEqual(0);
@@ -136,7 +159,7 @@ describe('Queue', () => {
     };
     queue.addListener('retry', handleRetry);
 
-    await expectAsync(queue).toEmit('fatalError', { queueId });
+    await expectAsync(queue).toEmit('fatalError', { queueId, id, error: jasmine.any(Error) });
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value, cleanupData: { value } });
 
     expect(retries).toEqual(0);
@@ -162,7 +185,7 @@ describe('Queue', () => {
     };
     queue.addListener('retry', handleRetry);
 
-    await expectAsync(queue).toEmit('fatalError', { queueId });
+    await expectAsync(queue).toEmit('fatalError', { queueId, id, error: jasmine.any(Error) });
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value, cleanupData: { value } });
 
     expect(retries).toEqual(0);
@@ -195,7 +218,7 @@ describe('Queue', () => {
     };
     queue.addListener('retry', handleRetry);
 
-    await expectAsync(queue).toEmit('fatalError', { queueId });
+    await expectAsync(queue).toEmit('fatalError', { queueId, id, error: jasmine.any(Error) });
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value, cleanupData: { value } });
 
     expect(retries).toEqual(1);
@@ -221,7 +244,7 @@ describe('Queue', () => {
     };
     queue.addListener('retry', handleRetry);
 
-    await expectAsync(queue).toEmit('fatalError', { queueId });
+    await expectAsync(queue).toEmit('fatalError', { queueId, id, error: jasmine.any(Error) });
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value, cleanupData: { value } });
 
     expect(retries).toEqual(0);
@@ -255,7 +278,7 @@ describe('Queue', () => {
     };
     queue.addListener('retry', handleRetry);
 
-    await expectAsync(queue).toEmit('fatalError', { queueId });
+    await expectAsync(queue).toEmit('fatalError', { queueId, id, error: jasmine.any(Error) });
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value, cleanupData: { value } });
 
     expect(retries).toEqual(1);
@@ -275,7 +298,7 @@ describe('Queue', () => {
     };
     queue.addListener('retry', handleRetry);
 
-    await expectAsync(queue).toEmit('fatalError', { queueId });
+    await expectAsync(queue).toEmit('fatalError', { queueId, id, error: jasmine.any(Error) });
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value, cleanupData: { value } });
 
     expect(retries).toEqual(0);
@@ -338,7 +361,7 @@ describe('Queue', () => {
 
     await expectAsync(queue).toEmit('retryDelay', { id, queueId, retryDelay: 100 });
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value, cleanupData: { value } });
-    await expectAsync(queue).toEmit('fatalError', { queueId });
+    await expectAsync(queue).toEmit('fatalError', { queueId, id, error: jasmine.any(Error) });
 
     expect(retries).toEqual(1);
     queue.removeListener('retry', handleRetry);

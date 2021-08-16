@@ -1278,77 +1278,83 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
               switch (_context15.prev = _context15.next) {
                 case 0:
                   if (!abortController.signal.aborted) {
-                    _context15.next = 3;
+                    _context15.next = 4;
                     break;
                   }
+
+                  _this7.emit('fatalError', {
+                    id: id,
+                    queueId: queueId,
+                    error: new _errors.AbortError("Queue ".concat(queueId, " was aborted"))
+                  });
 
                   _this7.removeAbortController(id, queueId);
 
                   return _context15.abrupt("return");
 
-                case 3:
+                case 4:
                   _this7.logger.info("Starting ".concat(type, " job #").concat(id, " in queue ").concat(queueId, " attempt ").concat(attempt));
 
                   handler = _this7.handlerMap.get(type);
 
                   if (!(typeof handler !== 'function')) {
-                    _context15.next = 12;
+                    _context15.next = 13;
                     break;
                   }
 
                   _this7.logger.warn("No handler for job type ".concat(type));
 
-                  _context15.next = 9;
+                  _context15.next = 10;
                   return (0, _database.markJobCompleteInDatabase)(id);
 
-                case 9:
+                case 10:
                   _this7.removeAbortController(id, queueId);
 
                   _this7.jobIds.delete(id);
 
                   return _context15.abrupt("return");
 
-                case 12:
-                  _context15.next = 14;
+                case 13:
+                  _context15.next = 15;
                   return (0, _database.markJobErrorInDatabase)(id);
 
-                case 14:
-                  _context15.prev = 14;
-                  _context15.next = 17;
+                case 15:
+                  _context15.prev = 15;
+                  _context15.next = 18;
                   return _this7.delayJobStart(id, queueId, type, abortController.signal, startAfter);
 
-                case 17:
-                  _context15.next = 19;
+                case 18:
+                  _context15.next = 20;
                   return handler(args, abortController.signal, updateCleanupData);
 
-                case 19:
+                case 20:
                   if (!abortController.signal.aborted) {
-                    _context15.next = 21;
+                    _context15.next = 22;
                     break;
                   }
 
                   throw new _errors.AbortError("Queue ".concat(queueId, " was aborted"));
 
-                case 21:
-                  _context15.next = 23;
+                case 22:
+                  _context15.next = 24;
                   return (0, _database.markJobCompleteInDatabase)(id);
 
-                case 23:
+                case 24:
                   _this7.removeAbortController(id, queueId);
 
                   _this7.jobIds.delete(id);
 
                   return _context15.abrupt("return");
 
-                case 28:
-                  _context15.prev = 28;
-                  _context15.t0 = _context15["catch"](14);
-                  _context15.next = 32;
+                case 29:
+                  _context15.prev = 29;
+                  _context15.t0 = _context15["catch"](15);
+                  _context15.next = 33;
                   return (0, _database.incrementJobAttemptInDatabase)(id);
 
-                case 32:
+                case 33:
                   if (!(_context15.t0.name === 'AbortError')) {
-                    _context15.next = 41;
+                    _context15.next = 43;
                     break;
                   }
 
@@ -1356,10 +1362,16 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
                   _this7.emit('error', _context15.t0);
 
-                  _context15.next = 37;
+                  _this7.emit('fatalError', {
+                    id: id,
+                    queueId: queueId,
+                    error: _context15.t0
+                  });
+
+                  _context15.next = 39;
                   return (0, _database.markJobCleanupInDatabase)(id);
 
-                case 37:
+                case 39:
                   _this7.removeAbortController(id, queueId);
 
                   _this7.jobIds.delete(id);
@@ -1368,9 +1380,9 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
                   return _context15.abrupt("return");
 
-                case 41:
+                case 43:
                   if (!abortController.signal.aborted) {
-                    _context15.next = 50;
+                    _context15.next = 53;
                     break;
                   }
 
@@ -1378,10 +1390,16 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
                   _this7.emit('error', _context15.t0);
 
-                  _context15.next = 46;
+                  _this7.emit('fatalError', {
+                    id: id,
+                    queueId: queueId,
+                    error: _context15.t0
+                  });
+
+                  _context15.next = 49;
                   return (0, _database.markJobCleanupInDatabase)(id);
 
-                case 46:
+                case 49:
                   _this7.removeAbortController(id, queueId);
 
                   _this7.jobIds.delete(id);
@@ -1390,9 +1408,9 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
                   return _context15.abrupt("return");
 
-                case 50:
+                case 53:
                   if (!(_context15.t0.name === 'FatalError')) {
-                    _context15.next = 59;
+                    _context15.next = 62;
                     break;
                   }
 
@@ -1401,28 +1419,30 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   _this7.emit('error', _context15.t0);
 
                   _this7.emit('fatalError', {
-                    queueId: queueId
+                    id: id,
+                    queueId: queueId,
+                    error: _context15.t0
                   });
 
                   _this7.jobIds.delete(id);
 
                   _this7.removeAbortController(id, queueId);
 
-                  _context15.next = 58;
+                  _context15.next = 61;
                   return _this7.abortQueue(queueId);
 
-                case 58:
+                case 61:
                   return _context15.abrupt("return");
 
-                case 59:
-                  _context15.next = 61;
+                case 62:
+                  _context15.next = 64;
                   return _this7.getRetryJobDelay(type, attempt, _context15.t0);
 
-                case 61:
+                case 64:
                   retryDelay = _context15.sent;
 
                   if (!(retryDelay === false)) {
-                    _context15.next = 71;
+                    _context15.next = 74;
                     break;
                   }
 
@@ -1431,26 +1451,28 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   _this7.emit('error', _context15.t0);
 
                   _this7.emit('fatalError', {
-                    queueId: queueId
+                    id: id,
+                    queueId: queueId,
+                    error: _context15.t0
                   });
 
                   _this7.jobIds.delete(id);
 
                   _this7.removeAbortController(id, queueId);
 
-                  _context15.next = 70;
+                  _context15.next = 73;
                   return _this7.abortQueue(queueId);
 
-                case 70:
+                case 73:
                   return _context15.abrupt("return");
 
-                case 71:
+                case 74:
                   _this7.logger.error("Error in ".concat(type, " job #").concat(id, " in queue ").concat(queueId, " attempt ").concat(attempt, ", retrying ").concat(retryDelay > 0 ? "in ".concat(retryDelay, "ms'}") : 'immediately'));
 
                   _this7.emit('error', _context15.t0);
 
                   if (!(retryDelay > 0)) {
-                    _context15.next = 82;
+                    _context15.next = 85;
                     break;
                   }
 
@@ -1461,28 +1483,28 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   });
 
                   newStartAfter = Date.now() + retryDelay;
-                  _context15.next = 78;
+                  _context15.next = 81;
                   return (0, _database.markJobStartAfterInDatabase)(id, newStartAfter);
 
-                case 78:
+                case 81:
                   _this7.jobIds.delete(id);
 
                   _this7.startErrorHandler(id, queueId, args, type, attempt, newStartAfter);
 
-                  _context15.next = 84;
+                  _context15.next = 87;
                   break;
 
-                case 82:
+                case 85:
                   _this7.jobIds.delete(id);
 
                   _this7.startErrorHandler(id, queueId, args, type, attempt, startAfter);
 
-                case 84:
+                case 87:
                 case "end":
                   return _context15.stop();
               }
             }
-          }, _callee14, null, [[14, 28]]);
+          }, _callee14, null, [[15, 29]]);
         }));
 
         return function run() {
