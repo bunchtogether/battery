@@ -22,6 +22,7 @@ export default class BatteryQueueWatcher extends EventEmitter {
   declare handleJobDelete: (number, string) => void;
   declare handleJobUpdate: (number, string, string, number) => void;
   declare handleJobsClear: () => void;
+  declare status: void | number;
 
   constructor(queueId: string) {
     super();
@@ -62,12 +63,26 @@ export default class BatteryQueueWatcher extends EventEmitter {
     };
     this.handleJobsClear = handleJobsClear;
     jobEmitter.addListener('jobsClear', handleJobsClear);
+    this.on('status', (status:number) => {
+      this.status = status;
+    });
+  }
+
+  async getStatus() {
+    const { status } = this;
+    if (typeof status === 'number') {
+      return status;
+    }
+    const newStatus = await getQueueStatus(this.queueId);
+    this.status = newStatus;
+    return newStatus;
   }
 
   emitStatus() {
     if (this.statusRequested) {
       return;
     }
+    delete this.status;
     this.statusRequested = true;
     let didEmitNewStatus = false;
     const handleStatus = () => {

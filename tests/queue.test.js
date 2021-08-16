@@ -55,11 +55,11 @@ describe('Queue', () => {
     const args = [TRIGGER_NO_ERROR, value];
     await enqueueToDatabase(queueId, 'echo', args, 0);
 
-    expect(await queue.getQueueIds()).toEqual(new Set([queueId]));
+    await expectAsync(queue.getQueueIds()).toBeResolvedTo(new Set([queueId]));
     await queue.onIdle();
     await queue.clear();
 
-    expect(await queue.getQueueIds()).toEqual(new Set([]));
+    await expectAsync(queue.getQueueIds()).toBeResolvedTo(new Set([]));
   });
 
   it('Enqueues to the database and is cleaned up after an error without retrying', async () => {
@@ -375,17 +375,17 @@ describe('Queue', () => {
 
     await enqueueToDatabase(queueId, 'echo', args, 0);
 
-    expect(await getCompletedJobsCountFromDatabase(queueId)).toEqual(0);
+    await expectAsync(getCompletedJobsCountFromDatabase(queueId)).toBeResolvedTo(0);
 
     await queue.onIdle();
 
-    expect(await getCompletedJobsCountFromDatabase(queueId)).toEqual(1);
+    await expectAsync(getCompletedJobsCountFromDatabase(queueId)).toBeResolvedTo(1);
     await removeCompletedExpiredItemsFromDatabase(60 * 1000);
 
-    expect(await getCompletedJobsCountFromDatabase(queueId)).toEqual(1);
+    await expectAsync(getCompletedJobsCountFromDatabase(queueId)).toBeResolvedTo(1);
     await removeCompletedExpiredItemsFromDatabase(0);
 
-    expect(await getCompletedJobsCountFromDatabase(queueId)).toEqual(0);
+    await expectAsync(getCompletedJobsCountFromDatabase(queueId)).toBeResolvedTo(0);
   });
 
 

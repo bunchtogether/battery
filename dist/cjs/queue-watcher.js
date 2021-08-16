@@ -101,10 +101,55 @@ var BatteryQueueWatcher = /*#__PURE__*/function (_EventEmitter) {
 
     _database.jobEmitter.addListener('jobsClear', handleJobsClear);
 
+    _this.on('status', function (status) {
+      _this.status = status;
+    });
+
     return _this;
   }
 
   _createClass(BatteryQueueWatcher, [{
+    key: "getStatus",
+    value: function () {
+      var _getStatus = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee() {
+        var status, newStatus;
+        return regeneratorRuntime.wrap(function _callee$(_context) {
+          while (1) {
+            switch (_context.prev = _context.next) {
+              case 0:
+                status = this.status;
+
+                if (!(typeof status === 'number')) {
+                  _context.next = 3;
+                  break;
+                }
+
+                return _context.abrupt("return", status);
+
+              case 3:
+                _context.next = 5;
+                return (0, _database.getQueueStatus)(this.queueId);
+
+              case 5:
+                newStatus = _context.sent;
+                this.status = newStatus;
+                return _context.abrupt("return", newStatus);
+
+              case 8:
+              case "end":
+                return _context.stop();
+            }
+          }
+        }, _callee, this);
+      }));
+
+      function getStatus() {
+        return _getStatus.apply(this, arguments);
+      }
+
+      return getStatus;
+    }()
+  }, {
     key: "emitStatus",
     value: function emitStatus() {
       var _this2 = this;
@@ -113,6 +158,7 @@ var BatteryQueueWatcher = /*#__PURE__*/function (_EventEmitter) {
         return;
       }
 
+      delete this.status;
       this.statusRequested = true;
       var didEmitNewStatus = false;
 
@@ -121,38 +167,38 @@ var BatteryQueueWatcher = /*#__PURE__*/function (_EventEmitter) {
       };
 
       this.addListener('status', handleStatus);
-      self.queueMicrotask( /*#__PURE__*/_asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee() {
+      self.queueMicrotask( /*#__PURE__*/_asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee2() {
         var status;
-        return regeneratorRuntime.wrap(function _callee$(_context) {
+        return regeneratorRuntime.wrap(function _callee2$(_context2) {
           while (1) {
-            switch (_context.prev = _context.next) {
+            switch (_context2.prev = _context2.next) {
               case 0:
                 _this2.statusRequested = false;
 
                 _this2.removeListener('status', handleStatus);
 
                 if (!didEmitNewStatus) {
-                  _context.next = 4;
+                  _context2.next = 4;
                   break;
                 }
 
-                return _context.abrupt("return");
+                return _context2.abrupt("return");
 
               case 4:
-                _context.next = 6;
+                _context2.next = 6;
                 return (0, _database.getQueueStatus)(_this2.queueId);
 
               case 6:
-                status = _context.sent;
+                status = _context2.sent;
 
                 _this2.emit('status', status);
 
               case 8:
               case "end":
-                return _context.stop();
+                return _context2.stop();
             }
           }
-        }, _callee);
+        }, _callee2);
       })));
     }
   }, {

@@ -79,20 +79,20 @@ describe('Worker', () => {
     const value = uuidv4();
     await enqueueToDatabase(queueIdA, 'echo', [TRIGGER_100MS_DELAY, value], 0);
 
-    expect(await queueInterface.getQueueIds()).toEqual(new Set([queueIdA]));
+    await expectAsync(queueInterface.getQueueIds()).toBeResolvedTo(new Set([queueIdA]));
 
     await enqueueToDatabase(queueIdB, 'echo', [TRIGGER_100MS_DELAY, value], 0);
     await getNextEmit(queueInterface, 'dequeue');
 
-    expect(await queueInterface.getQueueIds()).toEqual(new Set([queueIdA, queueIdB]));
+    await expectAsync(queueInterface.getQueueIds()).toBeResolvedTo(new Set([queueIdA, queueIdB]));
     await queueInterface.onIdle();
     await queueInterface.clear();
 
-    expect(await queueInterface.getQueueIds()).toEqual(new Set([]));
+    await expectAsync(queueInterface.getQueueIds()).toBeResolvedTo(new Set([]));
     await queueInterface.onIdle();
     await enqueueToDatabase(queueIdA, 'echo', [TRIGGER_NO_ERROR, value], 0);
 
-    expect(await queueInterface.getQueueIds()).toEqual(new Set([queueIdA]));
+    await expectAsync(queueInterface.getQueueIds()).toBeResolvedTo(new Set([queueIdA]));
   });
 
   it('Enqueues to the database and throws an error', async () => {

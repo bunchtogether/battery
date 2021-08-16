@@ -55,24 +55,24 @@ describe('IndexedDB Database', () => {
 
     const idA = await enqueueToDatabase(queueId, type, [], 0);
 
-    expect(await jobAddPromiseA).toEqual([idA, queueId, type]);
+    await expectAsync(jobAddPromiseA).toBeResolvedTo([idA, queueId, type]);
     const jobDeletePromiseA = getNextEmit(jobEmitter, 'jobDelete');
     await removeJobsWithQueueIdAndTypeFromDatabase(queueId, type);
 
-    expect(await jobDeletePromiseA).toEqual([idA, queueId]);
+    await expectAsync(jobDeletePromiseA).toBeResolvedTo([idA, queueId]);
 
     const idB = await enqueueToDatabase(queueId, type, [], 0);
     const jobDeletePromiseB = getNextEmit(jobEmitter, 'jobDelete');
     await removeQueueIdFromJobsDatabase(queueId);
 
-    expect(await jobDeletePromiseB).toEqual([idB, queueId]);
+    await expectAsync(jobDeletePromiseB).toBeResolvedTo([idB, queueId]);
 
     const idC = await enqueueToDatabase(queueId, type, [], 0);
     const jobDeletePromiseC = getNextEmit(jobEmitter, 'jobDelete');
     await markJobCompleteInDatabase(idC);
     await removeCompletedExpiredItemsFromDatabase(0);
 
-    expect(await jobDeletePromiseC).toEqual([idC, queueId]);
+    await expectAsync(jobDeletePromiseC).toBeResolvedTo([idC, queueId]);
 
     const idD = await enqueueToDatabase(queueId, type, [], 0);
     const jobUpdatePromiseA = getNextEmit(jobEmitter, 'jobUpdate');
@@ -84,24 +84,24 @@ describe('IndexedDB Database', () => {
       return x; // eslint-disable-line consistent-return
     });
 
-    expect(await jobUpdatePromiseA).toEqual([idD, queueId, type, JOB_ABORTED_STATUS]);
+    await expectAsync(jobUpdatePromiseA).toBeResolvedTo([idD, queueId, type, JOB_ABORTED_STATUS]);
     await removeQueueIdFromJobsDatabase(queueId);
 
     const idE = await enqueueToDatabase(queueId, type, [], 0);
     const jobUpdatePromiseB = getNextEmit(jobEmitter, 'jobUpdate');
     await markQueueForCleanupInDatabase(queueId);
 
-    expect(await jobUpdatePromiseB).toEqual([idE, queueId, type, JOB_ABORTED_STATUS]);
+    await expectAsync(jobUpdatePromiseB).toBeResolvedTo([idE, queueId, type, JOB_ABORTED_STATUS]);
 
     const jobAddPromiseB = getNextEmit(jobEmitter, 'jobAdd');
     const [idF] = await bulkEnqueueToDatabase(queueId, [[type, []]], 0);
 
-    expect(await jobAddPromiseB).toEqual([idF, queueId, type]);
+    await expectAsync(jobAddPromiseB).toBeResolvedTo([idF, queueId, type]);
 
     const jobsClearPromise = getNextEmit(jobEmitter, 'jobsClear');
     await clearDatabase();
 
-    expect(await jobsClearPromise).toEqual([]);
+    await expectAsync(jobsClearPromise).toBeResolvedTo([]);
   });
 
   it('Increments cleanup attempts', async () => {
@@ -343,7 +343,7 @@ describe('IndexedDB Database', () => {
     const id = await enqueueToDatabase(queueId, type, args, 0);
     await markJobCompleteInDatabase(id);
 
-    expect(await dequeueFromDatabase()).toEqual([]);
+    await expectAsync(dequeueFromDatabase()).toBeResolvedTo([]);
   });
 
   it('Does not dequeue items in abort state', async () => {
@@ -353,7 +353,7 @@ describe('IndexedDB Database', () => {
     const id = await enqueueToDatabase(queueId, type, args, 0);
     await markJobAbortedInDatabase(id);
 
-    expect(await dequeueFromDatabase()).toEqual([]);
+    await expectAsync(dequeueFromDatabase()).toBeResolvedTo([]);
   });
 
   it('Should get the lowest and highest elements of contiguous sequences of integers in an array', () => {
@@ -498,7 +498,7 @@ describe('IndexedDB Database', () => {
       startAfter: jasmine.any(Number),
     })]);
 
-    expect(await dequeueFromDatabaseNotIn([idA, idB, idC])).toEqual([]);
+    await expectAsync(dequeueFromDatabaseNotIn([idA, idB, idC])).toBeResolvedTo([]);
   });
 
 
@@ -513,7 +513,7 @@ describe('IndexedDB Database', () => {
     await markJobErrorInDatabase(idA);
     await markJobCompleteInDatabase(idB);
 
-    expect(await dequeueFromDatabaseNotIn([idA])).toEqual([]);
+    await expectAsync(dequeueFromDatabaseNotIn([idA])).toBeResolvedTo([]);
   });
 
   it('Dequeues items in error state not in a specified array', async () => {
@@ -549,7 +549,7 @@ describe('IndexedDB Database', () => {
       startAfter: jasmine.any(Number),
     })]);
 
-    expect(await dequeueFromDatabaseNotIn([idA, idB])).toEqual([]);
+    await expectAsync(dequeueFromDatabaseNotIn([idA, idB])).toBeResolvedTo([]);
   });
 
   it('Dequeues items in cleanup state not in a specified array', async () => {
@@ -585,7 +585,7 @@ describe('IndexedDB Database', () => {
       startAfter: jasmine.any(Number),
     })]);
 
-    expect(await dequeueFromDatabaseNotIn([idA, idB])).toEqual([]);
+    await expectAsync(dequeueFromDatabaseNotIn([idA, idB])).toBeResolvedTo([]);
   });
 
   it('Increments attempt in database', async () => {
@@ -760,7 +760,7 @@ describe('IndexedDB Database', () => {
     expect(await getQueueDataFromDatabase(queueId)).toBeUndefined();
     await updateQueueDataInDatabase(queueId, { [key]: value });
 
-    expect(await getQueueDataFromDatabase(queueId)).toEqual({ [key]: value });
+    await expectAsync(getQueueDataFromDatabase(queueId)).toBeResolvedTo({ [key]: value });
   });
 
   it('Gets and sets auth data in database', async () => {
@@ -772,7 +772,7 @@ describe('IndexedDB Database', () => {
     expect(await getAuthDataFromDatabase(id)).toBeUndefined();
     await storeAuthDataInDatabase(id, data);
 
-    expect(await getAuthDataFromDatabase(id)).toEqual(data);
+    await expectAsync(getAuthDataFromDatabase(id)).toBeResolvedTo(data);
     await removeAuthDataFromDatabase(id);
 
     expect(await getAuthDataFromDatabase(id)).toBeUndefined();
