@@ -18,6 +18,7 @@ import {
   TRIGGER_ERROR_IN_CLEANUP,
   TRIGGER_FATAL_ERROR_IN_CLEANUP,
   TRIGGER_100MS_DELAY,
+  TRIGGER_ABORT_ERROR,
   emitter as echoEmitter,
 } from './lib/echo-handler';
 import { asyncEmitMatchers } from './lib/emit';
@@ -79,6 +80,18 @@ describe('Queue', () => {
 
     expect(retries).toEqual(0);
     queue.removeListener('retry', handleRetry);
+  });
+
+  it('Cleans up completed items in the queue if the handler throws an AbortError', async () => {
+    const queueId = uuidv4();
+    const valueA = uuidv4();
+    const valueB = uuidv4();
+    await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueA], 0);
+    const idB = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ABORT_ERROR, valueB], 0);
+    await expectAsync(echoEmitter).toEmit('echo', { value: valueA });
+    await expectAsync(queue).toEmit('fatalError', { queueId, id: idB, error: jasmine.any(AbortError) });
+    await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value: valueB, cleanupData: { value: valueB } });
+    await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value: valueA, cleanupData: { value: valueA } });
   });
 
   it('Emits fatalError if the queue is aborted before starting', async () => {

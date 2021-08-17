@@ -17,6 +17,7 @@ export const TRIGGER_ERROR_IN_CLEANUP = 4;
 export const TRIGGER_ERROR_IN_HANDLER_AND_IN_CLEANUP = 5;
 export const TRIGGER_FATAL_ERROR_IN_CLEANUP = 6;
 export const TRIGGER_100MS_DELAY = 7;
+export const TRIGGER_ABORT_ERROR = 8;
 
 export const emitter = new EventEmitter();
 
@@ -33,8 +34,8 @@ export async function handler(args:Array<any>, abortSignal: AbortSignal, updateC
   }
   await updateCleanupData({ value });
   if (abortSignal.aborted) {
-    logger.info('Throwing abort error');
-    throw new AbortError('Aborted');
+    logger.info('Throwing abort error (abortSignal.aborted is true)');
+    throw new AbortError('AbortSignal abort');
   }
   if (instruction === TRIGGER_ERROR) {
     logger.info('Throwing non-fatal error');
@@ -43,6 +44,10 @@ export async function handler(args:Array<any>, abortSignal: AbortSignal, updateC
   if (instruction === TRIGGER_ERROR_IN_HANDLER_AND_IN_CLEANUP) {
     logger.info('Throwing non-fatal error in handler before error in cleanup');
     throw new Error('Echo error in handler before error in cleanup');
+  }
+  if (instruction === TRIGGER_ABORT_ERROR) {
+    logger.info('Throwing abort error (TRIGGER_ABORT_ERROR)');
+    throw new AbortError('Internal abort');
   }
   if (instruction === TRIGGER_FATAL_ERROR) {
     logger.info('Throwing fatal error');
