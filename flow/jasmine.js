@@ -37,7 +37,7 @@ type JasmineExpectType = {|
   toThrowError(val: mixed): void,
   toThrowMatching(predicate: (...any) => boolean): void,
   withContext(message: string): JasmineExpectType,
-  toEmit(string, ...Array<any>): Promise<void>
+  toEmit(number | string, ...Array<any>): Promise<void>
 |};
 
 declare function describe(name: string, fn: (...any) => any): void;

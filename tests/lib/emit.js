@@ -4,15 +4,16 @@ import type EventEmitter from 'events';
 
 export const asyncEmitMatchers = {
   toEmit: (matchersUtil:MatchersUtil) => ({
-    compare: async (emitter: EventEmitter, name:string, ...args:Array<any>) => {
-      let lastargs;
+    compare: async (emitter: EventEmitter, ...args:Array<any>) => {
+      const [timeoutDuration, name, argsToMatch] = typeof args[0] === 'number' ? [args[0], args[1], args.slice(2)] : [5000, args[0], args.slice(1)];
+      let lastArgs;
       return new Promise((resolve) => {
         const timeout = setTimeout(() => {
           emitter.removeListener(name, handle);
-          matchersUtil.equals(undefined, args);
-          if (typeof lastargs !== 'undefined') {
+          matchersUtil.equals(undefined, argsToMatch);
+          if (typeof lastArgs !== 'undefined') {
             const diffBuilder = jasmine.DiffBuilder({ prettyPrinter: matchersUtil.pp });
-            matchersUtil.equals(lastargs, args, diffBuilder);
+            matchersUtil.equals(lastArgs, argsToMatch, diffBuilder);
             resolve({
               pass: false,
               message: `Most recent "${name}" event did not match arguments.\n\n${diffBuilder.getMessage()}`,
@@ -20,13 +21,13 @@ export const asyncEmitMatchers = {
           } else {
             resolve({
               pass: false,
-              message: `Did not receive "${name}" event in 5000ms`,
+              message: `Did not receive "${name}" event in ${timeoutDuration}ms`,
             });
           }
-        }, 5000);
+        }, timeoutDuration);
         const handle = (...vs:Array<any>) => {
-          lastargs = vs;
-          if (!matchersUtil.equals(vs, args)) {
+          lastArgs = vs;
+          if (!matchersUtil.equals(vs, argsToMatch)) {
             return;
           }
           clearTimeout(timeout);
