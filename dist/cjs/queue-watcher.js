@@ -82,7 +82,7 @@ var BatteryQueueWatcher = /*#__PURE__*/function (_EventEmitter) {
 
       if (status === _database.JOB_ABORTED_STATUS || status === _database.JOB_CLEANUP_STATUS) {
         _this.emit('status', _database.QUEUE_ERROR_STATUS);
-      } else if (status === _database.JOB_ERROR_STATUS || status === _database.JOB_PENDING_STATUS) {
+      } else if (status === _database.JOB_ERROR_STATUS || status === _database.JOB_PENDING_STATUS || status === _database.JOB_CLEANUP_AND_REMOVE_STATUS) {
         _this.emit('status', _database.QUEUE_PENDING_STATUS);
       } else if (status === _database.JOB_COMPLETE_STATUS || status === _database.JOB_PENDING_STATUS) {
         _this.emitStatus();

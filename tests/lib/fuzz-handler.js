@@ -45,7 +45,7 @@ export async function cleanup(cleanupData: Object | void, args:Array<any>, remov
   } 
 }
 
-export async function retryJobDelay(attempt: number, Error: error) {
+export async function retryJobDelay() {
   if (oneOutOf(5)) {
     throw new Error('Fuzz retryJobDelay error before async');
   }
@@ -61,7 +61,7 @@ export async function retryJobDelay(attempt: number, Error: error) {
   return false;
 }
 
-export async function retryCleanupDelay(attempt: number, Error: error) {
+export async function retryCleanupDelay() {
   if (oneOutOf(5)) {
     throw new Error('Fuzz retryCleanupDelay error before async');
   }

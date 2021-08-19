@@ -12,7 +12,9 @@ import {
   markJobErrorInDatabase,
   markJobAbortedInDatabase,
   markJobCleanupInDatabase,
+  markJobCleanupAndRemoveInDatabase,
   markJobStartAfterInDatabase,
+  markJobAsAbortedOrRemoveFromDatabase,
   incrementJobAttemptInDatabase,
   getJobFromDatabase,
   updateCleanupValuesInDatabase,
@@ -20,6 +22,8 @@ import {
   incrementCleanupAttemptInDatabase,
   removePathFromCleanupDataInDatabase,
   removeCleanupFromDatabase,
+  removeJobFromDatabase,
+  restoreJobToDatabaseForCleanupAndRemove,
   markCleanupStartAfterInDatabase,
   markQueueForCleanupInDatabase,
   getQueueDataFromDatabase,
@@ -38,6 +42,7 @@ import {
   JOB_COMPLETE_STATUS,
   JOB_ERROR_STATUS,
   JOB_CLEANUP_STATUS,
+  JOB_CLEANUP_AND_REMOVE_STATUS,
   JOB_ABORTED_STATUS,
 } from '../src/database';
 
@@ -145,6 +150,60 @@ describe('IndexedDB Database', () => {
     }));
   });
 
+
+  it('Marks a job as aborted if it was in cleanup status', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const id = await enqueueToDatabase(queueId, type, [], 0);
+    await markJobCleanupInDatabase(id);
+
+    expect(await getJobsFromDatabase(queueId)).toEqual([{
+      id,
+      queueId,
+      type,
+      args: [],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_CLEANUP_STATUS,
+      startAfter: jasmine.any(Number),
+    }]);
+    await markJobAsAbortedOrRemoveFromDatabase(id);
+
+    expect(await getJobsFromDatabase(queueId)).toEqual([{
+      id,
+      queueId,
+      type,
+      args: [],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_ABORTED_STATUS,
+      startAfter: jasmine.any(Number),
+    }]);
+  });
+
+  it('Removes a job if it was in cleanup and remove status', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const id = await enqueueToDatabase(queueId, type, [], 0);
+    await markJobCompleteInDatabase(id);
+    await markJobCleanupAndRemoveInDatabase(id);
+
+    expect(await getJobsFromDatabase(queueId)).toEqual([{
+      id,
+      queueId,
+      type,
+      args: [],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_CLEANUP_AND_REMOVE_STATUS,
+      startAfter: jasmine.any(Number),
+    }]);
+    await markJobAsAbortedOrRemoveFromDatabase(id);
+
+    expect(await getJobsFromDatabase(queueId)).toEqual([]);
+  });
+
+
   it('Adds and removes cleanup data', async () => {
     const id = Math.round(1000 + Math.random() * 1000);
     const queueId = uuidv4();
@@ -216,6 +275,67 @@ describe('IndexedDB Database', () => {
     expect(cleanupAfterDatabase.startAfter).toBeGreaterThan(Date.now());
   });
 
+  it('Adds and removes jobs from the database', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const id = await enqueueToDatabase(queueId, type, [], 0);
+
+    expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+      id,
+      queueId,
+      type,
+      args: [],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    })]);
+    await removeJobFromDatabase(id);
+
+    expect(await getJobsFromDatabase(queueId)).toEqual([]);
+  });
+
+  it('Removes a job with aborted status from the database if marked as "cleanup and remove" ', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const id = await enqueueToDatabase(queueId, type, [], 0);
+    await markJobAbortedInDatabase(id);
+
+    expect(await getJobsFromDatabase(queueId)).toEqual([{
+      id,
+      queueId,
+      type,
+      args: [],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_ABORTED_STATUS,
+      startAfter: jasmine.any(Number),
+    }]);
+    await markJobCleanupAndRemoveInDatabase(id);
+
+    expect(await getJobsFromDatabase(queueId)).toEqual([]);
+  });
+
+  it('Removes a job with pending status from the database if marked as "cleanup and remove" ', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const id = await enqueueToDatabase(queueId, type, [], 0);
+
+    expect(await getJobsFromDatabase(queueId)).toEqual([{
+      id,
+      queueId,
+      type,
+      args: [],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    }]);
+    await markJobCleanupAndRemoveInDatabase(id);
+
+    expect(await getJobsFromDatabase(queueId)).toEqual([]);
+  });
+
   it('Gets all jobs from the database', async () => {
     const queueId = uuidv4();
     const type = uuidv4();
@@ -226,11 +346,15 @@ describe('IndexedDB Database', () => {
     const idC = await enqueueToDatabase(queueId, type, [], 0);
     const idD = await enqueueToDatabase(queueId, type, [], 0);
     const idE = await enqueueToDatabase(queueId, type, [], 0);
+    const idF = await enqueueToDatabase(queueId, type, [], 0);
 
     await markJobCompleteInDatabase(idB);
     await markJobErrorInDatabase(idC);
     await markJobCleanupInDatabase(idD);
     await markJobAbortedInDatabase(idE);
+    // Mark idF as complete before marking cleanup
+    await markJobCompleteInDatabase(idF);
+    await markJobCleanupAndRemoveInDatabase(idF);
 
     expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
       id: idA,
@@ -276,6 +400,15 @@ describe('IndexedDB Database', () => {
       attempt: 0,
       created: jasmine.any(Number),
       status: JOB_ABORTED_STATUS,
+      startAfter: jasmine.any(Number),
+    }), jasmine.objectContaining({
+      id: idF,
+      queueId,
+      type,
+      args: [],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_CLEANUP_AND_REMOVE_STATUS,
       startAfter: jasmine.any(Number),
     })]);
   });
@@ -332,6 +465,27 @@ describe('IndexedDB Database', () => {
       attempt: 0,
       created: jasmine.any(Number),
       status: JOB_CLEANUP_STATUS,
+      startAfter: jasmine.any(Number),
+    })]);
+  });
+
+
+  it('Dequeues items in cleanup and remove state', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const args = [uuidv4()];
+    const id = await enqueueToDatabase(queueId, type, args, 0);
+    await markJobCompleteInDatabase(id);
+    await markJobCleanupAndRemoveInDatabase(id);
+
+    expect(await dequeueFromDatabase()).toEqual([jasmine.objectContaining({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_CLEANUP_AND_REMOVE_STATUS,
       startAfter: jasmine.any(Number),
     })]);
   });
@@ -586,6 +740,26 @@ describe('IndexedDB Database', () => {
     })]);
 
     await expectAsync(dequeueFromDatabaseNotIn([idA, idB])).toBeResolvedTo([]);
+  });
+
+  it('Restores a prematurely removed job into the database', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const args = [uuidv4()];
+    const id = await enqueueToDatabase(queueId, type, args, 0);
+    await removeJobFromDatabase(id);
+    await restoreJobToDatabaseForCleanupAndRemove(id, queueId, type, args);
+
+    expect(await getJobFromDatabase(id)).toEqual(jasmine.objectContaining({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 1,
+      created: jasmine.any(Number),
+      status: JOB_CLEANUP_AND_REMOVE_STATUS,
+      startAfter: jasmine.any(Number),
+    }));
   });
 
   it('Increments attempt in database', async () => {

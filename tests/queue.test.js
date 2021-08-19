@@ -1,14 +1,19 @@
 // @flow
 
 import { v4 as uuidv4 } from 'uuid';
-import { AbortError } from '../src/errors';
+import { AbortError, FatalQueueError } from '../src/errors';
 import {
   jobEmitter,
+  getJobsFromDatabase,
+  removeJobFromDatabase,
   enqueueToDatabase,
   getCompletedJobsCountFromDatabase,
   removeCompletedExpiredItemsFromDatabase,
   markCleanupStartAfterInDatabase,
+  markJobCleanupAndRemoveInDatabase,
   JOB_ERROR_STATUS,
+  JOB_CLEANUP_STATUS,
+  JOB_CLEANUP_AND_REMOVE_STATUS,
   JOB_COMPLETE_STATUS,
 } from '../src/database';
 import {
@@ -33,7 +38,7 @@ describe('Queue', () => {
     queue.enableStartOnJob();
   });
 
-  afterAll(async () => {
+  afterAll(() => {
     queue.disableStartOnJob();
   });
 
@@ -81,6 +86,7 @@ describe('Queue', () => {
     expect(retries).toEqual(0);
     queue.removeListener('retry', handleRetry);
   });
+
 
   it('Cleans up completed items in the queue if the handler throws an AbortError', async () => {
     const queueId = uuidv4();
@@ -326,10 +332,8 @@ describe('Queue', () => {
       await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, value], 0);
       expectedCleanupValues.push(value);
     }
-
     await queue.onIdle();
-    await queue.abortQueue(queueId);
-
+    queue.abortQueue(queueId);
     while (expectedCleanupValues.length > 0) {
       const value = expectedCleanupValues.pop();
       await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value, cleanupData: { value } });
@@ -788,7 +792,6 @@ describe('Queue', () => {
     expect(retryCount).toEqual(0);
   });
 
-
   it('Emits queueActive and queueInactive events when a queue becomes active or inactive', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
@@ -798,5 +801,384 @@ describe('Queue', () => {
     await expectAsync(jobEmitter).toEmit('jobUpdate', id, queueId, 'echo', JOB_COMPLETE_STATUS);
     queue.clear();
     await expectAsync(queue).toEmit('queueInactive', queueId); // Triggers after 5s or on a 'clearing' event
+  });
+
+  it('Cleans up and removes a job from the queue if a job is marked with status "clean up and remove" after a job is complete', async () => {
+    const queueId = uuidv4();
+    const valueA = uuidv4();
+    const valueB = uuidv4();
+    const idA = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueA], 0);
+    const idB = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueB], 0);
+    await expectAsync(echoEmitter).toEmit('echo', { value: valueA });
+    await expectAsync(echoEmitter).toEmit('echo', { value: valueB });
+
+    expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+      id: idA,
+      queueId,
+      type: 'echo',
+      args: [TRIGGER_NO_ERROR, valueA],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_COMPLETE_STATUS,
+      startAfter: jasmine.any(Number),
+    }), jasmine.objectContaining({
+      id: idB,
+      queueId,
+      type: 'echo',
+      args: [TRIGGER_NO_ERROR, valueB],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_COMPLETE_STATUS,
+      startAfter: jasmine.any(Number),
+    })]);
+    await markJobCleanupAndRemoveInDatabase(idA);
+    await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value: valueA, cleanupData: { value: valueA } });
+    await queue.onIdle();
+
+    expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+      id: idB,
+      queueId,
+      type: 'echo',
+      args: [TRIGGER_NO_ERROR, valueB],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_COMPLETE_STATUS,
+      startAfter: jasmine.any(Number),
+    })]);
+  });
+
+
+  it('Cleans up and removes a job from the queue if a job is marked with status "clean up and remove" after a job is complete if jobEmitter is not active', async () => {
+    queue.disableStartOnJob();
+    const queueId = uuidv4();
+    const valueA = uuidv4();
+    const valueB = uuidv4();
+    const idA = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueA], 0);
+    const idB = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueB], 0);
+    queue.dequeue();
+    await expectAsync(echoEmitter).toEmit('echo', { value: valueA });
+    await expectAsync(echoEmitter).toEmit('echo', { value: valueB });
+
+    expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+      id: idA,
+      queueId,
+      type: 'echo',
+      args: [TRIGGER_NO_ERROR, valueA],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_COMPLETE_STATUS,
+      startAfter: jasmine.any(Number),
+    }), jasmine.objectContaining({
+      id: idB,
+      queueId,
+      type: 'echo',
+      args: [TRIGGER_NO_ERROR, valueB],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_COMPLETE_STATUS,
+      startAfter: jasmine.any(Number),
+    })]);
+    await queue.onIdle();
+    await markJobCleanupAndRemoveInDatabase(idA);
+
+    expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+      id: idA,
+      queueId,
+      type: 'echo',
+      args: [TRIGGER_NO_ERROR, valueA],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_CLEANUP_AND_REMOVE_STATUS,
+      startAfter: jasmine.any(Number),
+    }), jasmine.objectContaining({
+      id: idB,
+      queueId,
+      type: 'echo',
+      args: [TRIGGER_NO_ERROR, valueB],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_COMPLETE_STATUS,
+      startAfter: jasmine.any(Number),
+    })]);
+    queue.dequeue();
+    console.log('DEQUEUE', [...queue.jobIds]);
+    await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value: valueA, cleanupData: { value: valueA } });
+    await queue.onIdle();
+
+    expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+      id: idB,
+      queueId,
+      type: 'echo',
+      args: [TRIGGER_NO_ERROR, valueB],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_COMPLETE_STATUS,
+      startAfter: jasmine.any(Number),
+    })]);
+    queue.enableStartOnJob();
+  });
+
+
+  it('Cleans up and removes a job from the queue if a job is marked with status "clean up and remove" while a job is in progress', async () => {
+    let id;
+    let didRunCleanup = false;
+    const handler = async () => {
+      expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+        id,
+        queueId,
+        type,
+        args: [],
+        attempt: 0,
+        created: jasmine.any(Number),
+        status: JOB_ERROR_STATUS,
+        startAfter: jasmine.any(Number),
+      })]);
+      if (typeof id === 'number') {
+        await markJobCleanupAndRemoveInDatabase(id);
+      }
+
+      expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+        id,
+        queueId,
+        type,
+        args: [],
+        attempt: 0,
+        created: jasmine.any(Number),
+        status: JOB_CLEANUP_AND_REMOVE_STATUS,
+        startAfter: jasmine.any(Number),
+      })]);
+    };
+    const cleanup = async () => {
+      didRunCleanup = true;
+    };
+    const type = uuidv4();
+    queue.setHandler(type, handler);
+    queue.setCleanup(type, cleanup);
+    const queueId = uuidv4();
+    id = await enqueueToDatabase(queueId, type, [], 0);
+    await queue.onIdle();
+
+    expect(didRunCleanup).toEqual(true);
+    expect(await getJobsFromDatabase(queueId)).toEqual([]);
+    queue.removeHandler(type);
+    queue.removeCleanup(type);
+  });
+
+  it('Removes a job marked as "cleanup and remove" while the cleanup handler is running', async () => {
+    let id;
+    let didRunCleanup = false;
+    const handler = async () => {
+      throw new FatalQueueError('Test fatal error');
+    };
+    const cleanup = async () => {
+      expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+        id,
+        queueId,
+        type,
+        args: [],
+        attempt: 1,
+        created: jasmine.any(Number),
+        status: JOB_CLEANUP_STATUS,
+        startAfter: jasmine.any(Number),
+      })]);
+      if (typeof id === 'number') {
+        didRunCleanup = true;
+        await markJobCleanupAndRemoveInDatabase(id);
+      }
+
+      expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+        id,
+        queueId,
+        type,
+        args: [],
+        attempt: 1,
+        created: jasmine.any(Number),
+        status: JOB_CLEANUP_AND_REMOVE_STATUS,
+        startAfter: jasmine.any(Number),
+      })]);
+    };
+    const type = uuidv4();
+    queue.setHandler(type, handler);
+    queue.setCleanup(type, cleanup);
+    const queueId = uuidv4();
+    id = await enqueueToDatabase(queueId, type, [], 0);
+    await queue.onIdle();
+
+    expect(didRunCleanup).toEqual(true);
+    expect(await getJobsFromDatabase(queueId)).toEqual([]);
+    queue.removeHandler(type);
+    queue.removeCleanup(type);
+  });
+
+  it('Removes a job marked as "cleanup and remove" while the non-fatal error handler is running', async () => {
+    let id;
+    let handlerCount = 0;
+    let didRunCleanup = false;
+    const type = uuidv4();
+    const retryJobDelay = (attempt, error) => {
+      expect(handlerCount).toEqual(1);
+      expect(error).toBeInstanceOf(Error);
+      return 0;
+    };
+    const handler = async () => {
+      handlerCount += 1;
+      throw new Error('Test non-fatal error');
+    };
+    const cleanup = async () => {
+      expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+        id,
+        queueId,
+        type,
+        args: [],
+        attempt: 1,
+        created: jasmine.any(Number),
+        status: JOB_ERROR_STATUS,
+        startAfter: jasmine.any(Number),
+      })]);
+      if (typeof id === 'number') {
+        didRunCleanup = true;
+        await markJobCleanupAndRemoveInDatabase(id);
+      }
+
+      expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+        id,
+        queueId,
+        type,
+        args: [],
+        attempt: 1,
+        created: jasmine.any(Number),
+        status: JOB_CLEANUP_AND_REMOVE_STATUS,
+        startAfter: jasmine.any(Number),
+      })]);
+    };
+    queue.setHandler(type, handler);
+    queue.setCleanup(type, cleanup);
+    queue.setRetryJobDelay(type, retryJobDelay);
+    const queueId = uuidv4();
+    id = await enqueueToDatabase(queueId, type, [], 0);
+    await queue.onIdle();
+
+    expect(handlerCount).toEqual(1);
+    expect(didRunCleanup).toEqual(true);
+    expect(await getJobsFromDatabase(queueId)).toEqual([]);
+    queue.removeHandler(type);
+    queue.removeCleanup(type);
+    queue.removeRetryJobDelay(type);
+  });
+
+  it('Removes a job marked as "cleanup and remove" before the handler starts', async () => {
+    let handlerCount = 0;
+    let cleanupCount = 0;
+    let idB;
+    const type = uuidv4();
+    const handler = async () => {
+      if (handlerCount === 0) {
+        while (typeof idB !== 'number') {
+          await new Promise((resolve) => setTimeout(resolve, 20));
+        }
+        await markJobCleanupAndRemoveInDatabase(idB);
+      }
+      handlerCount += 1;
+    };
+    const cleanup = async () => {
+      cleanupCount += 1;
+    };
+    queue.setHandler(type, handler);
+    queue.setCleanup(type, cleanup);
+    const queueId = uuidv4();
+    const idA = await enqueueToDatabase(queueId, type, [], 0);
+    idB = await enqueueToDatabase(queueId, type, [], 0);
+    await queue.onIdle();
+
+    expect(handlerCount).toEqual(1);
+    expect(cleanupCount).toEqual(0);
+    expect(await getJobsFromDatabase(queueId)).toEqual([{
+      id: idA,
+      queueId,
+      type,
+      args: [],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_COMPLETE_STATUS,
+      startAfter: jasmine.any(Number),
+    }]);
+    queue.removeHandler(type);
+    queue.removeCleanup(type);
+  });
+
+  it('Removes a job marked as "cleanup and remove" after the job is started but before the handler runs', async () => {
+    let handlerCount = 0;
+    let cleanupCount = 0;
+    const type = uuidv4();
+    const handler = async () => {
+      handlerCount += 1;
+    };
+    const cleanup = async () => {
+      cleanupCount += 1;
+    };
+    queue.setHandler(type, handler);
+    queue.setCleanup(type, cleanup);
+    const queueId = uuidv4();
+    const id = await enqueueToDatabase(queueId, type, [], 0);
+    await markJobCleanupAndRemoveInDatabase(id);
+    await queue.onIdle();
+
+    expect(handlerCount).toEqual(0);
+    expect(cleanupCount).toEqual(0);
+    expect(await getJobsFromDatabase(queueId)).toEqual([]);
+    queue.removeHandler(type);
+    queue.removeCleanup(type);
+  });
+
+  it('Cleanly removes a job removed while the handler runs', async () => {
+    let handlerCount = 0;
+    let cleanupCount = 0;
+    let id;
+    const type = uuidv4();
+    const handler = async () => {
+      if (typeof id === 'number') {
+        await removeJobFromDatabase(id);
+      }
+      handlerCount += 1;
+    };
+    const cleanup = async () => {
+      cleanupCount += 1;
+    };
+    queue.setHandler(type, handler);
+    queue.setCleanup(type, cleanup);
+    const queueId = uuidv4();
+    id = await enqueueToDatabase(queueId, type, [], 0);
+    await queue.onIdle();
+
+    expect(handlerCount).toEqual(1);
+    expect(cleanupCount).toEqual(1);
+    expect(await getJobsFromDatabase(queueId)).toEqual([]);
+    queue.removeHandler(type);
+    queue.removeCleanup(type);
+  });
+
+  it('Removes a job marked as "cleanup and remove" during a delayed start', async () => {
+    let handlerCount = 0;
+    let cleanupCount = 0;
+    const type = uuidv4();
+    const handler = async () => {
+      handlerCount += 1;
+    };
+    const cleanup = async () => {
+      cleanupCount += 1;
+    };
+    queue.setHandler(type, handler);
+    queue.setCleanup(type, cleanup);
+    const queueId = uuidv4();
+    const id = await enqueueToDatabase(queueId, type, [], 1000);
+    await expectAsync(queue).toEmit('dequeue', { id });
+    await markJobCleanupAndRemoveInDatabase(id);
+    await queue.onIdle();
+
+    expect(handlerCount).toEqual(0);
+    expect(cleanupCount).toEqual(0);
+    expect(await getJobsFromDatabase(queueId)).toEqual([]);
+    queue.removeHandler(type);
+    queue.removeCleanup(type);
   });
 });

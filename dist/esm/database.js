@@ -7,6 +7,20 @@ import makeLogger from './logger'; // Local job emitter is for this process only
 export const localJobEmitter = new EventEmitter();
 export const jobEmitter = new EventEmitter();
 const logger = makeLogger('Jobs Database');
+export class JobDoesNotExistError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'JobDoesNotExistError';
+  }
+
+}
+export class CleanupDoesNotExistError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'CleanupDoesNotExistError';
+  }
+
+}
 export const QUEUE_ERROR_STATUS = 0;
 export const QUEUE_PENDING_STATUS = 1;
 export const QUEUE_COMPLETE_STATUS = 2;
@@ -16,6 +30,7 @@ export const JOB_COMPLETE_STATUS = 1;
 export const JOB_PENDING_STATUS = 0;
 export const JOB_ERROR_STATUS = -1;
 export const JOB_CLEANUP_STATUS = -2;
+export const JOB_CLEANUP_AND_REMOVE_STATUS = -3;
 export const databasePromise = (async () => {
   const request = self.indexedDB.open('battery-queue-02', 1);
 
@@ -347,9 +362,12 @@ export async function removeJobsWithQueueIdAndTypeFromDatabase(queueId, type) {
 
   request.onsuccess = function (event) {
     for (const id of event.target.result) {
-      localJobEmitter.emit('jobDelete', id, queueId);
-      jobEmitter.emit('jobDelete', id, queueId);
       const deleteRequest = store.delete(id);
+
+      deleteRequest.onsuccess = function () {
+        localJobEmitter.emit('jobDelete', id, queueId);
+        jobEmitter.emit('jobDelete', id, queueId);
+      };
 
       deleteRequest.onerror = function (deleteEvent) {
         logger.error(`Request error while removing job ${id} in queue ${queueId} and type ${type} from jobs database`);
@@ -373,9 +391,12 @@ export async function removeQueueIdFromJobsDatabase(queueId) {
 
   request.onsuccess = function (event) {
     for (const id of event.target.result) {
-      localJobEmitter.emit('jobDelete', id, queueId);
-      jobEmitter.emit('jobDelete', id, queueId);
       const deleteRequest = store.delete(id);
+
+      deleteRequest.onsuccess = function () {
+        localJobEmitter.emit('jobDelete', id, queueId);
+        jobEmitter.emit('jobDelete', id, queueId);
+      };
 
       deleteRequest.onerror = function (deleteEvent) {
         logger.error(`Request error while removing job ${id} in queue ${queueId} from jobs database`);
@@ -463,23 +484,56 @@ export async function updateJobInDatabase(id, transform) {
   const request = store.get(id);
   await new Promise((resolve, reject) => {
     request.onsuccess = function () {
-      const newValue = transform(request.result);
+      let newValue;
+      const value = request.result;
+
+      try {
+        newValue = transform(value);
+      } catch (error) {
+        reject(error);
+        return;
+      }
 
       if (typeof newValue === 'undefined') {
         resolve();
+      } else if (newValue === false) {
+        if (typeof value !== 'undefined') {
+          const {
+            queueId,
+            type
+          } = value;
+          const deleteRequest = store.delete(id);
+
+          deleteRequest.onsuccess = function () {
+            localJobEmitter.emit('jobDelete', id, queueId);
+            jobEmitter.emit('jobDelete', id, queueId);
+            resolve();
+          };
+
+          deleteRequest.onerror = function (event) {
+            logger.error(`Delete request error while updating job ${id} in queue ${queueId} and type ${type} in jobs database`);
+            logger.errorObject(event);
+            reject(new Error(`Delete request error while updating job ${id} in queue ${queueId} and type ${type} from jobs database`));
+          };
+        }
       } else {
         const putRequest = store.put(newValue);
+        const {
+          queueId,
+          type,
+          status
+        } = newValue;
 
         putRequest.onsuccess = function () {
-          localJobEmitter.emit('jobUpdate', newValue.id, newValue.queueId, newValue.type, newValue.status);
-          jobEmitter.emit('jobUpdate', newValue.id, newValue.queueId, newValue.type, newValue.status);
+          localJobEmitter.emit('jobUpdate', id, queueId, type, status);
+          jobEmitter.emit('jobUpdate', id, queueId, type, status);
           resolve();
         };
 
         putRequest.onerror = function (event) {
-          logger.error(`Put request error while updating ${id}`);
+          logger.error(`Put request error while updating job ${id} in queue ${queueId} and type ${type} in jobs database`);
           logger.errorObject(event);
-          reject(new Error(`Put request error while updating ${id}`));
+          reject(new Error(`Put request error while updating job ${id} in queue ${queueId} and type ${type} from jobs database`));
         };
       }
     };
@@ -511,7 +565,14 @@ export async function updateCleanupInDatabase(id, transform) {
   const request = store.get(id);
   await new Promise((resolve, reject) => {
     request.onsuccess = function () {
-      const newValue = transform(request.result);
+      let newValue;
+
+      try {
+        newValue = transform(request.result);
+      } catch (error) {
+        reject(error);
+        return;
+      }
 
       if (typeof newValue === 'undefined') {
         resolve();
@@ -584,6 +645,21 @@ export async function updateCleanupValuesInDatabase(id, queueId, data) {
     };
   });
 }
+export async function removeJobFromDatabase(id) {
+  const store = await getReadWriteJobsObjectStore();
+  const request = store.delete(id);
+  return new Promise((resolve, reject) => {
+    request.onsuccess = function () {
+      resolve();
+    };
+
+    request.onerror = function (event) {
+      logger.error(`Error while removing job ${id}`);
+      logger.errorObject(event);
+      reject(new Error(`Error while removing job ${id}`));
+    };
+  });
+}
 export async function removeCleanupFromDatabase(id) {
   const store = await getReadWriteCleanupsObjectStore();
   const request = store.delete(id);
@@ -649,10 +725,10 @@ export async function updateQueueDataInDatabase(queueId, data) {
     };
   });
 }
-export async function markJobStatusInDatabase(id, status) {
+export function markJobStatusInDatabase(id, status) {
   return updateJobInDatabase(id, value => {
     if (typeof value === 'undefined') {
-      throw new Error(`Unable to mark job ${id} as status ${status} in database, job does not exist`);
+      throw new JobDoesNotExistError(`Unable to mark job ${id} as status ${status} in database, job does not exist`);
     }
 
     value.status = status; // eslint-disable-line no-param-reassign
@@ -675,10 +751,54 @@ export function markJobCleanupInDatabase(id) {
 export function markJobAbortedInDatabase(id) {
   return markJobStatusInDatabase(id, JOB_ABORTED_STATUS);
 }
-export async function markJobStartAfterInDatabase(id, startAfter) {
+export function markJobCleanupAndRemoveInDatabase(id) {
   return updateJobInDatabase(id, value => {
     if (typeof value === 'undefined') {
-      throw new Error(`Unable to mark job ${id} start-after time to ${new Date(startAfter).toLocaleString()} in database, job does not exist`);
+      throw new JobDoesNotExistError(`Unable to mark job ${id} as status ${JOB_CLEANUP_AND_REMOVE_STATUS} in database, job does not exist`);
+    }
+
+    if (value.status === JOB_PENDING_STATUS) {
+      return false;
+    }
+
+    if (value.status === JOB_ABORTED_STATUS) {
+      return false;
+    }
+
+    value.status = JOB_CLEANUP_AND_REMOVE_STATUS; // eslint-disable-line no-param-reassign
+
+    return value;
+  });
+}
+export function markJobAsAbortedOrRemoveFromDatabase(id) {
+  return updateJobInDatabase(id, value => {
+    if (typeof value === 'undefined') {
+      return;
+    }
+
+    if (value.status === JOB_ERROR_STATUS) {
+      value.status = JOB_ABORTED_STATUS; // eslint-disable-line no-param-reassign
+
+      return value; // eslint-disable-line consistent-return
+    }
+
+    if (value.status === JOB_CLEANUP_STATUS) {
+      value.status = JOB_ABORTED_STATUS; // eslint-disable-line no-param-reassign
+
+      return value; // eslint-disable-line consistent-return
+    }
+
+    if (value.status === JOB_CLEANUP_AND_REMOVE_STATUS) {
+      return false; // eslint-disable-line consistent-return
+    }
+
+    throw new Error(`Unable to mark job ${id} as aborted or remove after cleanup, unable to handle status ${value.status}`);
+  });
+}
+export function markJobStartAfterInDatabase(id, startAfter) {
+  return updateJobInDatabase(id, value => {
+    if (typeof value === 'undefined') {
+      throw new JobDoesNotExistError(`Unable to mark job ${id} start-after time to ${new Date(startAfter).toLocaleString()} in database, job does not exist`);
     }
 
     if (startAfter < value.startAfter) {
@@ -690,10 +810,10 @@ export async function markJobStartAfterInDatabase(id, startAfter) {
     return value; // eslint-disable-line consistent-return
   });
 }
-export async function markCleanupStartAfterInDatabase(id, startAfter) {
-  await updateCleanupInDatabase(id, value => {
+export function markCleanupStartAfterInDatabase(id, startAfter) {
+  return updateCleanupInDatabase(id, value => {
     if (typeof value === 'undefined') {
-      throw new Error(`Unable to mark cleanup ${id} start-after time to ${new Date(startAfter).toLocaleString()} in database, cleanup does not exist`);
+      throw new CleanupDoesNotExistError(`Unable to mark cleanup ${id} start-after time to ${new Date(startAfter).toLocaleString()} in database, cleanup does not exist`);
     }
 
     if (startAfter < value.startAfter) {
@@ -776,7 +896,7 @@ export async function markQueueForCleanupInDatabase(queueId) {
 export async function incrementJobAttemptInDatabase(id) {
   await updateJobInDatabase(id, value => {
     if (typeof value === 'undefined') {
-      throw new Error(`Unable to increment attempts for job ${id} in database, job does not exist`);
+      throw new JobDoesNotExistError(`Unable to increment attempts for job ${id} in database, job does not exist`);
     }
 
     value.attempt += 1; // eslint-disable-line no-param-reassign
@@ -907,12 +1027,57 @@ export async function enqueueToDatabase(queueId, type, args, delay) {
   jobEmitter.emit('jobAdd', id, queueId, type);
   return id;
 }
+export async function restoreJobToDatabaseForCleanupAndRemove(id, queueId, type, args) {
+  // eslint-disable-line no-underscore-dangle
+  if (typeof id !== 'number') {
+    throw new TypeError(`Unable to restore to database, received invalid "id" argument type "${typeof id}"`);
+  }
+
+  if (typeof queueId !== 'string') {
+    throw new TypeError(`Unable to restore to database, received invalid "queueId" argument type "${typeof queueId}"`);
+  }
+
+  if (typeof type !== 'string') {
+    throw new TypeError(`Unable to restore to database, received invalid "type" argument type "${typeof type}"`);
+  }
+
+  if (!Array.isArray(args)) {
+    throw new TypeError(`Unable to restore to database, received invalid "args" argument type "${typeof args}"`);
+  }
+
+  const value = {
+    id,
+    queueId,
+    type,
+    args,
+    attempt: 1,
+    created: Date.now(),
+    status: JOB_CLEANUP_AND_REMOVE_STATUS,
+    startAfter: Date.now()
+  };
+  const store = await getReadWriteJobsObjectStore();
+  const request = store.put(value);
+  await new Promise((resolve, reject) => {
+    request.onsuccess = function () {
+      resolve(request.result);
+    };
+
+    request.onerror = function (event) {
+      logger.error(`Request error while enqueueing ${type} job`);
+      logger.errorObject(event);
+      reject(new Error(`Request error while enqueueing ${type} job`));
+    };
+  });
+  localJobEmitter.emit('jobAdd', id, queueId, type);
+  jobEmitter.emit('jobAdd', id, queueId, type);
+  return id;
+}
 export async function dequeueFromDatabase() {
   // eslint-disable-line no-underscore-dangle
   const store = await getReadOnlyJobsObjectStore();
   const index = store.index('statusIndex'); // $FlowFixMe
 
-  const request = index.getAll(IDBKeyRange.bound(JOB_CLEANUP_STATUS, JOB_PENDING_STATUS));
+  const request = index.getAll(IDBKeyRange.bound(JOB_CLEANUP_AND_REMOVE_STATUS, JOB_PENDING_STATUS));
   const jobs = await new Promise((resolve, reject) => {
     request.onsuccess = function (event) {
       resolve(event.target.result);
@@ -1118,7 +1283,9 @@ export async function getQueueStatus(queueId) {
 
   const errorRequest = index.getAllKeys(IDBKeyRange.only([queueId, JOB_ERROR_STATUS])); // $FlowFixMe
 
-  const cleanupRequest = index.getAllKeys(IDBKeyRange.only([queueId, JOB_CLEANUP_STATUS]));
+  const cleanupRequest = index.getAllKeys(IDBKeyRange.only([queueId, JOB_CLEANUP_STATUS])); // $FlowFixMe
+
+  const cleanupAndRemoveRequest = index.getAllKeys(IDBKeyRange.only([queueId, JOB_CLEANUP_AND_REMOVE_STATUS]));
   const abortedCountPromise = new Promise((resolve, reject) => {
     abortedRequest.onsuccess = function (event) {
       resolve(event.target.result.length);
@@ -1174,13 +1341,24 @@ export async function getQueueStatus(queueId) {
       reject(new Error(`Request error while getting status of queue ${queueId}`));
     };
   });
-  const [abortedCount, completeCount, pendingCount, errorCount, cleanupCount] = await Promise.all([abortedCountPromise, completeCountPromise, pendingCountPromise, errorCountPromise, cleanupCountPromise]);
+  const cleanupAndRemoveCountPromise = new Promise((resolve, reject) => {
+    cleanupAndRemoveRequest.onsuccess = function (event) {
+      resolve(event.target.result.length);
+    };
+
+    cleanupAndRemoveRequest.onerror = function (event) {
+      logger.error(`Request error while getting status of queue ${queueId}`);
+      logger.errorObject(event);
+      reject(new Error(`Request error while getting status of queue ${queueId}`));
+    };
+  });
+  const [abortedCount, completeCount, pendingCount, errorCount, cleanupCount, cleanupAndRemoveCount] = await Promise.all([abortedCountPromise, completeCountPromise, pendingCountPromise, errorCountPromise, cleanupCountPromise, cleanupAndRemoveCountPromise]);
 
   if (abortedCount > 0 || cleanupCount > 0) {
     return QUEUE_ERROR_STATUS;
   }
 
-  if (errorCount > 0 || pendingCount > 0) {
+  if (errorCount > 0 || pendingCount > 0 || cleanupAndRemoveCount > 0) {
     return QUEUE_PENDING_STATUS;
   }
 

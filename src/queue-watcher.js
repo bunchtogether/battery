@@ -9,6 +9,7 @@ import {
   JOB_PENDING_STATUS,
   JOB_ERROR_STATUS,
   JOB_CLEANUP_STATUS,
+  JOB_CLEANUP_AND_REMOVE_STATUS,
   QUEUE_ERROR_STATUS,
   QUEUE_PENDING_STATUS,
   QUEUE_EMPTY_STATUS,
@@ -50,7 +51,7 @@ export default class BatteryQueueWatcher extends EventEmitter {
       }
       if (status === JOB_ABORTED_STATUS || status === JOB_CLEANUP_STATUS) {
         this.emit('status', QUEUE_ERROR_STATUS);
-      } else if (status === JOB_ERROR_STATUS || status === JOB_PENDING_STATUS) {
+      } else if (status === JOB_ERROR_STATUS || status === JOB_PENDING_STATUS || status === JOB_CLEANUP_AND_REMOVE_STATUS) {
         this.emit('status', QUEUE_PENDING_STATUS);
       } else if (status === JOB_COMPLETE_STATUS || status === JOB_PENDING_STATUS) {
         this.emitStatus();

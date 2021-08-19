@@ -13,23 +13,27 @@ exports.getJobFromDatabase = _getJobFromDatabase2;
 exports.updateCleanupInDatabase = _updateCleanupInDatabase2;
 exports.removePathFromCleanupDataInDatabase = _removePathFromCleanupDataInDatabase2;
 exports.updateCleanupValuesInDatabase = _updateCleanupValuesInDatabase2;
+exports.removeJobFromDatabase = _removeJobFromDatabase2;
 exports.removeCleanupFromDatabase = _removeCleanupFromDatabase2;
 exports.getCleanupFromDatabase = _getCleanupFromDatabase2;
 exports.getQueueDataFromDatabase = _getQueueDataFromDatabase2;
 exports.updateQueueDataInDatabase = _updateQueueDataInDatabase2;
-exports.markJobStatusInDatabase = _markJobStatusInDatabase2;
+exports.markJobStatusInDatabase = _markJobStatusInDatabase;
 exports.markJobCompleteInDatabase = _markJobCompleteInDatabase;
 exports.markJobPendingInDatabase = _markJobPendingInDatabase;
 exports.markJobErrorInDatabase = _markJobErrorInDatabase;
 exports.markJobCleanupInDatabase = _markJobCleanupInDatabase;
 exports.markJobAbortedInDatabase = _markJobAbortedInDatabase;
-exports.markJobStartAfterInDatabase = _markJobStartAfterInDatabase2;
-exports.markCleanupStartAfterInDatabase = _markCleanupStartAfterInDatabase2;
+exports.markJobCleanupAndRemoveInDatabase = _markJobCleanupAndRemoveInDatabase;
+exports.markJobAsAbortedOrRemoveFromDatabase = _markJobAsAbortedOrRemoveFromDatabase;
+exports.markJobStartAfterInDatabase = _markJobStartAfterInDatabase;
+exports.markCleanupStartAfterInDatabase = _markCleanupStartAfterInDatabase;
 exports.markQueueForCleanupInDatabase = _markQueueForCleanupInDatabase2;
 exports.incrementJobAttemptInDatabase = _incrementJobAttemptInDatabase2;
 exports.incrementCleanupAttemptInDatabase = _incrementCleanupAttemptInDatabase2;
 exports.bulkEnqueueToDatabase = _bulkEnqueueToDatabase2;
 exports.enqueueToDatabase = _enqueueToDatabase2;
+exports.restoreJobToDatabaseForCleanupAndRemove = _restoreJobToDatabaseForCleanupAndRemove2;
 exports.dequeueFromDatabase = _dequeueFromDatabase2;
 exports.getContiguousIds = _getContiguousIds;
 exports.dequeueFromDatabaseNotIn = _dequeueFromDatabaseNotIn2;
@@ -40,7 +44,7 @@ exports.storeAuthDataInDatabase = _storeAuthDataInDatabase2;
 exports.getAuthDataFromDatabase = _getAuthDataFromDatabase2;
 exports.removeAuthDataFromDatabase = _removeAuthDataFromDatabase2;
 exports.getQueueStatus = _getQueueStatus2;
-exports.databasePromise = exports.JOB_CLEANUP_STATUS = exports.JOB_ERROR_STATUS = exports.JOB_PENDING_STATUS = exports.JOB_COMPLETE_STATUS = exports.JOB_ABORTED_STATUS = exports.QUEUE_EMPTY_STATUS = exports.QUEUE_COMPLETE_STATUS = exports.QUEUE_PENDING_STATUS = exports.QUEUE_ERROR_STATUS = exports.jobEmitter = exports.localJobEmitter = void 0;
+exports.databasePromise = exports.JOB_CLEANUP_AND_REMOVE_STATUS = exports.JOB_CLEANUP_STATUS = exports.JOB_ERROR_STATUS = exports.JOB_PENDING_STATUS = exports.JOB_COMPLETE_STATUS = exports.JOB_ABORTED_STATUS = exports.QUEUE_EMPTY_STATUS = exports.QUEUE_COMPLETE_STATUS = exports.QUEUE_PENDING_STATUS = exports.QUEUE_ERROR_STATUS = exports.CleanupDoesNotExistError = exports.JobDoesNotExistError = exports.jobEmitter = exports.localJobEmitter = void 0;
 
 var _merge = _interopRequireDefault(require("lodash/merge"));
 
@@ -72,6 +76,28 @@ function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) { try
 
 function _asyncToGenerator(fn) { return function () { var self = this, args = arguments; return new Promise(function (resolve, reject) { var gen = fn.apply(self, args); function _next(value) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value); } function _throw(err) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err); } _next(undefined); }); }; }
 
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _createSuper(Derived) { var hasNativeReflectConstruct = _isNativeReflectConstruct(); return function _createSuperInternal() { var Super = _getPrototypeOf(Derived), result; if (hasNativeReflectConstruct) { var NewTarget = _getPrototypeOf(this).constructor; result = Reflect.construct(Super, arguments, NewTarget); } else { result = Super.apply(this, arguments); } return _possibleConstructorReturn(this, result); }; }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _wrapNativeSuper(Class) { var _cache = typeof Map === "function" ? new Map() : undefined; _wrapNativeSuper = function _wrapNativeSuper(Class) { if (Class === null || !_isNativeFunction(Class)) return Class; if (typeof Class !== "function") { throw new TypeError("Super expression must either be null or a function"); } if (typeof _cache !== "undefined") { if (_cache.has(Class)) return _cache.get(Class); _cache.set(Class, Wrapper); } function Wrapper() { return _construct(Class, arguments, _getPrototypeOf(this).constructor); } Wrapper.prototype = Object.create(Class.prototype, { constructor: { value: Wrapper, enumerable: false, writable: true, configurable: true } }); return _setPrototypeOf(Wrapper, Class); }; return _wrapNativeSuper(Class); }
+
+function _construct(Parent, args, Class) { if (_isNativeReflectConstruct()) { _construct = Reflect.construct; } else { _construct = function _construct(Parent, args, Class) { var a = [null]; a.push.apply(a, args); var Constructor = Function.bind.apply(Parent, a); var instance = new Constructor(); if (Class) _setPrototypeOf(instance, Class.prototype); return instance; }; } return _construct.apply(null, arguments); }
+
+function _isNativeReflectConstruct() { if (typeof Reflect === "undefined" || !Reflect.construct) return false; if (Reflect.construct.sham) return false; if (typeof Proxy === "function") return true; try { Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function () {})); return true; } catch (e) { return false; } }
+
+function _isNativeFunction(fn) { return Function.toString.call(fn).indexOf("[native code]") !== -1; }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
 // Local job emitter is for this process only,
 // jobEmitter is bridged when a MessagePort is open
 var _localJobEmitter = new _events.default();
@@ -82,6 +108,46 @@ var _jobEmitter = new _events.default();
 
 exports.jobEmitter = _jobEmitter;
 var logger = (0, _logger.default)('Jobs Database');
+
+var _JobDoesNotExistError = /*#__PURE__*/function (_Error) {
+  _inherits(JobDoesNotExistError, _Error);
+
+  var _super = _createSuper(JobDoesNotExistError);
+
+  function JobDoesNotExistError(message) {
+    var _this;
+
+    _classCallCheck(this, JobDoesNotExistError);
+
+    _this = _super.call(this, message);
+    _this.name = 'JobDoesNotExistError';
+    return _this;
+  }
+
+  return JobDoesNotExistError;
+}( /*#__PURE__*/_wrapNativeSuper(Error));
+
+exports.JobDoesNotExistError = _JobDoesNotExistError;
+
+var _CleanupDoesNotExistError = /*#__PURE__*/function (_Error2) {
+  _inherits(CleanupDoesNotExistError, _Error2);
+
+  var _super2 = _createSuper(CleanupDoesNotExistError);
+
+  function CleanupDoesNotExistError(message) {
+    var _this2;
+
+    _classCallCheck(this, CleanupDoesNotExistError);
+
+    _this2 = _super2.call(this, message);
+    _this2.name = 'CleanupDoesNotExistError';
+    return _this2;
+  }
+
+  return CleanupDoesNotExistError;
+}( /*#__PURE__*/_wrapNativeSuper(Error));
+
+exports.CleanupDoesNotExistError = _CleanupDoesNotExistError;
 var _QUEUE_ERROR_STATUS = 0;
 exports.QUEUE_ERROR_STATUS = _QUEUE_ERROR_STATUS;
 var _QUEUE_PENDING_STATUS = 1;
@@ -104,6 +170,10 @@ exports.JOB_ERROR_STATUS = _JOB_ERROR_STATUS;
 var _JOB_CLEANUP_STATUS = -2;
 
 exports.JOB_CLEANUP_STATUS = _JOB_CLEANUP_STATUS;
+
+var _JOB_CLEANUP_AND_REMOVE_STATUS = -3;
+
+exports.JOB_CLEANUP_AND_REMOVE_STATUS = _JOB_CLEANUP_AND_REMOVE_STATUS;
 
 var _databasePromise = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee() {
   var request, db;
@@ -809,12 +879,13 @@ function _removeJobsWithQueueIdAndTypeFromDatabase() {
               try {
                 var _loop = function _loop() {
                   var id = _step.value;
-
-                  _localJobEmitter.emit('jobDelete', id, queueId);
-
-                  _jobEmitter.emit('jobDelete', id, queueId);
-
                   var deleteRequest = store.delete(id);
+
+                  deleteRequest.onsuccess = function () {
+                    _localJobEmitter.emit('jobDelete', id, queueId);
+
+                    _jobEmitter.emit('jobDelete', id, queueId);
+                  };
 
                   deleteRequest.onerror = function (deleteEvent) {
                     logger.error("Request error while removing job ".concat(id, " in queue ").concat(queueId, " and type ").concat(type, " from jobs database"));
@@ -881,12 +952,13 @@ function _removeQueueIdFromJobsDatabase() {
               try {
                 var _loop2 = function _loop2() {
                   var id = _step2.value;
-
-                  _localJobEmitter.emit('jobDelete', id, queueId);
-
-                  _jobEmitter.emit('jobDelete', id, queueId);
-
                   var deleteRequest = store.delete(id);
+
+                  deleteRequest.onsuccess = function () {
+                    _localJobEmitter.emit('jobDelete', id, queueId);
+
+                    _jobEmitter.emit('jobDelete', id, queueId);
+                  };
 
                   deleteRequest.onerror = function (deleteEvent) {
                     logger.error("Request error while removing job ".concat(id, " in queue ").concat(queueId, " from jobs database"));
@@ -1101,25 +1173,57 @@ function _updateJobInDatabase() {
             _context21.next = 6;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
-                var newValue = transform(request.result);
+                var newValue;
+                var value = request.result;
+
+                try {
+                  newValue = transform(value);
+                } catch (error) {
+                  reject(error);
+                  return;
+                }
 
                 if (typeof newValue === 'undefined') {
                   resolve();
+                } else if (newValue === false) {
+                  if (typeof value !== 'undefined') {
+                    var queueId = value.queueId,
+                        type = value.type;
+                    var deleteRequest = store.delete(id);
+
+                    deleteRequest.onsuccess = function () {
+                      _localJobEmitter.emit('jobDelete', id, queueId);
+
+                      _jobEmitter.emit('jobDelete', id, queueId);
+
+                      resolve();
+                    };
+
+                    deleteRequest.onerror = function (event) {
+                      logger.error("Delete request error while updating job ".concat(id, " in queue ").concat(queueId, " and type ").concat(type, " in jobs database"));
+                      logger.errorObject(event);
+                      reject(new Error("Delete request error while updating job ".concat(id, " in queue ").concat(queueId, " and type ").concat(type, " from jobs database")));
+                    };
+                  }
                 } else {
                   var putRequest = store.put(newValue);
+                  var _newValue = newValue,
+                      _queueId = _newValue.queueId,
+                      _type = _newValue.type,
+                      status = _newValue.status;
 
                   putRequest.onsuccess = function () {
-                    _localJobEmitter.emit('jobUpdate', newValue.id, newValue.queueId, newValue.type, newValue.status);
+                    _localJobEmitter.emit('jobUpdate', id, _queueId, _type, status);
 
-                    _jobEmitter.emit('jobUpdate', newValue.id, newValue.queueId, newValue.type, newValue.status);
+                    _jobEmitter.emit('jobUpdate', id, _queueId, _type, status);
 
                     resolve();
                   };
 
                   putRequest.onerror = function (event) {
-                    logger.error("Put request error while updating ".concat(id));
+                    logger.error("Put request error while updating job ".concat(id, " in queue ").concat(_queueId, " and type ").concat(_type, " in jobs database"));
                     logger.errorObject(event);
-                    reject(new Error("Put request error while updating ".concat(id)));
+                    reject(new Error("Put request error while updating job ".concat(id, " in queue ").concat(_queueId, " and type ").concat(_type, " from jobs database")));
                   };
                 }
               };
@@ -1200,7 +1304,14 @@ function _updateCleanupInDatabase() {
             _context23.next = 6;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
-                var newValue = transform(request.result);
+                var newValue;
+
+                try {
+                  newValue = transform(request.result);
+                } catch (error) {
+                  reject(error);
+                  return;
+                }
 
                 if (typeof newValue === 'undefined') {
                   resolve();
@@ -1333,24 +1444,63 @@ function _updateCleanupValuesInDatabase() {
   return _updateCleanupValuesInDatabase.apply(this, arguments);
 }
 
-function _removeCleanupFromDatabase2(_x17) {
-  return _removeCleanupFromDatabase.apply(this, arguments);
+function _removeJobFromDatabase2(_x17) {
+  return _removeJobFromDatabase.apply(this, arguments);
 }
 
-function _removeCleanupFromDatabase() {
-  _removeCleanupFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee26(id) {
+function _removeJobFromDatabase() {
+  _removeJobFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee26(id) {
     var store, request;
     return regeneratorRuntime.wrap(function _callee26$(_context26) {
       while (1) {
         switch (_context26.prev = _context26.next) {
           case 0:
             _context26.next = 2;
-            return getReadWriteCleanupsObjectStore();
+            return getReadWriteJobsObjectStore();
 
           case 2:
             store = _context26.sent;
             request = store.delete(id);
             return _context26.abrupt("return", new Promise(function (resolve, reject) {
+              request.onsuccess = function () {
+                resolve();
+              };
+
+              request.onerror = function (event) {
+                logger.error("Error while removing job ".concat(id));
+                logger.errorObject(event);
+                reject(new Error("Error while removing job ".concat(id)));
+              };
+            }));
+
+          case 5:
+          case "end":
+            return _context26.stop();
+        }
+      }
+    }, _callee26);
+  }));
+  return _removeJobFromDatabase.apply(this, arguments);
+}
+
+function _removeCleanupFromDatabase2(_x18) {
+  return _removeCleanupFromDatabase.apply(this, arguments);
+}
+
+function _removeCleanupFromDatabase() {
+  _removeCleanupFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee27(id) {
+    var store, request;
+    return regeneratorRuntime.wrap(function _callee27$(_context27) {
+      while (1) {
+        switch (_context27.prev = _context27.next) {
+          case 0:
+            _context27.next = 2;
+            return getReadWriteCleanupsObjectStore();
+
+          case 2:
+            store = _context27.sent;
+            request = store.delete(id);
+            return _context27.abrupt("return", new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve();
               };
@@ -1364,32 +1514,32 @@ function _removeCleanupFromDatabase() {
 
           case 5:
           case "end":
-            return _context26.stop();
+            return _context27.stop();
         }
       }
-    }, _callee26);
+    }, _callee27);
   }));
   return _removeCleanupFromDatabase.apply(this, arguments);
 }
 
-function _getCleanupFromDatabase2(_x18) {
+function _getCleanupFromDatabase2(_x19) {
   return _getCleanupFromDatabase.apply(this, arguments);
 }
 
 function _getCleanupFromDatabase() {
-  _getCleanupFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee27(id) {
+  _getCleanupFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee28(id) {
     var store, request;
-    return regeneratorRuntime.wrap(function _callee27$(_context27) {
+    return regeneratorRuntime.wrap(function _callee28$(_context28) {
       while (1) {
-        switch (_context27.prev = _context27.next) {
+        switch (_context28.prev = _context28.next) {
           case 0:
-            _context27.next = 2;
+            _context28.next = 2;
             return getReadOnlyCleanupsObjectStore();
 
           case 2:
-            store = _context27.sent;
+            store = _context28.sent;
             request = store.get(id);
-            return _context27.abrupt("return", new Promise(function (resolve, reject) {
+            return _context28.abrupt("return", new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve(request.result);
               };
@@ -1403,32 +1553,32 @@ function _getCleanupFromDatabase() {
 
           case 5:
           case "end":
-            return _context27.stop();
+            return _context28.stop();
         }
       }
-    }, _callee27);
+    }, _callee28);
   }));
   return _getCleanupFromDatabase.apply(this, arguments);
 }
 
-function _getQueueDataFromDatabase2(_x19) {
+function _getQueueDataFromDatabase2(_x20) {
   return _getQueueDataFromDatabase.apply(this, arguments);
 }
 
 function _getQueueDataFromDatabase() {
-  _getQueueDataFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee28(queueId) {
+  _getQueueDataFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee29(queueId) {
     var store, request, queueData;
-    return regeneratorRuntime.wrap(function _callee28$(_context28) {
+    return regeneratorRuntime.wrap(function _callee29$(_context29) {
       while (1) {
-        switch (_context28.prev = _context28.next) {
+        switch (_context29.prev = _context29.next) {
           case 0:
-            _context28.next = 2;
+            _context29.next = 2;
             return getReadOnlyQueueDataObjectStore();
 
           case 2:
-            store = _context28.sent;
+            store = _context29.sent;
             request = store.get(queueId);
-            _context28.next = 6;
+            _context29.next = 6;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve(request.result);
@@ -1442,45 +1592,45 @@ function _getQueueDataFromDatabase() {
             });
 
           case 6:
-            queueData = _context28.sent;
-            return _context28.abrupt("return", typeof queueData !== 'undefined' ? queueData.data : undefined);
+            queueData = _context29.sent;
+            return _context29.abrupt("return", typeof queueData !== 'undefined' ? queueData.data : undefined);
 
           case 8:
           case "end":
-            return _context28.stop();
+            return _context29.stop();
         }
       }
-    }, _callee28);
+    }, _callee29);
   }));
   return _getQueueDataFromDatabase.apply(this, arguments);
 }
 
-function _updateQueueDataInDatabase2(_x20, _x21) {
+function _updateQueueDataInDatabase2(_x21, _x22) {
   return _updateQueueDataInDatabase.apply(this, arguments);
 }
 
 function _updateQueueDataInDatabase() {
-  _updateQueueDataInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee29(queueId, data) {
+  _updateQueueDataInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee30(queueId, data) {
     var value, store, request;
-    return regeneratorRuntime.wrap(function _callee29$(_context29) {
+    return regeneratorRuntime.wrap(function _callee30$(_context30) {
       while (1) {
-        switch (_context29.prev = _context29.next) {
+        switch (_context30.prev = _context30.next) {
           case 0:
-            _context29.next = 2;
+            _context30.next = 2;
             return _getQueueDataFromDatabase2(queueId);
 
           case 2:
-            value = _context29.sent;
-            _context29.next = 5;
+            value = _context30.sent;
+            _context30.next = 5;
             return getReadWriteQueueDataObjectStore();
 
           case 5:
-            store = _context29.sent;
+            store = _context30.sent;
             request = store.put({
               queueId: queueId,
               data: (0, _merge.default)({}, value, data)
             });
-            return _context29.abrupt("return", new Promise(function (resolve, reject) {
+            return _context30.abrupt("return", new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve();
               };
@@ -1494,157 +1644,145 @@ function _updateQueueDataInDatabase() {
 
           case 8:
           case "end":
-            return _context29.stop();
-        }
-      }
-    }, _callee29);
-  }));
-  return _updateQueueDataInDatabase.apply(this, arguments);
-}
-
-function _markJobStatusInDatabase2(_x22, _x23) {
-  return _markJobStatusInDatabase.apply(this, arguments);
-}
-
-function _markJobStatusInDatabase() {
-  _markJobStatusInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee30(id, status) {
-    return regeneratorRuntime.wrap(function _callee30$(_context30) {
-      while (1) {
-        switch (_context30.prev = _context30.next) {
-          case 0:
-            return _context30.abrupt("return", _updateJobInDatabase2(id, function (value) {
-              if (typeof value === 'undefined') {
-                throw new Error("Unable to mark job ".concat(id, " as status ").concat(status, " in database, job does not exist"));
-              }
-
-              value.status = status; // eslint-disable-line no-param-reassign
-
-              // eslint-disable-line no-param-reassign
-              return value;
-            }));
-
-          case 1:
-          case "end":
             return _context30.stop();
         }
       }
     }, _callee30);
   }));
-  return _markJobStatusInDatabase.apply(this, arguments);
+  return _updateQueueDataInDatabase.apply(this, arguments);
+}
+
+function _markJobStatusInDatabase(id, status) {
+  return _updateJobInDatabase2(id, function (value) {
+    if (typeof value === 'undefined') {
+      throw new _JobDoesNotExistError("Unable to mark job ".concat(id, " as status ").concat(status, " in database, job does not exist"));
+    }
+
+    value.status = status; // eslint-disable-line no-param-reassign
+
+    return value;
+  });
 }
 
 function _markJobCompleteInDatabase(id) {
-  return _markJobStatusInDatabase2(id, _JOB_COMPLETE_STATUS);
+  return _markJobStatusInDatabase(id, _JOB_COMPLETE_STATUS);
 }
 
 function _markJobPendingInDatabase(id) {
-  return _markJobStatusInDatabase2(id, _JOB_PENDING_STATUS);
+  return _markJobStatusInDatabase(id, _JOB_PENDING_STATUS);
 }
 
 function _markJobErrorInDatabase(id) {
-  return _markJobStatusInDatabase2(id, _JOB_ERROR_STATUS);
+  return _markJobStatusInDatabase(id, _JOB_ERROR_STATUS);
 }
 
 function _markJobCleanupInDatabase(id) {
-  return _markJobStatusInDatabase2(id, _JOB_CLEANUP_STATUS);
+  return _markJobStatusInDatabase(id, _JOB_CLEANUP_STATUS);
 }
 
 function _markJobAbortedInDatabase(id) {
-  return _markJobStatusInDatabase2(id, _JOB_ABORTED_STATUS);
+  return _markJobStatusInDatabase(id, _JOB_ABORTED_STATUS);
 }
 
-function _markJobStartAfterInDatabase2(_x24, _x25) {
-  return _markJobStartAfterInDatabase.apply(this, arguments);
+function _markJobCleanupAndRemoveInDatabase(id) {
+  return _updateJobInDatabase2(id, function (value) {
+    if (typeof value === 'undefined') {
+      throw new _JobDoesNotExistError("Unable to mark job ".concat(id, " as status ").concat(_JOB_CLEANUP_AND_REMOVE_STATUS, " in database, job does not exist"));
+    }
+
+    if (value.status === _JOB_PENDING_STATUS) {
+      return false;
+    }
+
+    if (value.status === _JOB_ABORTED_STATUS) {
+      return false;
+    }
+
+    value.status = _JOB_CLEANUP_AND_REMOVE_STATUS; // eslint-disable-line no-param-reassign
+
+    return value;
+  });
 }
 
-function _markJobStartAfterInDatabase() {
-  _markJobStartAfterInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee31(id, startAfter) {
-    return regeneratorRuntime.wrap(function _callee31$(_context31) {
-      while (1) {
-        switch (_context31.prev = _context31.next) {
-          case 0:
-            return _context31.abrupt("return", _updateJobInDatabase2(id, function (value) {
-              if (typeof value === 'undefined') {
-                throw new Error("Unable to mark job ".concat(id, " start-after time to ").concat(new Date(startAfter).toLocaleString(), " in database, job does not exist"));
-              }
+function _markJobAsAbortedOrRemoveFromDatabase(id) {
+  return _updateJobInDatabase2(id, function (value) {
+    if (typeof value === 'undefined') {
+      return;
+    }
 
-              if (startAfter < value.startAfter) {
-                return;
-              }
+    if (value.status === _JOB_ERROR_STATUS) {
+      value.status = _JOB_ABORTED_STATUS; // eslint-disable-line no-param-reassign
 
-              value.startAfter = startAfter; // eslint-disable-line no-param-reassign
+      return value; // eslint-disable-line consistent-return
+    }
 
-              // eslint-disable-line no-param-reassign
-              return value; // eslint-disable-line consistent-return
-            }));
+    if (value.status === _JOB_CLEANUP_STATUS) {
+      value.status = _JOB_ABORTED_STATUS; // eslint-disable-line no-param-reassign
 
-          case 1:
-          case "end":
-            return _context31.stop();
-        }
-      }
-    }, _callee31);
-  }));
-  return _markJobStartAfterInDatabase.apply(this, arguments);
+      return value; // eslint-disable-line consistent-return
+    }
+
+    if (value.status === _JOB_CLEANUP_AND_REMOVE_STATUS) {
+      return false; // eslint-disable-line consistent-return
+    }
+
+    throw new Error("Unable to mark job ".concat(id, " as aborted or remove after cleanup, unable to handle status ").concat(value.status));
+  });
 }
 
-function _markCleanupStartAfterInDatabase2(_x26, _x27) {
-  return _markCleanupStartAfterInDatabase.apply(this, arguments);
+function _markJobStartAfterInDatabase(id, startAfter) {
+  return _updateJobInDatabase2(id, function (value) {
+    if (typeof value === 'undefined') {
+      throw new _JobDoesNotExistError("Unable to mark job ".concat(id, " start-after time to ").concat(new Date(startAfter).toLocaleString(), " in database, job does not exist"));
+    }
+
+    if (startAfter < value.startAfter) {
+      return;
+    }
+
+    value.startAfter = startAfter; // eslint-disable-line no-param-reassign
+
+    return value; // eslint-disable-line consistent-return
+  });
 }
 
-function _markCleanupStartAfterInDatabase() {
-  _markCleanupStartAfterInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee32(id, startAfter) {
-    return regeneratorRuntime.wrap(function _callee32$(_context32) {
-      while (1) {
-        switch (_context32.prev = _context32.next) {
-          case 0:
-            _context32.next = 2;
-            return _updateCleanupInDatabase2(id, function (value) {
-              if (typeof value === 'undefined') {
-                throw new Error("Unable to mark cleanup ".concat(id, " start-after time to ").concat(new Date(startAfter).toLocaleString(), " in database, cleanup does not exist"));
-              }
+function _markCleanupStartAfterInDatabase(id, startAfter) {
+  return _updateCleanupInDatabase2(id, function (value) {
+    if (typeof value === 'undefined') {
+      throw new _CleanupDoesNotExistError("Unable to mark cleanup ".concat(id, " start-after time to ").concat(new Date(startAfter).toLocaleString(), " in database, cleanup does not exist"));
+    }
 
-              if (startAfter < value.startAfter) {
-                return;
-              }
+    if (startAfter < value.startAfter) {
+      return;
+    }
 
-              value.startAfter = startAfter; // eslint-disable-line  no-param-reassign
+    value.startAfter = startAfter; // eslint-disable-line  no-param-reassign
 
-              // eslint-disable-line  no-param-reassign
-              return value; // eslint-disable-line consistent-return
-            });
-
-          case 2:
-          case "end":
-            return _context32.stop();
-        }
-      }
-    }, _callee32);
-  }));
-  return _markCleanupStartAfterInDatabase.apply(this, arguments);
+    return value; // eslint-disable-line consistent-return
+  });
 }
 
-function _markQueueForCleanupInDatabase2(_x28) {
+function _markQueueForCleanupInDatabase2(_x23) {
   return _markQueueForCleanupInDatabase.apply(this, arguments);
 }
 
 function _markQueueForCleanupInDatabase() {
-  _markQueueForCleanupInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee33(queueId) {
+  _markQueueForCleanupInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee31(queueId) {
     var store, index, request, jobs;
-    return regeneratorRuntime.wrap(function _callee33$(_context33) {
+    return regeneratorRuntime.wrap(function _callee31$(_context31) {
       while (1) {
-        switch (_context33.prev = _context33.next) {
+        switch (_context31.prev = _context31.next) {
           case 0:
-            _context33.next = 2;
+            _context31.next = 2;
             return getReadWriteJobsObjectStore();
 
           case 2:
-            store = _context33.sent;
+            store = _context31.sent;
             index = store.index('queueIdIndex'); // $FlowFixMe
 
             request = index.openCursor(IDBKeyRange.only(queueId));
             jobs = [];
-            _context33.next = 8;
+            _context31.next = 8;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function (event) {
                 var cursor = event.target.result;
@@ -1709,32 +1847,32 @@ function _markQueueForCleanupInDatabase() {
             });
 
           case 8:
-            return _context33.abrupt("return", jobs);
+            return _context31.abrupt("return", jobs);
 
           case 9:
           case "end":
-            return _context33.stop();
+            return _context31.stop();
         }
       }
-    }, _callee33);
+    }, _callee31);
   }));
   return _markQueueForCleanupInDatabase.apply(this, arguments);
 }
 
-function _incrementJobAttemptInDatabase2(_x29) {
+function _incrementJobAttemptInDatabase2(_x24) {
   return _incrementJobAttemptInDatabase.apply(this, arguments);
 }
 
 function _incrementJobAttemptInDatabase() {
-  _incrementJobAttemptInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee34(id) {
-    return regeneratorRuntime.wrap(function _callee34$(_context34) {
+  _incrementJobAttemptInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee32(id) {
+    return regeneratorRuntime.wrap(function _callee32$(_context32) {
       while (1) {
-        switch (_context34.prev = _context34.next) {
+        switch (_context32.prev = _context32.next) {
           case 0:
-            _context34.next = 2;
+            _context32.next = 2;
             return _updateJobInDatabase2(id, function (value) {
               if (typeof value === 'undefined') {
-                throw new Error("Unable to increment attempts for job ".concat(id, " in database, job does not exist"));
+                throw new _JobDoesNotExistError("Unable to increment attempts for job ".concat(id, " in database, job does not exist"));
               }
 
               value.attempt += 1; // eslint-disable-line no-param-reassign
@@ -1745,27 +1883,27 @@ function _incrementJobAttemptInDatabase() {
 
           case 2:
           case "end":
-            return _context34.stop();
+            return _context32.stop();
         }
       }
-    }, _callee34);
+    }, _callee32);
   }));
   return _incrementJobAttemptInDatabase.apply(this, arguments);
 }
 
-function _incrementCleanupAttemptInDatabase2(_x30, _x31) {
+function _incrementCleanupAttemptInDatabase2(_x25, _x26) {
   return _incrementCleanupAttemptInDatabase.apply(this, arguments);
 }
 
 function _incrementCleanupAttemptInDatabase() {
-  _incrementCleanupAttemptInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee35(id, queueId) {
+  _incrementCleanupAttemptInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee33(id, queueId) {
     var attempt;
-    return regeneratorRuntime.wrap(function _callee35$(_context35) {
+    return regeneratorRuntime.wrap(function _callee33$(_context33) {
       while (1) {
-        switch (_context35.prev = _context35.next) {
+        switch (_context33.prev = _context33.next) {
           case 0:
             attempt = 1;
-            _context35.next = 3;
+            _context33.next = 3;
             return _updateCleanupInDatabase2(id, function (value) {
               if (typeof value === 'undefined') {
                 return {
@@ -1785,32 +1923,32 @@ function _incrementCleanupAttemptInDatabase() {
             });
 
           case 3:
-            return _context35.abrupt("return", attempt);
+            return _context33.abrupt("return", attempt);
 
           case 4:
           case "end":
-            return _context35.stop();
+            return _context33.stop();
         }
       }
-    }, _callee35);
+    }, _callee33);
   }));
   return _incrementCleanupAttemptInDatabase.apply(this, arguments);
 }
 
-function _bulkEnqueueToDatabase2(_x32, _x33, _x34) {
+function _bulkEnqueueToDatabase2(_x27, _x28, _x29) {
   return _bulkEnqueueToDatabase.apply(this, arguments);
 }
 
 function _bulkEnqueueToDatabase() {
-  _bulkEnqueueToDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee36(queueId, items, delay) {
+  _bulkEnqueueToDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee34(queueId, items, delay) {
     var i, _items$i, type, args, ids, store;
 
-    return regeneratorRuntime.wrap(function _callee36$(_context36) {
+    return regeneratorRuntime.wrap(function _callee34$(_context34) {
       while (1) {
-        switch (_context36.prev = _context36.next) {
+        switch (_context34.prev = _context34.next) {
           case 0:
             if (!(typeof queueId !== 'string')) {
-              _context36.next = 2;
+              _context34.next = 2;
               break;
             }
 
@@ -1818,7 +1956,7 @@ function _bulkEnqueueToDatabase() {
 
           case 2:
             if (Array.isArray(items)) {
-              _context36.next = 4;
+              _context34.next = 4;
               break;
             }
 
@@ -1829,14 +1967,14 @@ function _bulkEnqueueToDatabase() {
 
           case 5:
             if (!(i < items.length)) {
-              _context36.next = 14;
+              _context34.next = 14;
               break;
             }
 
             _items$i = _slicedToArray(items[i], 2), type = _items$i[0], args = _items$i[1];
 
             if (!(typeof type !== 'string')) {
-              _context36.next = 9;
+              _context34.next = 9;
               break;
             }
 
@@ -1844,7 +1982,7 @@ function _bulkEnqueueToDatabase() {
 
           case 9:
             if (Array.isArray(args)) {
-              _context36.next = 11;
+              _context34.next = 11;
               break;
             }
 
@@ -1852,12 +1990,12 @@ function _bulkEnqueueToDatabase() {
 
           case 11:
             i += 1;
-            _context36.next = 5;
+            _context34.next = 5;
             break;
 
           case 14:
             if (!(typeof delay !== 'number')) {
-              _context36.next = 16;
+              _context34.next = 16;
               break;
             }
 
@@ -1865,12 +2003,12 @@ function _bulkEnqueueToDatabase() {
 
           case 16:
             ids = [];
-            _context36.next = 19;
+            _context34.next = 19;
             return getReadWriteJobsObjectStore();
 
           case 19:
-            store = _context36.sent;
-            _context36.next = 22;
+            store = _context34.sent;
+            _context34.next = 22;
             return new Promise(function (resolve, reject) {
               var _loop4 = function _loop4(_i2) {
                 var _items$_i = _slicedToArray(items[_i2], 2),
@@ -1912,31 +2050,31 @@ function _bulkEnqueueToDatabase() {
             });
 
           case 22:
-            return _context36.abrupt("return", ids);
+            return _context34.abrupt("return", ids);
 
           case 23:
           case "end":
-            return _context36.stop();
+            return _context34.stop();
         }
       }
-    }, _callee36);
+    }, _callee34);
   }));
   return _bulkEnqueueToDatabase.apply(this, arguments);
 }
 
-function _enqueueToDatabase2(_x35, _x36, _x37, _x38) {
+function _enqueueToDatabase2(_x30, _x31, _x32, _x33) {
   return _enqueueToDatabase.apply(this, arguments);
 }
 
 function _enqueueToDatabase() {
-  _enqueueToDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee37(queueId, type, args, delay) {
+  _enqueueToDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee35(queueId, type, args, delay) {
     var value, store, request, id;
-    return regeneratorRuntime.wrap(function _callee37$(_context37) {
+    return regeneratorRuntime.wrap(function _callee35$(_context35) {
       while (1) {
-        switch (_context37.prev = _context37.next) {
+        switch (_context35.prev = _context35.next) {
           case 0:
             if (!(typeof queueId !== 'string')) {
-              _context37.next = 2;
+              _context35.next = 2;
               break;
             }
 
@@ -1944,7 +2082,7 @@ function _enqueueToDatabase() {
 
           case 2:
             if (!(typeof type !== 'string')) {
-              _context37.next = 4;
+              _context35.next = 4;
               break;
             }
 
@@ -1952,7 +2090,7 @@ function _enqueueToDatabase() {
 
           case 4:
             if (Array.isArray(args)) {
-              _context37.next = 6;
+              _context35.next = 6;
               break;
             }
 
@@ -1960,7 +2098,7 @@ function _enqueueToDatabase() {
 
           case 6:
             if (!(typeof delay !== 'number')) {
-              _context37.next = 8;
+              _context35.next = 8;
               break;
             }
 
@@ -1976,13 +2114,13 @@ function _enqueueToDatabase() {
               status: _JOB_PENDING_STATUS,
               startAfter: Date.now() + delay
             };
-            _context37.next = 11;
+            _context35.next = 11;
             return getReadWriteJobsObjectStore();
 
           case 11:
-            store = _context37.sent;
+            store = _context35.sent;
             request = store.put(value);
-            _context37.next = 15;
+            _context35.next = 15;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve(request.result);
@@ -1996,22 +2134,111 @@ function _enqueueToDatabase() {
             });
 
           case 15:
-            id = _context37.sent;
+            id = _context35.sent;
 
             _localJobEmitter.emit('jobAdd', id, queueId, type);
 
             _jobEmitter.emit('jobAdd', id, queueId, type);
 
-            return _context37.abrupt("return", id);
+            return _context35.abrupt("return", id);
 
           case 19:
           case "end":
-            return _context37.stop();
+            return _context35.stop();
         }
       }
-    }, _callee37);
+    }, _callee35);
   }));
   return _enqueueToDatabase.apply(this, arguments);
+}
+
+function _restoreJobToDatabaseForCleanupAndRemove2(_x34, _x35, _x36, _x37) {
+  return _restoreJobToDatabaseForCleanupAndRemove.apply(this, arguments);
+}
+
+function _restoreJobToDatabaseForCleanupAndRemove() {
+  _restoreJobToDatabaseForCleanupAndRemove = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee36(id, queueId, type, args) {
+    var value, store, request;
+    return regeneratorRuntime.wrap(function _callee36$(_context36) {
+      while (1) {
+        switch (_context36.prev = _context36.next) {
+          case 0:
+            if (!(typeof id !== 'number')) {
+              _context36.next = 2;
+              break;
+            }
+
+            throw new TypeError("Unable to restore to database, received invalid \"id\" argument type \"".concat(_typeof(id), "\""));
+
+          case 2:
+            if (!(typeof queueId !== 'string')) {
+              _context36.next = 4;
+              break;
+            }
+
+            throw new TypeError("Unable to restore to database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\""));
+
+          case 4:
+            if (!(typeof type !== 'string')) {
+              _context36.next = 6;
+              break;
+            }
+
+            throw new TypeError("Unable to restore to database, received invalid \"type\" argument type \"".concat(_typeof(type), "\""));
+
+          case 6:
+            if (Array.isArray(args)) {
+              _context36.next = 8;
+              break;
+            }
+
+            throw new TypeError("Unable to restore to database, received invalid \"args\" argument type \"".concat(_typeof(args), "\""));
+
+          case 8:
+            value = {
+              id: id,
+              queueId: queueId,
+              type: type,
+              args: args,
+              attempt: 1,
+              created: Date.now(),
+              status: _JOB_CLEANUP_AND_REMOVE_STATUS,
+              startAfter: Date.now()
+            };
+            _context36.next = 11;
+            return getReadWriteJobsObjectStore();
+
+          case 11:
+            store = _context36.sent;
+            request = store.put(value);
+            _context36.next = 15;
+            return new Promise(function (resolve, reject) {
+              request.onsuccess = function () {
+                resolve(request.result);
+              };
+
+              request.onerror = function (event) {
+                logger.error("Request error while enqueueing ".concat(type, " job"));
+                logger.errorObject(event);
+                reject(new Error("Request error while enqueueing ".concat(type, " job")));
+              };
+            });
+
+          case 15:
+            _localJobEmitter.emit('jobAdd', id, queueId, type);
+
+            _jobEmitter.emit('jobAdd', id, queueId, type);
+
+            return _context36.abrupt("return", id);
+
+          case 18:
+          case "end":
+            return _context36.stop();
+        }
+      }
+    }, _callee36);
+  }));
+  return _restoreJobToDatabaseForCleanupAndRemove.apply(this, arguments);
 }
 
 function _dequeueFromDatabase2() {
@@ -2019,21 +2246,21 @@ function _dequeueFromDatabase2() {
 }
 
 function _dequeueFromDatabase() {
-  _dequeueFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee38() {
+  _dequeueFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee37() {
     var store, index, request, jobs;
-    return regeneratorRuntime.wrap(function _callee38$(_context38) {
+    return regeneratorRuntime.wrap(function _callee37$(_context37) {
       while (1) {
-        switch (_context38.prev = _context38.next) {
+        switch (_context37.prev = _context37.next) {
           case 0:
-            _context38.next = 2;
+            _context37.next = 2;
             return getReadOnlyJobsObjectStore();
 
           case 2:
-            store = _context38.sent;
+            store = _context37.sent;
             index = store.index('statusIndex'); // $FlowFixMe
 
-            request = index.getAll(IDBKeyRange.bound(_JOB_CLEANUP_STATUS, _JOB_PENDING_STATUS));
-            _context38.next = 7;
+            request = index.getAll(IDBKeyRange.bound(_JOB_CLEANUP_AND_REMOVE_STATUS, _JOB_PENDING_STATUS));
+            _context37.next = 7;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function (event) {
                 resolve(event.target.result);
@@ -2047,15 +2274,15 @@ function _dequeueFromDatabase() {
             });
 
           case 7:
-            jobs = _context38.sent;
-            return _context38.abrupt("return", jobs);
+            jobs = _context37.sent;
+            return _context37.abrupt("return", jobs);
 
           case 9:
           case "end":
-            return _context38.stop();
+            return _context37.stop();
         }
       }
-    }, _callee38);
+    }, _callee37);
   }));
   return _dequeueFromDatabase.apply(this, arguments);
 }
@@ -2079,31 +2306,31 @@ function _getContiguousIds(ids) {
   return points;
 }
 
-function _dequeueFromDatabaseNotIn2(_x39) {
+function _dequeueFromDatabaseNotIn2(_x38) {
   return _dequeueFromDatabaseNotIn.apply(this, arguments);
 }
 
 function _dequeueFromDatabaseNotIn() {
-  _dequeueFromDatabaseNotIn = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee39(ids) {
+  _dequeueFromDatabaseNotIn = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee38(ids) {
     var _yield$getReadOnlyJob, _yield$getReadOnlyJob2, store, promise, index, jobs, request;
 
-    return regeneratorRuntime.wrap(function _callee39$(_context39) {
+    return regeneratorRuntime.wrap(function _callee38$(_context38) {
       while (1) {
-        switch (_context39.prev = _context39.next) {
+        switch (_context38.prev = _context38.next) {
           case 0:
             if (!(ids.length === 0)) {
-              _context39.next = 2;
+              _context38.next = 2;
               break;
             }
 
-            return _context39.abrupt("return", _dequeueFromDatabase2());
+            return _context38.abrupt("return", _dequeueFromDatabase2());
 
           case 2:
-            _context39.next = 4;
+            _context38.next = 4;
             return getReadOnlyJobsObjectStoreAndTransactionPromise();
 
           case 4:
-            _yield$getReadOnlyJob = _context39.sent;
+            _yield$getReadOnlyJob = _context38.sent;
             _yield$getReadOnlyJob2 = _slicedToArray(_yield$getReadOnlyJob, 2);
             store = _yield$getReadOnlyJob2[0];
             promise = _yield$getReadOnlyJob2[1];
@@ -2153,50 +2380,50 @@ function _dequeueFromDatabaseNotIn() {
               logger.errorObject(event);
             };
 
-            _context39.next = 15;
+            _context38.next = 15;
             return promise;
 
           case 15:
-            return _context39.abrupt("return", jobs);
+            return _context38.abrupt("return", jobs);
 
           case 16:
           case "end":
-            return _context39.stop();
+            return _context38.stop();
         }
       }
-    }, _callee39);
+    }, _callee38);
   }));
   return _dequeueFromDatabaseNotIn.apply(this, arguments);
 }
 
-function _getJobsFromDatabase2(_x40) {
+function _getJobsFromDatabase2(_x39) {
   return _getJobsFromDatabase.apply(this, arguments);
 }
 
 function _getJobsFromDatabase() {
-  _getJobsFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee40(queueId) {
+  _getJobsFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee39(queueId) {
     var store, index, request, jobs;
-    return regeneratorRuntime.wrap(function _callee40$(_context40) {
+    return regeneratorRuntime.wrap(function _callee39$(_context39) {
       while (1) {
-        switch (_context40.prev = _context40.next) {
+        switch (_context39.prev = _context39.next) {
           case 0:
             if (!(typeof queueId !== 'string')) {
-              _context40.next = 2;
+              _context39.next = 2;
               break;
             }
 
             throw new TypeError("Unable to get completed jobs database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\""));
 
           case 2:
-            _context40.next = 4;
+            _context39.next = 4;
             return getReadOnlyJobsObjectStore();
 
           case 4:
-            store = _context40.sent;
+            store = _context39.sent;
             index = store.index('queueIdIndex'); // $FlowFixMe
 
             request = index.getAll(IDBKeyRange.only(queueId));
-            _context40.next = 9;
+            _context39.next = 9;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function (event) {
                 resolve(event.target.result);
@@ -2210,76 +2437,76 @@ function _getJobsFromDatabase() {
             });
 
           case 9:
-            jobs = _context40.sent;
-            return _context40.abrupt("return", jobs);
+            jobs = _context39.sent;
+            return _context39.abrupt("return", jobs);
 
           case 11:
+          case "end":
+            return _context39.stop();
+        }
+      }
+    }, _callee39);
+  }));
+  return _getJobsFromDatabase.apply(this, arguments);
+}
+
+function _getCompletedJobsCountFromDatabase2(_x40) {
+  return _getCompletedJobsCountFromDatabase.apply(this, arguments);
+}
+
+function _getCompletedJobsCountFromDatabase() {
+  _getCompletedJobsCountFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee40(queueId) {
+    var jobs;
+    return regeneratorRuntime.wrap(function _callee40$(_context40) {
+      while (1) {
+        switch (_context40.prev = _context40.next) {
+          case 0:
+            _context40.next = 2;
+            return _getCompletedJobsFromDatabase2(queueId);
+
+          case 2:
+            jobs = _context40.sent;
+            return _context40.abrupt("return", jobs.length);
+
+          case 4:
           case "end":
             return _context40.stop();
         }
       }
     }, _callee40);
   }));
-  return _getJobsFromDatabase.apply(this, arguments);
-}
-
-function _getCompletedJobsCountFromDatabase2(_x41) {
   return _getCompletedJobsCountFromDatabase.apply(this, arguments);
 }
 
-function _getCompletedJobsCountFromDatabase() {
-  _getCompletedJobsCountFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee41(queueId) {
-    var jobs;
-    return regeneratorRuntime.wrap(function _callee41$(_context41) {
-      while (1) {
-        switch (_context41.prev = _context41.next) {
-          case 0:
-            _context41.next = 2;
-            return _getCompletedJobsFromDatabase2(queueId);
-
-          case 2:
-            jobs = _context41.sent;
-            return _context41.abrupt("return", jobs.length);
-
-          case 4:
-          case "end":
-            return _context41.stop();
-        }
-      }
-    }, _callee41);
-  }));
-  return _getCompletedJobsCountFromDatabase.apply(this, arguments);
-}
-
-function _getCompletedJobsFromDatabase2(_x42) {
+function _getCompletedJobsFromDatabase2(_x41) {
   return _getCompletedJobsFromDatabase.apply(this, arguments);
 }
 
 function _getCompletedJobsFromDatabase() {
-  _getCompletedJobsFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee42(queueId) {
+  _getCompletedJobsFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee41(queueId) {
     var store, index, request, jobs;
-    return regeneratorRuntime.wrap(function _callee42$(_context42) {
+    return regeneratorRuntime.wrap(function _callee41$(_context41) {
       while (1) {
-        switch (_context42.prev = _context42.next) {
+        switch (_context41.prev = _context41.next) {
           case 0:
             if (!(typeof queueId !== 'string')) {
-              _context42.next = 2;
+              _context41.next = 2;
               break;
             }
 
             throw new TypeError("Unable to get completed jobs database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\""));
 
           case 2:
-            _context42.next = 4;
+            _context41.next = 4;
             return getReadOnlyJobsObjectStore();
 
           case 4:
-            store = _context42.sent;
+            store = _context41.sent;
             index = store.index('statusQueueIdIndex'); // $FlowFixMe
 
             request = index.openCursor(IDBKeyRange.only([queueId, _JOB_COMPLETE_STATUS]));
             jobs = [];
-            _context42.next = 10;
+            _context41.next = 10;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function (event) {
                 var cursor = event.target.result;
@@ -2300,31 +2527,31 @@ function _getCompletedJobsFromDatabase() {
             });
 
           case 10:
-            return _context42.abrupt("return", jobs);
+            return _context41.abrupt("return", jobs);
 
           case 11:
           case "end":
-            return _context42.stop();
+            return _context41.stop();
         }
       }
-    }, _callee42);
+    }, _callee41);
   }));
   return _getCompletedJobsFromDatabase.apply(this, arguments);
 }
 
-function _storeAuthDataInDatabase2(_x43, _x44) {
+function _storeAuthDataInDatabase2(_x42, _x43) {
   return _storeAuthDataInDatabase.apply(this, arguments);
 }
 
 function _storeAuthDataInDatabase() {
-  _storeAuthDataInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee43(id, data) {
+  _storeAuthDataInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee42(id, data) {
     var store, request;
-    return regeneratorRuntime.wrap(function _callee43$(_context43) {
+    return regeneratorRuntime.wrap(function _callee42$(_context42) {
       while (1) {
-        switch (_context43.prev = _context43.next) {
+        switch (_context42.prev = _context42.next) {
           case 0:
             if (!(typeof id !== 'string')) {
-              _context43.next = 2;
+              _context42.next = 2;
               break;
             }
 
@@ -2332,23 +2559,23 @@ function _storeAuthDataInDatabase() {
 
           case 2:
             if (!(_typeof(data) !== 'object')) {
-              _context43.next = 4;
+              _context42.next = 4;
               break;
             }
 
             throw new TypeError("Unable to store auth data in database, received invalid \"data\" argument type \"".concat(_typeof(data), "\""));
 
           case 4:
-            _context43.next = 6;
+            _context42.next = 6;
             return getReadWriteAuthObjectStore();
 
           case 6:
-            store = _context43.sent;
+            store = _context42.sent;
             request = store.put({
               id: id,
               data: data
             });
-            _context43.next = 10;
+            _context42.next = 10;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve();
@@ -2363,40 +2590,40 @@ function _storeAuthDataInDatabase() {
 
           case 10:
           case "end":
-            return _context43.stop();
+            return _context42.stop();
         }
       }
-    }, _callee43);
+    }, _callee42);
   }));
   return _storeAuthDataInDatabase.apply(this, arguments);
 }
 
-function _getAuthDataFromDatabase2(_x45) {
+function _getAuthDataFromDatabase2(_x44) {
   return _getAuthDataFromDatabase.apply(this, arguments);
 }
 
 function _getAuthDataFromDatabase() {
-  _getAuthDataFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee44(id) {
+  _getAuthDataFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee43(id) {
     var store, request, authData;
-    return regeneratorRuntime.wrap(function _callee44$(_context44) {
+    return regeneratorRuntime.wrap(function _callee43$(_context43) {
       while (1) {
-        switch (_context44.prev = _context44.next) {
+        switch (_context43.prev = _context43.next) {
           case 0:
             if (!(typeof id !== 'string')) {
-              _context44.next = 2;
+              _context43.next = 2;
               break;
             }
 
             throw new TypeError("Unable to store auth data in database, received invalid \"id\" argument type \"".concat(_typeof(id), "\""));
 
           case 2:
-            _context44.next = 4;
+            _context43.next = 4;
             return getReadOnlyAuthObjectStore();
 
           case 4:
-            store = _context44.sent;
+            store = _context43.sent;
             request = store.get(id);
-            _context44.next = 8;
+            _context43.next = 8;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve(request.result);
@@ -2410,45 +2637,45 @@ function _getAuthDataFromDatabase() {
             });
 
           case 8:
-            authData = _context44.sent;
-            return _context44.abrupt("return", typeof authData !== 'undefined' ? authData.data : undefined);
+            authData = _context43.sent;
+            return _context43.abrupt("return", typeof authData !== 'undefined' ? authData.data : undefined);
 
           case 10:
           case "end":
-            return _context44.stop();
+            return _context43.stop();
         }
       }
-    }, _callee44);
+    }, _callee43);
   }));
   return _getAuthDataFromDatabase.apply(this, arguments);
 }
 
-function _removeAuthDataFromDatabase2(_x46) {
+function _removeAuthDataFromDatabase2(_x45) {
   return _removeAuthDataFromDatabase.apply(this, arguments);
 }
 
 function _removeAuthDataFromDatabase() {
-  _removeAuthDataFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee45(id) {
+  _removeAuthDataFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee44(id) {
     var store, request;
-    return regeneratorRuntime.wrap(function _callee45$(_context45) {
+    return regeneratorRuntime.wrap(function _callee44$(_context44) {
       while (1) {
-        switch (_context45.prev = _context45.next) {
+        switch (_context44.prev = _context44.next) {
           case 0:
             if (!(typeof id !== 'string')) {
-              _context45.next = 2;
+              _context44.next = 2;
               break;
             }
 
             throw new TypeError("Unable to store auth data in database, received invalid \"id\" argument type \"".concat(_typeof(id), "\""));
 
           case 2:
-            _context45.next = 4;
+            _context44.next = 4;
             return getReadWriteAuthObjectStore();
 
           case 4:
-            store = _context45.sent;
+            store = _context44.sent;
             request = store.delete(id);
-            return _context45.abrupt("return", new Promise(function (resolve, reject) {
+            return _context44.abrupt("return", new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve();
               };
@@ -2462,31 +2689,31 @@ function _removeAuthDataFromDatabase() {
 
           case 7:
           case "end":
-            return _context45.stop();
+            return _context44.stop();
         }
       }
-    }, _callee45);
+    }, _callee44);
   }));
   return _removeAuthDataFromDatabase.apply(this, arguments);
 }
 
-function _getQueueStatus2(_x47) {
+function _getQueueStatus2(_x46) {
   return _getQueueStatus.apply(this, arguments);
 }
 
 function _getQueueStatus() {
-  _getQueueStatus = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee46(queueId) {
-    var store, index, abortedRequest, completeRequest, pendingRequest, errorRequest, cleanupRequest, abortedCountPromise, completeCountPromise, pendingCountPromise, errorCountPromise, cleanupCountPromise, _yield$Promise$all, _yield$Promise$all2, abortedCount, completeCount, pendingCount, errorCount, cleanupCount;
+  _getQueueStatus = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee45(queueId) {
+    var store, index, abortedRequest, completeRequest, pendingRequest, errorRequest, cleanupRequest, cleanupAndRemoveRequest, abortedCountPromise, completeCountPromise, pendingCountPromise, errorCountPromise, cleanupCountPromise, cleanupAndRemoveCountPromise, _yield$Promise$all, _yield$Promise$all2, abortedCount, completeCount, pendingCount, errorCount, cleanupCount, cleanupAndRemoveCount;
 
-    return regeneratorRuntime.wrap(function _callee46$(_context46) {
+    return regeneratorRuntime.wrap(function _callee45$(_context45) {
       while (1) {
-        switch (_context46.prev = _context46.next) {
+        switch (_context45.prev = _context45.next) {
           case 0:
-            _context46.next = 2;
+            _context45.next = 2;
             return getReadOnlyJobsObjectStore();
 
           case 2:
-            store = _context46.sent;
+            store = _context45.sent;
             index = store.index('statusQueueIdIndex'); // $FlowFixMe
 
             abortedRequest = index.getAllKeys(IDBKeyRange.only([queueId, _JOB_ABORTED_STATUS])); // $FlowFixMe
@@ -2497,7 +2724,9 @@ function _getQueueStatus() {
 
             errorRequest = index.getAllKeys(IDBKeyRange.only([queueId, _JOB_ERROR_STATUS])); // $FlowFixMe
 
-            cleanupRequest = index.getAllKeys(IDBKeyRange.only([queueId, _JOB_CLEANUP_STATUS]));
+            cleanupRequest = index.getAllKeys(IDBKeyRange.only([queueId, _JOB_CLEANUP_STATUS])); // $FlowFixMe
+
+            cleanupAndRemoveRequest = index.getAllKeys(IDBKeyRange.only([queueId, _JOB_CLEANUP_AND_REMOVE_STATUS]));
             abortedCountPromise = new Promise(function (resolve, reject) {
               abortedRequest.onsuccess = function (event) {
                 resolve(event.target.result.length);
@@ -2553,56 +2782,70 @@ function _getQueueStatus() {
                 reject(new Error("Request error while getting status of queue ".concat(queueId)));
               };
             });
-            _context46.next = 16;
-            return Promise.all([abortedCountPromise, completeCountPromise, pendingCountPromise, errorCountPromise, cleanupCountPromise]);
+            cleanupAndRemoveCountPromise = new Promise(function (resolve, reject) {
+              cleanupAndRemoveRequest.onsuccess = function (event) {
+                resolve(event.target.result.length);
+              };
 
-          case 16:
-            _yield$Promise$all = _context46.sent;
-            _yield$Promise$all2 = _slicedToArray(_yield$Promise$all, 5);
+              cleanupAndRemoveRequest.onerror = function (event) {
+                logger.error("Request error while getting status of queue ".concat(queueId));
+                logger.errorObject(event);
+                reject(new Error("Request error while getting status of queue ".concat(queueId)));
+              };
+            });
+            _context45.next = 18;
+            return Promise.all([abortedCountPromise, completeCountPromise, pendingCountPromise, errorCountPromise, cleanupCountPromise, cleanupAndRemoveCountPromise]);
+
+          case 18:
+            _yield$Promise$all = _context45.sent;
+            _yield$Promise$all2 = _slicedToArray(_yield$Promise$all, 6);
             abortedCount = _yield$Promise$all2[0];
             completeCount = _yield$Promise$all2[1];
             pendingCount = _yield$Promise$all2[2];
             errorCount = _yield$Promise$all2[3];
             cleanupCount = _yield$Promise$all2[4];
+            cleanupAndRemoveCount = _yield$Promise$all2[5];
 
             if (!(abortedCount > 0 || cleanupCount > 0)) {
-              _context46.next = 25;
+              _context45.next = 28;
               break;
             }
 
-            return _context46.abrupt("return", _QUEUE_ERROR_STATUS);
+            return _context45.abrupt("return", _QUEUE_ERROR_STATUS);
 
-          case 25:
-            if (!(errorCount > 0 || pendingCount > 0)) {
-              _context46.next = 27;
+          case 28:
+            if (!(errorCount > 0 || pendingCount > 0 || cleanupAndRemoveCount > 0)) {
+              _context45.next = 30;
               break;
             }
 
-            return _context46.abrupt("return", _QUEUE_PENDING_STATUS);
-
-          case 27:
-            if (!(completeCount > 0)) {
-              _context46.next = 29;
-              break;
-            }
-
-            return _context46.abrupt("return", _QUEUE_COMPLETE_STATUS);
-
-          case 29:
-            return _context46.abrupt("return", _QUEUE_EMPTY_STATUS);
+            return _context45.abrupt("return", _QUEUE_PENDING_STATUS);
 
           case 30:
+            if (!(completeCount > 0)) {
+              _context45.next = 32;
+              break;
+            }
+
+            return _context45.abrupt("return", _QUEUE_COMPLETE_STATUS);
+
+          case 32:
+            return _context45.abrupt("return", _QUEUE_EMPTY_STATUS);
+
+          case 33:
           case "end":
-            return _context46.stop();
+            return _context45.stop();
         }
       }
-    }, _callee46);
+    }, _callee45);
   }));
   return _getQueueStatus.apply(this, arguments);
 }
 
 export var localJobEmitter = exports.localJobEmitter;
 export var jobEmitter = exports.jobEmitter;
+export var JobDoesNotExistError = exports.JobDoesNotExistError;
+export var CleanupDoesNotExistError = exports.CleanupDoesNotExistError;
 export var QUEUE_ERROR_STATUS = exports.QUEUE_ERROR_STATUS;
 export var QUEUE_PENDING_STATUS = exports.QUEUE_PENDING_STATUS;
 export var QUEUE_COMPLETE_STATUS = exports.QUEUE_COMPLETE_STATUS;
@@ -2612,6 +2855,7 @@ export var JOB_COMPLETE_STATUS = exports.JOB_COMPLETE_STATUS;
 export var JOB_PENDING_STATUS = exports.JOB_PENDING_STATUS;
 export var JOB_ERROR_STATUS = exports.JOB_ERROR_STATUS;
 export var JOB_CLEANUP_STATUS = exports.JOB_CLEANUP_STATUS;
+export var JOB_CLEANUP_AND_REMOVE_STATUS = exports.JOB_CLEANUP_AND_REMOVE_STATUS;
 export var databasePromise = exports.databasePromise;
 export var clearDatabase = exports.clearDatabase;
 export var removeJobsWithQueueIdAndTypeFromDatabase = exports.removeJobsWithQueueIdAndTypeFromDatabase;
@@ -2623,6 +2867,7 @@ export var getJobFromDatabase = exports.getJobFromDatabase;
 export var updateCleanupInDatabase = exports.updateCleanupInDatabase;
 export var removePathFromCleanupDataInDatabase = exports.removePathFromCleanupDataInDatabase;
 export var updateCleanupValuesInDatabase = exports.updateCleanupValuesInDatabase;
+export var removeJobFromDatabase = exports.removeJobFromDatabase;
 export var removeCleanupFromDatabase = exports.removeCleanupFromDatabase;
 export var getCleanupFromDatabase = exports.getCleanupFromDatabase;
 export var getQueueDataFromDatabase = exports.getQueueDataFromDatabase;
@@ -2633,6 +2878,8 @@ export var markJobPendingInDatabase = exports.markJobPendingInDatabase;
 export var markJobErrorInDatabase = exports.markJobErrorInDatabase;
 export var markJobCleanupInDatabase = exports.markJobCleanupInDatabase;
 export var markJobAbortedInDatabase = exports.markJobAbortedInDatabase;
+export var markJobCleanupAndRemoveInDatabase = exports.markJobCleanupAndRemoveInDatabase;
+export var markJobAsAbortedOrRemoveFromDatabase = exports.markJobAsAbortedOrRemoveFromDatabase;
 export var markJobStartAfterInDatabase = exports.markJobStartAfterInDatabase;
 export var markCleanupStartAfterInDatabase = exports.markCleanupStartAfterInDatabase;
 export var markQueueForCleanupInDatabase = exports.markQueueForCleanupInDatabase;
@@ -2640,6 +2887,7 @@ export var incrementJobAttemptInDatabase = exports.incrementJobAttemptInDatabase
 export var incrementCleanupAttemptInDatabase = exports.incrementCleanupAttemptInDatabase;
 export var bulkEnqueueToDatabase = exports.bulkEnqueueToDatabase;
 export var enqueueToDatabase = exports.enqueueToDatabase;
+export var restoreJobToDatabaseForCleanupAndRemove = exports.restoreJobToDatabaseForCleanupAndRemove;
 export var dequeueFromDatabase = exports.dequeueFromDatabase;
 export var getContiguousIds = exports.getContiguousIds;
 export var dequeueFromDatabaseNotIn = exports.dequeueFromDatabaseNotIn;
