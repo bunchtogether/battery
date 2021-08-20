@@ -813,7 +813,7 @@ describe('Queue', () => {
     await expectAsync(echoEmitter).toEmit('echo', { value: valueA });
     await expectAsync(echoEmitter).toEmit('echo', { value: valueB });
 
-    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
       id: idA,
       queueId,
       type: 'echo',
@@ -822,7 +822,7 @@ describe('Queue', () => {
       created: jasmine.any(Number),
       status: JOB_COMPLETE_STATUS,
       startAfter: jasmine.any(Number),
-    }), jasmine.objectContaining({
+    }, {
       id: idB,
       queueId,
       type: 'echo',
@@ -831,12 +831,12 @@ describe('Queue', () => {
       created: jasmine.any(Number),
       status: JOB_COMPLETE_STATUS,
       startAfter: jasmine.any(Number),
-    })]);
+    }]);
     await markJobCleanupAndRemoveInDatabase(idA);
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value: valueA, cleanupData: { value: valueA } });
     await queue.onIdle();
 
-    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
       id: idB,
       queueId,
       type: 'echo',
@@ -845,7 +845,7 @@ describe('Queue', () => {
       created: jasmine.any(Number),
       status: JOB_COMPLETE_STATUS,
       startAfter: jasmine.any(Number),
-    })]);
+    }]);
   });
 
 
@@ -860,7 +860,7 @@ describe('Queue', () => {
     await expectAsync(echoEmitter).toEmit('echo', { value: valueA });
     await expectAsync(echoEmitter).toEmit('echo', { value: valueB });
 
-    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
       id: idA,
       queueId,
       type: 'echo',
@@ -869,7 +869,7 @@ describe('Queue', () => {
       created: jasmine.any(Number),
       status: JOB_COMPLETE_STATUS,
       startAfter: jasmine.any(Number),
-    }), jasmine.objectContaining({
+    }, {
       id: idB,
       queueId,
       type: 'echo',
@@ -878,11 +878,11 @@ describe('Queue', () => {
       created: jasmine.any(Number),
       status: JOB_COMPLETE_STATUS,
       startAfter: jasmine.any(Number),
-    })]);
+    }]);
     await queue.onIdle();
     await markJobCleanupAndRemoveInDatabase(idA);
 
-    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
       id: idA,
       queueId,
       type: 'echo',
@@ -891,7 +891,7 @@ describe('Queue', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_AND_REMOVE_STATUS,
       startAfter: jasmine.any(Number),
-    }), jasmine.objectContaining({
+    }, {
       id: idB,
       queueId,
       type: 'echo',
@@ -900,13 +900,13 @@ describe('Queue', () => {
       created: jasmine.any(Number),
       status: JOB_COMPLETE_STATUS,
       startAfter: jasmine.any(Number),
-    })]);
+    }]);
     queue.dequeue();
     console.log('DEQUEUE', [...queue.jobIds]);
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value: valueA, cleanupData: { value: valueA } });
     await queue.onIdle();
 
-    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
       id: idB,
       queueId,
       type: 'echo',
@@ -915,7 +915,7 @@ describe('Queue', () => {
       created: jasmine.any(Number),
       status: JOB_COMPLETE_STATUS,
       startAfter: jasmine.any(Number),
-    })]);
+    }]);
     queue.enableStartOnJob();
   });
 
@@ -924,7 +924,7 @@ describe('Queue', () => {
     let id;
     let didRunCleanup = false;
     const handler = async () => {
-      expect(await getJobsInQueueFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+      await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
         id,
         queueId,
         type,
@@ -933,12 +933,12 @@ describe('Queue', () => {
         created: jasmine.any(Number),
         status: JOB_ERROR_STATUS,
         startAfter: jasmine.any(Number),
-      })]);
+      }]);
       if (typeof id === 'number') {
         await markJobCleanupAndRemoveInDatabase(id);
       }
 
-      expect(await getJobsInQueueFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+      await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
         id,
         queueId,
         type,
@@ -947,7 +947,7 @@ describe('Queue', () => {
         created: jasmine.any(Number),
         status: JOB_CLEANUP_AND_REMOVE_STATUS,
         startAfter: jasmine.any(Number),
-      })]);
+      }]);
     };
     const cleanup = async () => {
       didRunCleanup = true;
@@ -960,7 +960,7 @@ describe('Queue', () => {
     await queue.onIdle();
 
     expect(didRunCleanup).toEqual(true);
-    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([]);
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([]);
     queue.removeHandler(type);
     queue.removeCleanup(type);
   });
@@ -972,7 +972,7 @@ describe('Queue', () => {
       throw new FatalQueueError('Test fatal error');
     };
     const cleanup = async () => {
-      expect(await getJobsInQueueFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+      await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
         id,
         queueId,
         type,
@@ -981,13 +981,13 @@ describe('Queue', () => {
         created: jasmine.any(Number),
         status: JOB_CLEANUP_STATUS,
         startAfter: jasmine.any(Number),
-      })]);
+      }]);
       if (typeof id === 'number') {
         didRunCleanup = true;
         await markJobCleanupAndRemoveInDatabase(id);
       }
 
-      expect(await getJobsInQueueFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+      await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
         id,
         queueId,
         type,
@@ -996,7 +996,7 @@ describe('Queue', () => {
         created: jasmine.any(Number),
         status: JOB_CLEANUP_AND_REMOVE_STATUS,
         startAfter: jasmine.any(Number),
-      })]);
+      }]);
     };
     const type = uuidv4();
     queue.setHandler(type, handler);
@@ -1006,7 +1006,7 @@ describe('Queue', () => {
     await queue.onIdle();
 
     expect(didRunCleanup).toEqual(true);
-    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([]);
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([]);
     queue.removeHandler(type);
     queue.removeCleanup(type);
   });
@@ -1026,7 +1026,7 @@ describe('Queue', () => {
       throw new Error('Test non-fatal error');
     };
     const cleanup = async () => {
-      expect(await getJobsInQueueFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+      await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
         id,
         queueId,
         type,
@@ -1035,13 +1035,13 @@ describe('Queue', () => {
         created: jasmine.any(Number),
         status: JOB_ERROR_STATUS,
         startAfter: jasmine.any(Number),
-      })]);
+      }]);
       if (typeof id === 'number') {
         didRunCleanup = true;
         await markJobCleanupAndRemoveInDatabase(id);
       }
 
-      expect(await getJobsInQueueFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+      await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
         id,
         queueId,
         type,
@@ -1050,7 +1050,7 @@ describe('Queue', () => {
         created: jasmine.any(Number),
         status: JOB_CLEANUP_AND_REMOVE_STATUS,
         startAfter: jasmine.any(Number),
-      })]);
+      }]);
     };
     queue.setHandler(type, handler);
     queue.setCleanup(type, cleanup);
@@ -1061,7 +1061,7 @@ describe('Queue', () => {
 
     expect(handlerCount).toEqual(1);
     expect(didRunCleanup).toEqual(true);
-    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([]);
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([]);
     queue.removeHandler(type);
     queue.removeCleanup(type);
     queue.removeRetryJobDelay(type);
@@ -1093,7 +1093,7 @@ describe('Queue', () => {
 
     expect(handlerCount).toEqual(1);
     expect(cleanupCount).toEqual(0);
-    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([{
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
       id: idA,
       queueId,
       type,
@@ -1126,7 +1126,7 @@ describe('Queue', () => {
 
     expect(handlerCount).toEqual(0);
     expect(cleanupCount).toEqual(0);
-    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([]);
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([]);
     queue.removeHandler(type);
     queue.removeCleanup(type);
   });
@@ -1153,7 +1153,7 @@ describe('Queue', () => {
 
     expect(handlerCount).toEqual(1);
     expect(cleanupCount).toEqual(1);
-    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([]);
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([]);
     queue.removeHandler(type);
     queue.removeCleanup(type);
   });
@@ -1180,7 +1180,7 @@ describe('Queue', () => {
 
     expect(handlerCount).toEqual(1);
     expect(cleanupCount).toEqual(1);
-    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([]);
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([]);
     queue.removeHandler(type);
     queue.removeCleanup(type);
   });
@@ -1205,7 +1205,7 @@ describe('Queue', () => {
 
     expect(handlerCount).toEqual(0);
     expect(cleanupCount).toEqual(0);
-    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([]);
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([]);
     queue.removeHandler(type);
     queue.removeCleanup(type);
   });

@@ -118,22 +118,22 @@ describe('IndexedDB Database', () => {
     };
     await updateCleanupValuesInDatabase(id, queueId, data);
 
-    expect(await getCleanupFromDatabase(id)).toEqual(jasmine.objectContaining({
+    await expectAsync(getCleanupFromDatabase(id)).toBeResolvedTo({
       id,
       queueId,
       data,
       attempt: 0,
       startAfter: jasmine.any(Number),
-    }));
+    });
     await incrementCleanupAttemptInDatabase(id, queueId);
 
-    expect(await getCleanupFromDatabase(id)).toEqual(jasmine.objectContaining({
+    await expectAsync(getCleanupFromDatabase(id)).toBeResolvedTo({
       id,
       queueId,
       data,
       attempt: 1,
       startAfter: jasmine.any(Number),
-    }));
+    });
   });
 
   it('Increments cleanup attempts if cleanup data does not initially exist', async () => {
@@ -142,13 +142,13 @@ describe('IndexedDB Database', () => {
 
     await incrementCleanupAttemptInDatabase(id, queueId);
 
-    expect(await getCleanupFromDatabase(id)).toEqual(jasmine.objectContaining({
+    await expectAsync(getCleanupFromDatabase(id)).toBeResolvedTo({
       id,
       queueId,
       data: {},
       attempt: 1,
       startAfter: jasmine.any(Number),
-    }));
+    });
   });
 
   it('Gets jobs by ID from database', async () => {
@@ -157,7 +157,7 @@ describe('IndexedDB Database', () => {
     const idA = await enqueueToDatabase(queueId, type, [], 0);
     const idB = await enqueueToDatabase(queueId, type, [], 0);
 
-    expect(await getJobsInDatabase([idA, idB])).toEqual([{
+    await expectAsync(getJobsInDatabase([idA, idB])).toBeResolvedTo([{
       id: idA,
       queueId,
       type,
@@ -178,7 +178,7 @@ describe('IndexedDB Database', () => {
     }]);
     await removeJobFromDatabase(idA);
 
-    expect(await getJobsInDatabase([idA, idB])).toEqual([{
+    await expectAsync(getJobsInDatabase([idA, idB])).toBeResolvedTo([{
       id: idB,
       queueId,
       type,
@@ -190,7 +190,7 @@ describe('IndexedDB Database', () => {
     }]);
     await removeJobFromDatabase(idB);
 
-    expect(await getJobsInDatabase([idA, idB])).toEqual([]);
+    await expectAsync(getJobsInDatabase([idA, idB])).toBeResolvedTo([]);
   });
 
   it('Marks a job as aborted if it was in cleanup status', async () => {
@@ -199,7 +199,7 @@ describe('IndexedDB Database', () => {
     const id = await enqueueToDatabase(queueId, type, [], 0);
     await markJobCleanupInDatabase(id);
 
-    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([{
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
       id,
       queueId,
       type,
@@ -211,7 +211,7 @@ describe('IndexedDB Database', () => {
     }]);
     await markJobAsAbortedOrRemoveFromDatabase(id);
 
-    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([{
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
       id,
       queueId,
       type,
@@ -230,7 +230,7 @@ describe('IndexedDB Database', () => {
     await markJobCompleteInDatabase(id);
     await markJobCleanupAndRemoveInDatabase(id);
 
-    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([{
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
       id,
       queueId,
       type,
@@ -242,7 +242,7 @@ describe('IndexedDB Database', () => {
     }]);
     await markJobAsAbortedOrRemoveFromDatabase(id);
 
-    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([]);
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([]);
   });
 
 
@@ -259,33 +259,33 @@ describe('IndexedDB Database', () => {
 
     await updateCleanupValuesInDatabase(id, queueId, data1);
 
-    expect(await getCleanupFromDatabase(id)).toEqual(jasmine.objectContaining({
+    await expectAsync(getCleanupFromDatabase(id)).toBeResolvedTo({
       id,
       queueId,
       data: data1,
       attempt: 0,
       startAfter: jasmine.any(Number),
-    }));
+    });
 
     await updateCleanupValuesInDatabase(id, queueId, data2);
 
-    expect(await getCleanupFromDatabase(id)).toEqual(jasmine.objectContaining({
+    await expectAsync(getCleanupFromDatabase(id)).toBeResolvedTo({
       id,
       queueId,
       data: Object.assign({}, data1, data2),
       attempt: 0,
       startAfter: jasmine.any(Number),
-    }));
+    });
 
     await removePathFromCleanupDataInDatabase(id, ['a']);
 
-    expect(await getCleanupFromDatabase(id)).toEqual(jasmine.objectContaining({
+    await expectAsync(getCleanupFromDatabase(id)).toBeResolvedTo({
       id,
       queueId,
       data: data2,
       attempt: 0,
       startAfter: jasmine.any(Number),
-    }));
+    });
 
     await removeCleanupFromDatabase(id);
 
@@ -322,7 +322,7 @@ describe('IndexedDB Database', () => {
     const type = uuidv4();
     const id = await enqueueToDatabase(queueId, type, [], 0);
 
-    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
       id,
       queueId,
       type,
@@ -331,10 +331,10 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
-    })]);
+    }]);
     await removeJobFromDatabase(id);
 
-    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([]);
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([]);
   });
 
   it('Removes a job with aborted status from the database if marked as "cleanup and remove" ', async () => {
@@ -343,7 +343,7 @@ describe('IndexedDB Database', () => {
     const id = await enqueueToDatabase(queueId, type, [], 0);
     await markJobAbortedInDatabase(id);
 
-    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([{
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
       id,
       queueId,
       type,
@@ -355,7 +355,7 @@ describe('IndexedDB Database', () => {
     }]);
     await markJobCleanupAndRemoveInDatabase(id);
 
-    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([]);
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([]);
   });
 
   it('Removes a job with pending status from the database if marked as "cleanup and remove" ', async () => {
@@ -363,7 +363,7 @@ describe('IndexedDB Database', () => {
     const type = uuidv4();
     const id = await enqueueToDatabase(queueId, type, [], 0);
 
-    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([{
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
       id,
       queueId,
       type,
@@ -375,7 +375,7 @@ describe('IndexedDB Database', () => {
     }]);
     await markJobCleanupAndRemoveInDatabase(id);
 
-    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([]);
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([]);
   });
 
   it('Gets all jobs from the database', async () => {
@@ -398,7 +398,7 @@ describe('IndexedDB Database', () => {
     await markJobCompleteInDatabase(idF);
     await markJobCleanupAndRemoveInDatabase(idF);
 
-    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
       id: idA,
       queueId,
       type,
@@ -407,7 +407,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
-    }), jasmine.objectContaining({
+    }, {
       id: idB,
       queueId,
       type,
@@ -416,7 +416,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_COMPLETE_STATUS,
       startAfter: jasmine.any(Number),
-    }), jasmine.objectContaining({
+    }, {
       id: idC,
       queueId,
       type,
@@ -425,7 +425,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_ERROR_STATUS,
       startAfter: jasmine.any(Number),
-    }), jasmine.objectContaining({
+    }, {
       id: idD,
       queueId,
       type,
@@ -434,7 +434,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
-    }), jasmine.objectContaining({
+    }, {
       id: idE,
       queueId,
       type,
@@ -443,7 +443,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_ABORTED_STATUS,
       startAfter: jasmine.any(Number),
-    }), jasmine.objectContaining({
+    }, {
       id: idF,
       queueId,
       type,
@@ -452,7 +452,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_AND_REMOVE_STATUS,
       startAfter: jasmine.any(Number),
-    })]);
+    }]);
   });
 
   it('Dequeues items in pending state', async () => {
@@ -461,7 +461,7 @@ describe('IndexedDB Database', () => {
     const args = [uuidv4()];
     const id = await enqueueToDatabase(queueId, type, args, 0);
 
-    expect(await dequeueFromDatabase()).toEqual([jasmine.objectContaining({
+    await expectAsync(dequeueFromDatabase()).toBeResolvedTo([{
       id,
       queueId,
       type,
@@ -470,7 +470,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
-    })]);
+    }]);
   });
 
   it('Dequeues items in error state', async () => {
@@ -480,7 +480,7 @@ describe('IndexedDB Database', () => {
     const id = await enqueueToDatabase(queueId, type, args, 0);
     await markJobErrorInDatabase(id);
 
-    expect(await dequeueFromDatabase()).toEqual([jasmine.objectContaining({
+    await expectAsync(dequeueFromDatabase()).toBeResolvedTo([{
       id,
       queueId,
       type,
@@ -489,7 +489,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_ERROR_STATUS,
       startAfter: jasmine.any(Number),
-    })]);
+    }]);
   });
 
   it('Dequeues items in cleanup state', async () => {
@@ -499,7 +499,7 @@ describe('IndexedDB Database', () => {
     const id = await enqueueToDatabase(queueId, type, args, 0);
     await markJobCleanupInDatabase(id);
 
-    expect(await dequeueFromDatabase()).toEqual([jasmine.objectContaining({
+    await expectAsync(dequeueFromDatabase()).toBeResolvedTo([{
       id,
       queueId,
       type,
@@ -508,7 +508,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
-    })]);
+    }]);
   });
 
 
@@ -520,7 +520,7 @@ describe('IndexedDB Database', () => {
     await markJobCompleteInDatabase(id);
     await markJobCleanupAndRemoveInDatabase(id);
 
-    expect(await dequeueFromDatabase()).toEqual([jasmine.objectContaining({
+    await expectAsync(dequeueFromDatabase()).toBeResolvedTo([{
       id,
       queueId,
       type,
@@ -529,7 +529,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_AND_REMOVE_STATUS,
       startAfter: jasmine.any(Number),
-    })]);
+    }]);
   });
 
   it('Does not dequeue items in complete state', async () => {
@@ -572,7 +572,7 @@ describe('IndexedDB Database', () => {
     const idB = await enqueueToDatabase(queueId, type, argsB, 0);
     const idC = await enqueueToDatabase(queueId, type, argsC, 0);
 
-    expect(await dequeueFromDatabaseNotIn([])).toEqual([jasmine.objectContaining({
+    await expectAsync(dequeueFromDatabaseNotIn([])).toBeResolvedTo([{
       id: idA,
       queueId,
       type,
@@ -581,7 +581,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
-    }), jasmine.objectContaining({
+    }, {
       id: idB,
       queueId,
       type,
@@ -590,7 +590,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
-    }), jasmine.objectContaining({
+    }, {
       id: idC,
       queueId,
       type,
@@ -599,9 +599,9 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
-    })]);
+    }]);
 
-    expect(await dequeueFromDatabaseNotIn([idA])).toEqual([jasmine.objectContaining({
+    await expectAsync(dequeueFromDatabaseNotIn([idA])).toBeResolvedTo([{
       id: idB,
       queueId,
       type,
@@ -610,7 +610,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
-    }), jasmine.objectContaining({
+    }, {
       id: idC,
       queueId,
       type,
@@ -619,9 +619,9 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
-    })]);
+    }]);
 
-    expect(await dequeueFromDatabaseNotIn([idC])).toEqual([jasmine.objectContaining({
+    await expectAsync(dequeueFromDatabaseNotIn([idC])).toBeResolvedTo([{
       id: idA,
       queueId,
       type,
@@ -630,7 +630,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
-    }), jasmine.objectContaining({
+    }, {
       id: idB,
       queueId,
       type,
@@ -639,9 +639,9 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
-    })]);
+    }]);
 
-    expect(await dequeueFromDatabaseNotIn([idB])).toEqual([jasmine.objectContaining({
+    await expectAsync(dequeueFromDatabaseNotIn([idB])).toBeResolvedTo([{
       id: idA,
       queueId,
       type,
@@ -650,7 +650,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
-    }), jasmine.objectContaining({
+    }, {
       id: idC,
       queueId,
       type,
@@ -659,9 +659,9 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
-    })]);
+    }]);
 
-    expect(await dequeueFromDatabaseNotIn([idA, idC])).toEqual([jasmine.objectContaining({
+    await expectAsync(dequeueFromDatabaseNotIn([idA, idC])).toBeResolvedTo([{
       id: idB,
       queueId,
       type,
@@ -670,9 +670,9 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
-    })]);
+    }]);
 
-    expect(await dequeueFromDatabaseNotIn([idB, idC])).toEqual([jasmine.objectContaining({
+    await expectAsync(dequeueFromDatabaseNotIn([idB, idC])).toBeResolvedTo([{
       id: idA,
       queueId,
       type,
@@ -681,9 +681,9 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
-    })]);
+    }]);
 
-    expect(await dequeueFromDatabaseNotIn([idA, idB])).toEqual([jasmine.objectContaining({
+    await expectAsync(dequeueFromDatabaseNotIn([idA, idB])).toBeResolvedTo([{
       id: idC,
       queueId,
       type,
@@ -692,7 +692,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
-    })]);
+    }]);
 
     await expectAsync(dequeueFromDatabaseNotIn([idA, idB, idC])).toBeResolvedTo([]);
   });
@@ -723,7 +723,7 @@ describe('IndexedDB Database', () => {
     await markJobErrorInDatabase(idA);
     await markJobErrorInDatabase(idB);
 
-    expect(await dequeueFromDatabaseNotIn([idA])).toEqual([jasmine.objectContaining({
+    await expectAsync(dequeueFromDatabaseNotIn([idA])).toBeResolvedTo([{
       id: idB,
       queueId,
       type,
@@ -732,9 +732,9 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_ERROR_STATUS,
       startAfter: jasmine.any(Number),
-    })]);
+    }]);
 
-    expect(await dequeueFromDatabaseNotIn([idB])).toEqual([jasmine.objectContaining({
+    await expectAsync(dequeueFromDatabaseNotIn([idB])).toBeResolvedTo([{
       id: idA,
       queueId,
       type,
@@ -743,7 +743,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_ERROR_STATUS,
       startAfter: jasmine.any(Number),
-    })]);
+    }]);
 
     await expectAsync(dequeueFromDatabaseNotIn([idA, idB])).toBeResolvedTo([]);
   });
@@ -759,7 +759,7 @@ describe('IndexedDB Database', () => {
     await markJobCleanupInDatabase(idA);
     await markJobCleanupInDatabase(idB);
 
-    expect(await dequeueFromDatabaseNotIn([idA])).toEqual([jasmine.objectContaining({
+    await expectAsync(dequeueFromDatabaseNotIn([idA])).toBeResolvedTo([{
       id: idB,
       queueId,
       type,
@@ -768,9 +768,9 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
-    })]);
+    }]);
 
-    expect(await dequeueFromDatabaseNotIn([idB])).toEqual([jasmine.objectContaining({
+    await expectAsync(dequeueFromDatabaseNotIn([idB])).toBeResolvedTo([{
       id: idA,
       queueId,
       type,
@@ -779,7 +779,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
-    })]);
+    }]);
 
     await expectAsync(dequeueFromDatabaseNotIn([idA, idB])).toBeResolvedTo([]);
   });
@@ -792,7 +792,7 @@ describe('IndexedDB Database', () => {
     await removeJobFromDatabase(id);
     await restoreJobToDatabaseForCleanupAndRemove(id, queueId, type, args);
 
-    expect(await getJobFromDatabase(id)).toEqual(jasmine.objectContaining({
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
       id,
       queueId,
       type,
@@ -801,7 +801,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_AND_REMOVE_STATUS,
       startAfter: jasmine.any(Number),
-    }));
+    });
   });
 
   it('Increments attempt in database', async () => {
@@ -811,7 +811,7 @@ describe('IndexedDB Database', () => {
     const id = await enqueueToDatabase(queueId, type, args, 0);
     await incrementJobAttemptInDatabase(id);
 
-    expect(await getJobFromDatabase(id)).toEqual(jasmine.objectContaining({
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
       id,
       queueId,
       type,
@@ -820,7 +820,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
-    }));
+    });
   });
 
   it('Marks pending jobs as aborted when marking queue for cleanup', async () => {
@@ -829,7 +829,7 @@ describe('IndexedDB Database', () => {
     const args = [uuidv4()];
     const id = await enqueueToDatabase(queueId, type, args, 0);
 
-    expect(await getJobFromDatabase(id)).toEqual(jasmine.objectContaining({
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
       id,
       queueId,
       type,
@@ -838,10 +838,10 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
-    }));
+    });
     await markQueueForCleanupInDatabase(queueId);
 
-    expect(await getJobFromDatabase(id)).toEqual(jasmine.objectContaining({
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
       id,
       queueId,
       type,
@@ -850,7 +850,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_ABORTED_STATUS,
       startAfter: jasmine.any(Number),
-    }));
+    });
   });
 
   it('Marks completed jobs for cleanup when marking queue for cleanup', async () => {
@@ -860,7 +860,7 @@ describe('IndexedDB Database', () => {
     const id = await enqueueToDatabase(queueId, type, args, 0);
     await markJobCompleteInDatabase(id);
 
-    expect(await getJobFromDatabase(id)).toEqual(jasmine.objectContaining({
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
       id,
       queueId,
       type,
@@ -869,10 +869,10 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_COMPLETE_STATUS,
       startAfter: jasmine.any(Number),
-    }));
+    });
     await markQueueForCleanupInDatabase(queueId);
 
-    expect(await getJobFromDatabase(id)).toEqual(jasmine.objectContaining({
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
       id,
       queueId,
       type,
@@ -881,7 +881,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
-    }));
+    });
   });
 
   it('Marks job start-after time in database', async () => {
@@ -912,7 +912,7 @@ describe('IndexedDB Database', () => {
     const id = await enqueueToDatabase(queueId, type, args, 0);
     await markJobErrorInDatabase(id);
 
-    expect(await getJobFromDatabase(id)).toEqual(jasmine.objectContaining({
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
       id,
       queueId,
       type,
@@ -921,10 +921,10 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_ERROR_STATUS,
       startAfter: jasmine.any(Number),
-    }));
+    });
     await markQueueForCleanupInDatabase(queueId);
 
-    expect(await getJobFromDatabase(id)).toEqual(jasmine.objectContaining({
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
       id,
       queueId,
       type,
@@ -933,7 +933,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
-    }));
+    });
   });
 
   it('Bulk enqueues items to the database', async () => {
@@ -947,7 +947,7 @@ describe('IndexedDB Database', () => {
     ];
     await bulkEnqueueToDatabase(queueId, items, 0);
 
-    expect(await dequeueFromDatabase()).toEqual([jasmine.objectContaining({
+    await expectAsync(dequeueFromDatabase()).toBeResolvedTo([{
       id: jasmine.any(Number),
       queueId,
       type,
@@ -956,7 +956,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
-    }), jasmine.objectContaining({
+    }, {
       id: jasmine.any(Number),
       queueId,
       type,
@@ -965,7 +965,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
-    })]);
+    }]);
   });
 
   it('Gets and sets queue data in database', async () => {

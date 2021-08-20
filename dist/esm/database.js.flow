@@ -1311,6 +1311,14 @@ export async function getArgLookupJobPathMap(key:string) {
   });
 }
 
+
+export async function markJobsWithArgLookupKeyCleanupAndRemoveInDatabase(key:string) {
+  const map = await getArgLookupJobPathMap(key);
+  for (const jobId of map.keys()) {
+    await markJobCleanupAndRemoveInDatabase(jobId);
+  }
+}
+
 export async function lookupArgs(key:string) {
   const map = await getArgLookupJobPathMap(key);
   const jobs = await getJobsInDatabase([...map.keys()]);

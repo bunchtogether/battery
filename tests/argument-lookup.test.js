@@ -8,8 +8,13 @@ import {
   addArgLookup,
   lookupArgs,
   lookupArg,
+  getJobFromDatabase,
   removeArgLookupsForJob,
   markJobCleanupAndRemoveInDatabase,
+  markJobCompleteInDatabase,
+  markJobsWithArgLookupKeyCleanupAndRemoveInDatabase,
+  JOB_COMPLETE_STATUS,
+  JOB_CLEANUP_AND_REMOVE_STATUS,
 } from '../src/database';
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 20000;
@@ -83,5 +88,37 @@ describe('Argument Lookup', () => {
     await addArgLookup(idB, key, jsonPath);
     await expectAsync(lookupArgs(key)).toBeResolvedTo([argsA[0], argsB[0]]);
     await expectAsync(lookupArg(key)).toBeResolvedTo(argsA[0]);
+  });
+
+  it('Marks jobs with matching key for cleanup and delete', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const key = uuidv4();
+    const jsonPath = '$';
+    const args = [uuidv4()];
+    const id = await enqueueToDatabase(queueId, type, args, 0);
+    await addArgLookup(id, key, jsonPath);
+    await markJobCompleteInDatabase(id);
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_COMPLETE_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+    await markJobsWithArgLookupKeyCleanupAndRemoveInDatabase(key);
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_CLEANUP_AND_REMOVE_STATUS,
+      startAfter: jasmine.any(Number),
+    });
   });
 });

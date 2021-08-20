@@ -686,7 +686,6 @@ export default class BatteryQueue extends EventEmitter {
         await handler(args, abortController.signal, updateCleanupData);
 
         if (abortController.signal.aborted) {
-          console.log('caught aborted');
           throw new AbortError(`Queue ${queueId} was aborted`);
         }
 

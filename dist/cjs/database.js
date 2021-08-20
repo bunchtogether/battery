@@ -48,6 +48,7 @@ exports.removeAuthDataFromDatabase = _removeAuthDataFromDatabase2;
 exports.getQueueStatus = _getQueueStatus2;
 exports.addArgLookup = _addArgLookup2;
 exports.getArgLookupJobPathMap = _getArgLookupJobPathMap2;
+exports.markJobsWithArgLookupKeyCleanupAndRemoveInDatabase = _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase2;
 exports.lookupArgs = _lookupArgs2;
 exports.lookupArg = _lookupArg2;
 exports.removeArgLookupsForJob = _removeArgLookupsForJob2;
@@ -2912,13 +2913,13 @@ function _getArgLookupJobPathMap() {
   return _getArgLookupJobPathMap.apply(this, arguments);
 }
 
-function _lookupArgs2(_x57) {
-  return _lookupArgs.apply(this, arguments);
+function _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase2(_x57) {
+  return _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase.apply(this, arguments);
 }
 
-function _lookupArgs() {
-  _lookupArgs = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee44(key) {
-    var map, jobs, results, _iterator6, _step6, _step6$value, id, args, jsonPath, _iterator7, _step7, result;
+function _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase() {
+  _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee44(key) {
+    var map, _iterator6, _step6, jobId;
 
     return regeneratorRuntime.wrap(function _callee44$(_context44) {
       while (1) {
@@ -2929,108 +2930,171 @@ function _lookupArgs() {
 
           case 2:
             map = _context44.sent;
-            _context44.next = 5;
-            return _getJobsInDatabase2(_toConsumableArray(map.keys()));
-
-          case 5:
-            jobs = _context44.sent;
-            results = [];
-            _iterator6 = _createForOfIteratorHelper(jobs);
-            _context44.prev = 8;
+            _iterator6 = _createForOfIteratorHelper(map.keys());
+            _context44.prev = 4;
 
             _iterator6.s();
 
-          case 10:
+          case 6:
             if ((_step6 = _iterator6.n()).done) {
-              _context44.next = 19;
+              _context44.next = 12;
               break;
             }
 
-            _step6$value = _step6.value, id = _step6$value.id, args = _step6$value.args;
-            jsonPath = map.get(id);
-
-            if (!(typeof jsonPath !== 'string')) {
-              _context44.next = 15;
-              break;
-            }
-
-            return _context44.abrupt("continue", 17);
-
-          case 15:
-            _iterator7 = _createForOfIteratorHelper((0, _jsonpathPlus.JSONPath)({
-              path: jsonPath,
-              json: args
-            }));
-
-            try {
-              for (_iterator7.s(); !(_step7 = _iterator7.n()).done;) {
-                result = _step7.value;
-                results.push(result);
-              }
-            } catch (err) {
-              _iterator7.e(err);
-            } finally {
-              _iterator7.f();
-            }
-
-          case 17:
+            jobId = _step6.value;
             _context44.next = 10;
+            return _markJobCleanupAndRemoveInDatabase(jobId);
+
+          case 10:
+            _context44.next = 6;
             break;
 
-          case 19:
-            _context44.next = 24;
+          case 12:
+            _context44.next = 17;
             break;
 
-          case 21:
-            _context44.prev = 21;
-            _context44.t0 = _context44["catch"](8);
+          case 14:
+            _context44.prev = 14;
+            _context44.t0 = _context44["catch"](4);
 
             _iterator6.e(_context44.t0);
 
-          case 24:
-            _context44.prev = 24;
+          case 17:
+            _context44.prev = 17;
 
             _iterator6.f();
 
-            return _context44.finish(24);
+            return _context44.finish(17);
 
-          case 27:
-            return _context44.abrupt("return", results);
-
-          case 28:
+          case 20:
           case "end":
             return _context44.stop();
         }
       }
-    }, _callee44, null, [[8, 21, 24, 27]]);
+    }, _callee44, null, [[4, 14, 17, 20]]);
   }));
+  return _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase.apply(this, arguments);
+}
+
+function _lookupArgs2(_x58) {
   return _lookupArgs.apply(this, arguments);
 }
 
-function _lookupArg2(_x58) {
-  return _lookupArg.apply(this, arguments);
-}
+function _lookupArgs() {
+  _lookupArgs = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee45(key) {
+    var map, jobs, results, _iterator7, _step7, _step7$value, id, args, jsonPath, _iterator8, _step8, result;
 
-function _lookupArg() {
-  _lookupArg = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee45(key) {
-    var results;
     return regeneratorRuntime.wrap(function _callee45$(_context45) {
       while (1) {
         switch (_context45.prev = _context45.next) {
           case 0:
             _context45.next = 2;
-            return _lookupArgs2(key);
+            return _getArgLookupJobPathMap2(key);
 
           case 2:
-            results = _context45.sent;
-            return _context45.abrupt("return", results[0]);
+            map = _context45.sent;
+            _context45.next = 5;
+            return _getJobsInDatabase2(_toConsumableArray(map.keys()));
 
-          case 4:
+          case 5:
+            jobs = _context45.sent;
+            results = [];
+            _iterator7 = _createForOfIteratorHelper(jobs);
+            _context45.prev = 8;
+
+            _iterator7.s();
+
+          case 10:
+            if ((_step7 = _iterator7.n()).done) {
+              _context45.next = 19;
+              break;
+            }
+
+            _step7$value = _step7.value, id = _step7$value.id, args = _step7$value.args;
+            jsonPath = map.get(id);
+
+            if (!(typeof jsonPath !== 'string')) {
+              _context45.next = 15;
+              break;
+            }
+
+            return _context45.abrupt("continue", 17);
+
+          case 15:
+            _iterator8 = _createForOfIteratorHelper((0, _jsonpathPlus.JSONPath)({
+              path: jsonPath,
+              json: args
+            }));
+
+            try {
+              for (_iterator8.s(); !(_step8 = _iterator8.n()).done;) {
+                result = _step8.value;
+                results.push(result);
+              }
+            } catch (err) {
+              _iterator8.e(err);
+            } finally {
+              _iterator8.f();
+            }
+
+          case 17:
+            _context45.next = 10;
+            break;
+
+          case 19:
+            _context45.next = 24;
+            break;
+
+          case 21:
+            _context45.prev = 21;
+            _context45.t0 = _context45["catch"](8);
+
+            _iterator7.e(_context45.t0);
+
+          case 24:
+            _context45.prev = 24;
+
+            _iterator7.f();
+
+            return _context45.finish(24);
+
+          case 27:
+            return _context45.abrupt("return", results);
+
+          case 28:
           case "end":
             return _context45.stop();
         }
       }
-    }, _callee45);
+    }, _callee45, null, [[8, 21, 24, 27]]);
+  }));
+  return _lookupArgs.apply(this, arguments);
+}
+
+function _lookupArg2(_x59) {
+  return _lookupArg.apply(this, arguments);
+}
+
+function _lookupArg() {
+  _lookupArg = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee46(key) {
+    var results;
+    return regeneratorRuntime.wrap(function _callee46$(_context46) {
+      while (1) {
+        switch (_context46.prev = _context46.next) {
+          case 0:
+            _context46.next = 2;
+            return _lookupArgs2(key);
+
+          case 2:
+            results = _context46.sent;
+            return _context46.abrupt("return", results[0]);
+
+          case 4:
+          case "end":
+            return _context46.stop();
+        }
+      }
+    }, _callee46);
   }));
   return _lookupArg.apply(this, arguments);
 }
@@ -3044,23 +3108,23 @@ function removeArgLookupsForJobAsMicrotask(jobId) {
   });
 }
 
-function _removeArgLookupsForJob2(_x59) {
+function _removeArgLookupsForJob2(_x60) {
   return _removeArgLookupsForJob.apply(this, arguments);
 }
 
 function _removeArgLookupsForJob() {
-  _removeArgLookupsForJob = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee46(jobId) {
+  _removeArgLookupsForJob = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee47(jobId) {
     var _yield$getReadWriteAr, _yield$getReadWriteAr2, store, promise, index, request;
 
-    return regeneratorRuntime.wrap(function _callee46$(_context46) {
+    return regeneratorRuntime.wrap(function _callee47$(_context47) {
       while (1) {
-        switch (_context46.prev = _context46.next) {
+        switch (_context47.prev = _context47.next) {
           case 0:
-            _context46.next = 2;
+            _context47.next = 2;
             return getReadWriteArgLookupObjectStoreAndTransactionPromise();
 
           case 2:
-            _yield$getReadWriteAr = _context46.sent;
+            _yield$getReadWriteAr = _context47.sent;
             _yield$getReadWriteAr2 = _slicedToArray(_yield$getReadWriteAr, 2);
             store = _yield$getReadWriteAr2[0];
             promise = _yield$getReadWriteAr2[1];
@@ -3069,12 +3133,12 @@ function _removeArgLookupsForJob() {
             request = index.getAllKeys(IDBKeyRange.only(jobId));
 
             request.onsuccess = function (event) {
-              var _iterator8 = _createForOfIteratorHelper(event.target.result),
-                  _step8;
+              var _iterator9 = _createForOfIteratorHelper(event.target.result),
+                  _step9;
 
               try {
-                for (_iterator8.s(); !(_step8 = _iterator8.n()).done;) {
-                  var id = _step8.value;
+                for (_iterator9.s(); !(_step9 = _iterator9.n()).done;) {
+                  var id = _step9.value;
                   var deleteRequest = store.delete(id);
 
                   deleteRequest.onerror = function (deleteEvent) {
@@ -3083,9 +3147,9 @@ function _removeArgLookupsForJob() {
                   };
                 }
               } catch (err) {
-                _iterator8.e(err);
+                _iterator9.e(err);
               } finally {
-                _iterator8.f();
+                _iterator9.f();
               }
             };
 
@@ -3094,15 +3158,15 @@ function _removeArgLookupsForJob() {
               logger.errorObject(event);
             };
 
-            _context46.next = 12;
+            _context47.next = 12;
             return promise;
 
           case 12:
           case "end":
-            return _context46.stop();
+            return _context47.stop();
         }
       }
-    }, _callee46);
+    }, _callee47);
   }));
   return _removeArgLookupsForJob.apply(this, arguments);
 }
@@ -3167,6 +3231,7 @@ export var removeAuthDataFromDatabase = exports.removeAuthDataFromDatabase;
 export var getQueueStatus = exports.getQueueStatus;
 export var addArgLookup = exports.addArgLookup;
 export var getArgLookupJobPathMap = exports.getArgLookupJobPathMap;
+export var markJobsWithArgLookupKeyCleanupAndRemoveInDatabase = exports.markJobsWithArgLookupKeyCleanupAndRemoveInDatabase;
 export var lookupArgs = exports.lookupArgs;
 export var lookupArg = exports.lookupArg;
 export var removeArgLookupsForJob = exports.removeArgLookupsForJob;
