@@ -686,6 +686,7 @@ export default class BatteryQueue extends EventEmitter {
         await handler(args, abortController.signal, updateCleanupData);
 
         if (abortController.signal.aborted) {
+          console.log('caught aborted');
           throw new AbortError(`Queue ${queueId} was aborted`);
         }
 
@@ -720,8 +721,6 @@ export default class BatteryQueue extends EventEmitter {
           return;
         }
 
-        await incrementJobAttemptInDatabase(id);
-
         if (abortController.signal.aborted) {
           if (error.name !== 'AbortError') {
             this.logger.error(`Abort signal following error in ${type} job #${id} in queue ${queueId} attempt ${attempt}`);
@@ -752,6 +751,8 @@ export default class BatteryQueue extends EventEmitter {
 
           return;
         }
+
+        await incrementJobAttemptInDatabase(id);
 
         if (error.name === 'FatalError') {
           this.logger.error(`Fatal error in ${type} job #${id} in queue ${queueId} attempt ${attempt}`);

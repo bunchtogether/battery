@@ -6,11 +6,8 @@ import BatteryQueueServiceWorkerInterface from '../src/worker-interface';
 import {
   enqueueToDatabase,
   jobEmitter,
-  // JOB_ABORTED_STATUS,
   JOB_COMPLETE_STATUS,
-  // JOB_PENDING_STATUS,
   JOB_ERROR_STATUS,
-  // JOB_CLEANUP_STATUS,
 
 } from '../src/database';
 import { asyncEmitMatchers, getNextEmit } from './lib/emit';

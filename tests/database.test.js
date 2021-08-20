@@ -5,7 +5,8 @@ import { getNextEmit } from './lib/emit';
 import {
   enqueueToDatabase,
   bulkEnqueueToDatabase,
-  getJobsFromDatabase,
+  getJobsInQueueFromDatabase,
+  getJobsInDatabase,
   dequeueFromDatabase,
   dequeueFromDatabaseNotIn,
   markJobCompleteInDatabase,
@@ -150,6 +151,47 @@ describe('IndexedDB Database', () => {
     }));
   });
 
+  it('Gets jobs by ID from database', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const idA = await enqueueToDatabase(queueId, type, [], 0);
+    const idB = await enqueueToDatabase(queueId, type, [], 0);
+
+    expect(await getJobsInDatabase([idA, idB])).toEqual([{
+      id: idA,
+      queueId,
+      type,
+      args: [],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    }, {
+      id: idB,
+      queueId,
+      type,
+      args: [],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    }]);
+    await removeJobFromDatabase(idA);
+
+    expect(await getJobsInDatabase([idA, idB])).toEqual([{
+      id: idB,
+      queueId,
+      type,
+      args: [],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    }]);
+    await removeJobFromDatabase(idB);
+
+    expect(await getJobsInDatabase([idA, idB])).toEqual([]);
+  });
 
   it('Marks a job as aborted if it was in cleanup status', async () => {
     const queueId = uuidv4();
@@ -157,7 +199,7 @@ describe('IndexedDB Database', () => {
     const id = await enqueueToDatabase(queueId, type, [], 0);
     await markJobCleanupInDatabase(id);
 
-    expect(await getJobsFromDatabase(queueId)).toEqual([{
+    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([{
       id,
       queueId,
       type,
@@ -169,7 +211,7 @@ describe('IndexedDB Database', () => {
     }]);
     await markJobAsAbortedOrRemoveFromDatabase(id);
 
-    expect(await getJobsFromDatabase(queueId)).toEqual([{
+    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([{
       id,
       queueId,
       type,
@@ -188,7 +230,7 @@ describe('IndexedDB Database', () => {
     await markJobCompleteInDatabase(id);
     await markJobCleanupAndRemoveInDatabase(id);
 
-    expect(await getJobsFromDatabase(queueId)).toEqual([{
+    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([{
       id,
       queueId,
       type,
@@ -200,7 +242,7 @@ describe('IndexedDB Database', () => {
     }]);
     await markJobAsAbortedOrRemoveFromDatabase(id);
 
-    expect(await getJobsFromDatabase(queueId)).toEqual([]);
+    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([]);
   });
 
 
@@ -280,7 +322,7 @@ describe('IndexedDB Database', () => {
     const type = uuidv4();
     const id = await enqueueToDatabase(queueId, type, [], 0);
 
-    expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([jasmine.objectContaining({
       id,
       queueId,
       type,
@@ -292,7 +334,7 @@ describe('IndexedDB Database', () => {
     })]);
     await removeJobFromDatabase(id);
 
-    expect(await getJobsFromDatabase(queueId)).toEqual([]);
+    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([]);
   });
 
   it('Removes a job with aborted status from the database if marked as "cleanup and remove" ', async () => {
@@ -301,7 +343,7 @@ describe('IndexedDB Database', () => {
     const id = await enqueueToDatabase(queueId, type, [], 0);
     await markJobAbortedInDatabase(id);
 
-    expect(await getJobsFromDatabase(queueId)).toEqual([{
+    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([{
       id,
       queueId,
       type,
@@ -313,7 +355,7 @@ describe('IndexedDB Database', () => {
     }]);
     await markJobCleanupAndRemoveInDatabase(id);
 
-    expect(await getJobsFromDatabase(queueId)).toEqual([]);
+    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([]);
   });
 
   it('Removes a job with pending status from the database if marked as "cleanup and remove" ', async () => {
@@ -321,7 +363,7 @@ describe('IndexedDB Database', () => {
     const type = uuidv4();
     const id = await enqueueToDatabase(queueId, type, [], 0);
 
-    expect(await getJobsFromDatabase(queueId)).toEqual([{
+    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([{
       id,
       queueId,
       type,
@@ -333,7 +375,7 @@ describe('IndexedDB Database', () => {
     }]);
     await markJobCleanupAndRemoveInDatabase(id);
 
-    expect(await getJobsFromDatabase(queueId)).toEqual([]);
+    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([]);
   });
 
   it('Gets all jobs from the database', async () => {
@@ -356,7 +398,7 @@ describe('IndexedDB Database', () => {
     await markJobCompleteInDatabase(idF);
     await markJobCleanupAndRemoveInDatabase(idF);
 
-    expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([jasmine.objectContaining({
       id: idA,
       queueId,
       type,

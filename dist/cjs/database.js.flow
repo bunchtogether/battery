@@ -1,5 +1,6 @@
 // @flow
 
+import { JSONPath } from 'jsonpath-plus';
 import merge from 'lodash/merge';
 import unset from 'lodash/unset';
 import EventEmitter from 'events';
@@ -59,7 +60,7 @@ export const JOB_CLEANUP_STATUS = -2;
 export const JOB_CLEANUP_AND_REMOVE_STATUS = -3;
 
 export const databasePromise = (async () => {
-  const request = self.indexedDB.open('battery-queue-02', 1);
+  const request = self.indexedDB.open('battery-queue-03', 1);
 
   request.onupgradeneeded = function (e) {
     try {
@@ -96,6 +97,15 @@ export const databasePromise = (async () => {
         throw error;
       }
     }
+    try {
+      const store = e.target.result.createObjectStore('arg-lookup', { keyPath: 'id', autoIncrement: true });
+      store.createIndex('jobIdIndex', 'jobId', { unique: false });
+      store.createIndex('keyIndex', 'key', { unique: false });
+    } catch (error) {
+      if (!(error.name === 'ConstraintError')) {
+        throw error;
+      }
+    }
   };
 
   const db = await new Promise((resolve, reject) => {
@@ -110,80 +120,90 @@ export const databasePromise = (async () => {
   return db;
 })();
 
-async function getReadWriteAuthObjectStore() {
+async function getReadWriteObjectStore(name:string) {
   const database = await databasePromise;
-  const transaction = database.transaction(['auth-data'], 'readwrite');
-  const objectStore = transaction.objectStore('auth-data');
+  const transaction = database.transaction([name], 'readwrite');
+  const objectStore = transaction.objectStore(name);
   transaction.onabort = (event) => {
-    logger.error('Read-write auth transaction was aborted');
+    logger.error(`Read-write "${name}" transaction was aborted`);
     logger.errorObject(event);
   };
   transaction.onerror = (event) => {
-    logger.error('Error in read-write auth transaction');
+    logger.error(`Error in read-write "${name}" transaction`);
     logger.errorObject(event);
   };
   return objectStore;
 }
 
-async function getReadOnlyAuthObjectStore() {
+async function getReadOnlyObjectStore(name:string) {
   const database = await databasePromise;
-  const transaction = database.transaction(['auth-data'], 'readonly');
-  const objectStore = transaction.objectStore('auth-data');
+  const transaction = database.transaction([name], 'readonly');
+  const objectStore = transaction.objectStore(name);
   transaction.onabort = (event) => {
-    logger.error('Read-only auth transaction was aborted');
+    logger.error(`Read-only "${name}" transaction was aborted`);
     logger.errorObject(event);
   };
   transaction.onerror = (event) => {
-    logger.error('Error in read-only auth transaction');
+    logger.error(`Error in read-only "${name}" transaction`);
     logger.errorObject(event);
   };
   return objectStore;
 }
 
-async function getReadWriteQueueDataObjectStore() {
-  const database = await databasePromise;
-  const transaction = database.transaction(['queue-data'], 'readwrite');
-  const objectStore = transaction.objectStore('queue-data');
-  transaction.onabort = (event) => {
-    logger.error('Read-write queue data transaction was aborted');
-    logger.errorObject(event);
-  };
-  transaction.onerror = (event) => {
-    logger.error('Error in read-write queue data transaction');
-    logger.errorObject(event);
-  };
-  return objectStore;
+function getReadWriteArgLookupObjectStore() {
+  return getReadWriteObjectStore('arg-lookup');
 }
 
-async function getReadOnlyQueueDataObjectStore() {
-  const database = await databasePromise;
-  const transaction = database.transaction(['queue-data'], 'readonly');
-  const objectStore = transaction.objectStore('queue-data');
-  transaction.onabort = (event) => {
-    logger.error('Read-only queue data transaction was aborted');
-    logger.errorObject(event);
-  };
-  transaction.onerror = (event) => {
-    logger.error('Error in read-only queue data transaction');
-    logger.errorObject(event);
-  };
-  return objectStore;
+function getReadOnlyArgLookupObjectStore() {
+  return getReadOnlyObjectStore('arg-lookup');
 }
 
-async function getReadWriteJobsObjectStoreAndTransactionPromise() {
+function getReadWriteAuthObjectStore() {
+  return getReadWriteObjectStore('auth-data');
+}
+
+function getReadOnlyAuthObjectStore() {
+  return getReadOnlyObjectStore('auth-data');
+}
+
+function getReadWriteQueueDataObjectStore() {
+  return getReadWriteObjectStore('queue-data');
+}
+
+function getReadOnlyQueueDataObjectStore() {
+  return getReadOnlyObjectStore('queue-data');
+}
+
+function getReadWriteJobsObjectStore() {
+  return getReadWriteObjectStore('jobs');
+}
+
+function getReadOnlyJobsObjectStore() {
+  return getReadOnlyObjectStore('jobs');
+}
+
+function getReadWriteCleanupsObjectStore() {
+  return getReadWriteObjectStore('cleanups');
+}
+
+function getReadOnlyCleanupsObjectStore() {
+  return getReadOnlyObjectStore('cleanups');
+}
+
+async function getReadWriteObjectStoreAndTransactionPromise(name:string) {
   const database = await databasePromise;
-  const transaction = database.transaction(['jobs'], 'readwrite');
-  const objectStore = transaction.objectStore('jobs');
+  const transaction = database.transaction([name], 'readwrite');
+  const objectStore = transaction.objectStore(name);
   const promise = new Promise((resolve, reject) => {
     transaction.onabort = (event) => {
-      logger.error('Read-write jobs transaction was aborted');
+      logger.error(`Read-write "${name}" transaction was aborted`);
       logger.errorObject(event);
-      reject(new Error('Read-write jobs transaction was aborted'));
+      reject(new Error(`Read-write "${name}" transaction was aborted`));
     };
     transaction.onerror = (event) => {
-      logger.error('Error in read-write jobs transaction');
+      logger.error(`Error in read-write "${name}" transaction`);
       logger.errorObject(event);
-      reject(new Error('Error in read-write jobs transaction'));
+      reject(new Error(`Error in read-write "${name}" transaction`));
     };
     transaction.oncomplete = () => {
       resolve();
@@ -192,20 +212,20 @@ async function getReadWriteJobsObjectStoreAndTransactionPromise() {
   return [objectStore, promise];
 }
 
-async function getReadOnlyJobsObjectStoreAndTransactionPromise() {
+async function getReadOnlyObjectStoreAndTransactionPromise(name:string) {
   const database = await databasePromise;
-  const transaction = database.transaction(['jobs'], 'readonly');
-  const objectStore = transaction.objectStore('jobs');
+  const transaction = database.transaction([name], 'readonly');
+  const objectStore = transaction.objectStore(name);
   const promise = new Promise((resolve, reject) => {
     transaction.onabort = (event) => {
-      logger.error('Read-only jobs transaction was aborted');
+      logger.error(`Read-write "${name}" transaction was aborted`);
       logger.errorObject(event);
-      reject(new Error('Read-only jobs transaction was aborted'));
+      reject(new Error(`Read-write "${name}" transaction was aborted`));
     };
     transaction.onerror = (event) => {
-      logger.error('Error in read-only jobs transaction');
+      logger.error(`Error in read-write "${name}" transaction`);
       logger.errorObject(event);
-      reject(new Error('Error in read-only jobs transaction'));
+      reject(new Error(`Error in read-write "${name}" transaction`));
     };
     transaction.oncomplete = () => {
       resolve();
@@ -214,64 +234,30 @@ async function getReadOnlyJobsObjectStoreAndTransactionPromise() {
   return [objectStore, promise];
 }
 
-async function getReadWriteJobsObjectStore() {
-  const database = await databasePromise;
-  const transaction = database.transaction(['jobs'], 'readwrite');
-  const objectStore = transaction.objectStore('jobs');
-  transaction.onabort = (event) => {
-    logger.error('Read-write jobs transaction was aborted');
-    logger.errorObject(event);
-  };
-  transaction.onerror = (event) => {
-    logger.error('Error in read-write jobs transaction');
-    logger.errorObject(event);
-  };
-  return objectStore;
+
+function getReadWriteJobsObjectStoreAndTransactionPromise() {
+  return getReadWriteObjectStoreAndTransactionPromise('jobs');
 }
 
-async function getReadOnlyJobsObjectStore() {
-  const database = await databasePromise;
-  const transaction = database.transaction(['jobs'], 'readonly');
-  const objectStore = transaction.objectStore('jobs');
-  transaction.onabort = (event) => {
-    logger.error('Read-only jobs transaction was aborted');
-    logger.errorObject(event);
-  };
-  transaction.onerror = (event) => {
-    logger.error('Error in read-only jobs transaction');
-    logger.errorObject(event);
-  };
-  return objectStore;
+function getReadOnlyJobsObjectStoreAndTransactionPromise() {
+  return getReadOnlyObjectStoreAndTransactionPromise('jobs');
 }
 
-async function getReadWriteCleanupsObjectStore() {
-  const database = await databasePromise;
-  const transaction = database.transaction(['cleanups'], 'readwrite');
-  const objectStore = transaction.objectStore('cleanups');
-  transaction.onabort = (event) => {
-    logger.error('Read-write cleanups transaction was aborted');
-    logger.errorObject(event);
-  };
-  transaction.onerror = (event) => {
-    logger.error('Error in read-write cleanups transaction');
-    logger.errorObject(event);
-  };
-  return objectStore;
+function getReadWriteArgLookupObjectStoreAndTransactionPromise() {
+  return getReadWriteObjectStoreAndTransactionPromise('arg-lookup');
 }
 
-async function getReadOnlyCleanupsObjectStore() {
-  const database = await databasePromise;
-  const transaction = database.transaction(['cleanups'], 'readonly');
-  const objectStore = transaction.objectStore('cleanups');
-  transaction.onabort = (event) => {
-    logger.error('Read-only cleanups transaction was aborted');
+function removeJobFromObjectStore(store:IDBObjectStore, id:number, queueId:string) {
+  const deleteRequest = store.delete(id);
+  deleteRequest.onsuccess = function () {
+    localJobEmitter.emit('jobDelete', id, queueId);
+    jobEmitter.emit('jobDelete', id, queueId);
+    removeArgLookupsForJobAsMicrotask(id);
+  };
+  deleteRequest.onerror = function (event) {
+    logger.error(`Request error while removing job ${id} in queue ${queueId} from database`);
     logger.errorObject(event);
   };
-  transaction.onerror = (event) => {
-    logger.error('Error in read-only cleanups transaction');
-    logger.errorObject(event);
-  };
-  return objectStore;
 }
 
 async function clearQueueDataDatabase() {
@@ -334,15 +320,7 @@ export async function removeJobsWithQueueIdAndTypeFromDatabase(queueId:string, t
   const request = index.getAllKeys(IDBKeyRange.only([queueId, type]));
   request.onsuccess = function (event) {
     for (const id of event.target.result) {
-      const deleteRequest = store.delete(id);
-      deleteRequest.onsuccess = function () {
-        localJobEmitter.emit('jobDelete', id, queueId);
-        jobEmitter.emit('jobDelete', id, queueId);
-      };
-      deleteRequest.onerror = function (deleteEvent) {
-        logger.error(`Request error while removing job ${id} in queue ${queueId} and type ${type} from jobs database`);
-        logger.errorObject(deleteEvent);
-      };
+      removeJobFromObjectStore(store, id, queueId);
     }
   };
   request.onerror = function (event) {
@@ -359,15 +337,7 @@ export async function removeQueueIdFromJobsDatabase(queueId:string) {
   const request = index.getAllKeys(IDBKeyRange.only(queueId));
   request.onsuccess = function (event) {
     for (const id of event.target.result) {
-      const deleteRequest = store.delete(id);
-      deleteRequest.onsuccess = function () {
-        localJobEmitter.emit('jobDelete', id, queueId);
-        jobEmitter.emit('jobDelete', id, queueId);
-      };
-      deleteRequest.onerror = function (deleteEvent) {
-        logger.error(`Request error while removing job ${id} in queue ${queueId} from jobs database`);
-        logger.errorObject(deleteEvent);
-      };
+      removeJobFromObjectStore(store, id, queueId);
     }
   };
   request.onerror = function (event) {
@@ -415,15 +385,7 @@ export async function removeCompletedExpiredItemsFromDatabase(maxAge:number) {
       if (status !== JOB_COMPLETE_STATUS) {
         continue;
       }
-      const deleteRequest = store.delete(id);
-      deleteRequest.onsuccess = function () {
-        localJobEmitter.emit('jobDelete', id, queueId);
-        jobEmitter.emit('jobDelete', id, queueId);
-      };
-      deleteRequest.onerror = function (deleteEvent) {
-        logger.error(`Request error while removing job ${id} in queue ${queueId} from completed exired items from jobs database`);
-        logger.errorObject(deleteEvent);
-      };
+      removeJobFromObjectStore(store, id, queueId);
     }
   };
   request.onerror = function (event) {
@@ -455,6 +417,7 @@ export async function updateJobInDatabase(id:number, transform:(Job | void) => J
           deleteRequest.onsuccess = function () {
             localJobEmitter.emit('jobDelete', id, queueId);
             jobEmitter.emit('jobDelete', id, queueId);
+            removeArgLookupsForJobAsMicrotask(id);
             resolve();
           };
           deleteRequest.onerror = function (event) {
@@ -576,17 +539,49 @@ export async function updateCleanupValuesInDatabase(id:number, queueId:string, d
   });
 }
 
-export async function removeJobFromDatabase(id:number) {
+export async function silentlyRemoveJobFromDatabase(id:number) {
   const store = await getReadWriteJobsObjectStore();
   const request = store.delete(id);
-  return new Promise((resolve, reject) => {
+  await new Promise((resolve, reject) => {
     request.onsuccess = function () {
       resolve();
     };
     request.onerror = function (event) {
-      logger.error(`Error while removing job ${id}`);
+      logger.error(`Delete request error while removing job ${id} from database`);
       logger.errorObject(event);
-      reject(new Error(`Error while removing job ${id}`));
+      reject(new Error(`Delete request error while removing job ${id} from database`));
+    };
+  });
+}
+
+export async function removeJobFromDatabase(id:number) {
+  const store = await getReadWriteJobsObjectStore();
+  const request = store.get(id);
+  await new Promise((resolve, reject) => {
+    request.onsuccess = function () {
+      const job = request.result;
+      if (typeof job === 'undefined') {
+        resolve();
+        return;
+      }
+      const { queueId, type } = job;
+      const deleteRequest = store.delete(id);
+      deleteRequest.onsuccess = function () {
+        localJobEmitter.emit('jobDelete', id, queueId);
+        jobEmitter.emit('jobDelete', id, queueId);
+        removeArgLookupsForJobAsMicrotask(id);
+        resolve();
+      };
+      deleteRequest.onerror = function (event) {
+        logger.error(`Delete request error while removing job ${id} in queue ${queueId} with type ${type} from database`);
+        logger.errorObject(event);
+        reject(new Error(`Delete request error while removing job ${id} in queue ${queueId} with type ${type} from database`));
+      };
+    };
+    request.onerror = function (event) {
+      logger.error(`Request error while getting ${id} before removing from database`);
+      logger.errorObject(event);
+      reject(new Error(`Request error while getting ${id} before removing from database`));
     };
   });
 }
@@ -1007,7 +1002,7 @@ export async function dequeueFromDatabaseNotIn(ids:Array<number>):Promise<Array<
   const index = store.index('statusIndex');
   const jobs = [];
   // $FlowFixMe
-  const request = index.getAllKeys(IDBKeyRange.bound(JOB_CLEANUP_STATUS, JOB_PENDING_STATUS));
+  const request = index.getAllKeys(IDBKeyRange.bound(JOB_CLEANUP_AND_REMOVE_STATUS, JOB_PENDING_STATUS));
   request.onsuccess = function (event) {
     for (const id of event.target.result) {
       if (ids.includes(id)) {
@@ -1031,9 +1026,9 @@ export async function dequeueFromDatabaseNotIn(ids:Array<number>):Promise<Array<
   return jobs;
 }
 
-export async function getJobsFromDatabase(queueId: string):Promise<Array<Job>> { // eslint-disable-line no-underscore-dangle
+export async function getJobsInQueueFromDatabase(queueId: string):Promise<Array<Job>> { // eslint-disable-line no-underscore-dangle
   if (typeof queueId !== 'string') {
-    throw new TypeError(`Unable to get completed jobs database, received invalid "queueId" argument type "${typeof queueId}"`);
+    throw new TypeError(`Unable to get jobs in queue from database, received invalid "queueId" argument type "${typeof queueId}"`);
   }
   const store = await getReadOnlyJobsObjectStore();
   const index = store.index('queueIdIndex');
@@ -1049,6 +1044,28 @@ export async function getJobsFromDatabase(queueId: string):Promise<Array<Job>> {
       reject(new Error('Request error while dequeing'));
     };
   });
+  return jobs;
+}
+
+export async function getJobsInDatabase(jobIds: Array<number>):Promise<Array<Job>> { // eslint-disable-line no-underscore-dangle
+  if (!Array.isArray(jobIds)) {
+    throw new TypeError(`Unable to get jobs from database, received invalid "jobIds" argument type "${typeof jobIds}"`);
+  }
+  const [store, promise] = await getReadOnlyJobsObjectStoreAndTransactionPromise();
+  const jobs = [];
+  for (const jobId of jobIds) {
+    const request = store.get(jobId);
+    request.onsuccess = function () {
+      if (typeof request.result !== 'undefined') {
+        jobs.push(request.result);
+      }
+    };
+    request.onerror = function (event) {
+      logger.error(`Request error while getting job ${jobId}`);
+      logger.errorObject(event);
+    };
+  }
+  await promise;
   return jobs;
 }
 
@@ -1245,3 +1262,100 @@ export async function getQueueStatus(queueId:string) {
   return QUEUE_EMPTY_STATUS;
 }
 
+export async function addArgLookup(jobId:number, key:string, jsonPath:string) {
+  if (typeof jobId !== 'number') {
+    throw new TypeError(`Unable add argument lookup, received invalid "jobId" argument type "${typeof jobId}"`);
+  }
+  if (typeof key !== 'string') {
+    throw new TypeError(`Unable add argument lookup, received invalid "key" argument type "${typeof key}"`);
+  }
+  if (typeof jsonPath !== 'string') {
+    throw new TypeError(`Unable add argument lookup, received invalid "jsonPath" argument type "${typeof jsonPath}"`);
+  }
+  const store = await getReadWriteArgLookupObjectStore();
+  const request = store.put({
+    jobId,
+    key,
+    jsonPath,
+  });
+  return new Promise((resolve, reject) => {
+    request.onsuccess = function () {
+      resolve();
+    };
+    request.onerror = function (event) {
+      logger.error(`Error while adding argument lookup for job ${jobId} with key "${key}" and JSON path "${jsonPath}"`);
+      logger.errorObject(event);
+      reject(new Error(`Error while adding argument lookup for job ${jobId} with key "${key}" and JSON path "${jsonPath}"`));
+    };
+  });
+}
+
+export async function getArgLookupJobPathMap(key:string) {
+  if (typeof key !== 'string') {
+    throw new TypeError(`Unable to lookup arguments, received invalid "key" argument type "${typeof key}"`);
+  }
+  const store = await getReadOnlyArgLookupObjectStore();
+  const index = store.index('keyIndex');
+  // $FlowFixMe
+  const request = index.getAll(IDBKeyRange.only(key));
+  return new Promise((resolve, reject) => {
+    request.onsuccess = function (event) {
+      const map: Map<number, string> = new Map(event.target.result.map((x) => [x.jobId, x.jsonPath]));
+      resolve(map);
+    };
+    request.onerror = function (event) {
+      logger.error(`Request error looking up arguments for key ${key}`);
+      logger.errorObject(event);
+      reject(new Error(`Request error looking up arguments for key ${key}`));
+    };
+  });
+}
+
+export async function lookupArgs(key:string) {
+  const map = await getArgLookupJobPathMap(key);
+  const jobs = await getJobsInDatabase([...map.keys()]);
+  const results = [];
+  for (const { id, args } of jobs) {
+    const jsonPath = map.get(id);
+    if (typeof jsonPath !== 'string') {
+      continue;
+    }
+    for (const result of JSONPath({ path: jsonPath, json: args })) {
+      results.push(result);
+    }
+  }
+  return results;
+}
+
+export async function lookupArg(key:string) {
+  const results = await lookupArgs(key);
+  return results[0];
+}
+
+function removeArgLookupsForJobAsMicrotask(jobId:number) {
+  self.queueMicrotask(() => removeArgLookupsForJob(jobId).catch((error) => {
+    logger.error(`Unable to remove argument lookups for job ${jobId} in microtask`);
+    logger.errorStack(error);
+  }));
+}
+
+export async function removeArgLookupsForJob(jobId:number) {
+  const [store, promise] = await getReadWriteArgLookupObjectStoreAndTransactionPromise();
+  const index = store.index('jobIdIndex');
+  // $FlowFixMe
+  const request = index.getAllKeys(IDBKeyRange.only(jobId));
+  request.onsuccess = function (event) {
+    for (const id of event.target.result) {
+      const deleteRequest = store.delete(id);
+      deleteRequest.onerror = function (deleteEvent) {
+        logger.error(`Delete request error while removing argument lookups for job ${jobId}`);
+        logger.errorObject(deleteEvent);
+      };
+    }
+  };
+  request.onerror = function (event) {
+    logger.error(`Request error while removing argument lookups for job ${jobId}`);
+    logger.errorObject(event);
+  };
+  await promise;
+}

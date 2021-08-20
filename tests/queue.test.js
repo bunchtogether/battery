@@ -4,7 +4,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { AbortError, FatalQueueError } from '../src/errors';
 import {
   jobEmitter,
-  getJobsFromDatabase,
+  getJobsInQueueFromDatabase,
+  silentlyRemoveJobFromDatabase,
   removeJobFromDatabase,
   enqueueToDatabase,
   getCompletedJobsCountFromDatabase,
@@ -812,7 +813,7 @@ describe('Queue', () => {
     await expectAsync(echoEmitter).toEmit('echo', { value: valueA });
     await expectAsync(echoEmitter).toEmit('echo', { value: valueB });
 
-    expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([jasmine.objectContaining({
       id: idA,
       queueId,
       type: 'echo',
@@ -835,7 +836,7 @@ describe('Queue', () => {
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value: valueA, cleanupData: { value: valueA } });
     await queue.onIdle();
 
-    expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([jasmine.objectContaining({
       id: idB,
       queueId,
       type: 'echo',
@@ -859,7 +860,7 @@ describe('Queue', () => {
     await expectAsync(echoEmitter).toEmit('echo', { value: valueA });
     await expectAsync(echoEmitter).toEmit('echo', { value: valueB });
 
-    expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([jasmine.objectContaining({
       id: idA,
       queueId,
       type: 'echo',
@@ -881,7 +882,7 @@ describe('Queue', () => {
     await queue.onIdle();
     await markJobCleanupAndRemoveInDatabase(idA);
 
-    expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([jasmine.objectContaining({
       id: idA,
       queueId,
       type: 'echo',
@@ -905,7 +906,7 @@ describe('Queue', () => {
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value: valueA, cleanupData: { value: valueA } });
     await queue.onIdle();
 
-    expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([jasmine.objectContaining({
       id: idB,
       queueId,
       type: 'echo',
@@ -923,7 +924,7 @@ describe('Queue', () => {
     let id;
     let didRunCleanup = false;
     const handler = async () => {
-      expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+      expect(await getJobsInQueueFromDatabase(queueId)).toEqual([jasmine.objectContaining({
         id,
         queueId,
         type,
@@ -937,7 +938,7 @@ describe('Queue', () => {
         await markJobCleanupAndRemoveInDatabase(id);
       }
 
-      expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+      expect(await getJobsInQueueFromDatabase(queueId)).toEqual([jasmine.objectContaining({
         id,
         queueId,
         type,
@@ -959,7 +960,7 @@ describe('Queue', () => {
     await queue.onIdle();
 
     expect(didRunCleanup).toEqual(true);
-    expect(await getJobsFromDatabase(queueId)).toEqual([]);
+    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([]);
     queue.removeHandler(type);
     queue.removeCleanup(type);
   });
@@ -971,7 +972,7 @@ describe('Queue', () => {
       throw new FatalQueueError('Test fatal error');
     };
     const cleanup = async () => {
-      expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+      expect(await getJobsInQueueFromDatabase(queueId)).toEqual([jasmine.objectContaining({
         id,
         queueId,
         type,
@@ -986,7 +987,7 @@ describe('Queue', () => {
         await markJobCleanupAndRemoveInDatabase(id);
       }
 
-      expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+      expect(await getJobsInQueueFromDatabase(queueId)).toEqual([jasmine.objectContaining({
         id,
         queueId,
         type,
@@ -1005,7 +1006,7 @@ describe('Queue', () => {
     await queue.onIdle();
 
     expect(didRunCleanup).toEqual(true);
-    expect(await getJobsFromDatabase(queueId)).toEqual([]);
+    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([]);
     queue.removeHandler(type);
     queue.removeCleanup(type);
   });
@@ -1025,7 +1026,7 @@ describe('Queue', () => {
       throw new Error('Test non-fatal error');
     };
     const cleanup = async () => {
-      expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+      expect(await getJobsInQueueFromDatabase(queueId)).toEqual([jasmine.objectContaining({
         id,
         queueId,
         type,
@@ -1040,7 +1041,7 @@ describe('Queue', () => {
         await markJobCleanupAndRemoveInDatabase(id);
       }
 
-      expect(await getJobsFromDatabase(queueId)).toEqual([jasmine.objectContaining({
+      expect(await getJobsInQueueFromDatabase(queueId)).toEqual([jasmine.objectContaining({
         id,
         queueId,
         type,
@@ -1060,7 +1061,7 @@ describe('Queue', () => {
 
     expect(handlerCount).toEqual(1);
     expect(didRunCleanup).toEqual(true);
-    expect(await getJobsFromDatabase(queueId)).toEqual([]);
+    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([]);
     queue.removeHandler(type);
     queue.removeCleanup(type);
     queue.removeRetryJobDelay(type);
@@ -1092,7 +1093,7 @@ describe('Queue', () => {
 
     expect(handlerCount).toEqual(1);
     expect(cleanupCount).toEqual(0);
-    expect(await getJobsFromDatabase(queueId)).toEqual([{
+    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([{
       id: idA,
       queueId,
       type,
@@ -1125,7 +1126,34 @@ describe('Queue', () => {
 
     expect(handlerCount).toEqual(0);
     expect(cleanupCount).toEqual(0);
-    expect(await getJobsFromDatabase(queueId)).toEqual([]);
+    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([]);
+    queue.removeHandler(type);
+    queue.removeCleanup(type);
+  });
+
+  it('Cleanly removes a job removed without emitting jobDelete events while the handler runs', async () => {
+    let handlerCount = 0;
+    let cleanupCount = 0;
+    let id;
+    const type = uuidv4();
+    const handler = async () => {
+      if (typeof id === 'number') {
+        await silentlyRemoveJobFromDatabase(id);
+      }
+      handlerCount += 1;
+    };
+    const cleanup = async () => {
+      cleanupCount += 1;
+    };
+    queue.setHandler(type, handler);
+    queue.setCleanup(type, cleanup);
+    const queueId = uuidv4();
+    id = await enqueueToDatabase(queueId, type, [], 0);
+    await queue.onIdle();
+
+    expect(handlerCount).toEqual(1);
+    expect(cleanupCount).toEqual(1);
+    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([]);
     queue.removeHandler(type);
     queue.removeCleanup(type);
   });
@@ -1152,7 +1180,7 @@ describe('Queue', () => {
 
     expect(handlerCount).toEqual(1);
     expect(cleanupCount).toEqual(1);
-    expect(await getJobsFromDatabase(queueId)).toEqual([]);
+    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([]);
     queue.removeHandler(type);
     queue.removeCleanup(type);
   });
@@ -1177,7 +1205,7 @@ describe('Queue', () => {
 
     expect(handlerCount).toEqual(0);
     expect(cleanupCount).toEqual(0);
-    expect(await getJobsFromDatabase(queueId)).toEqual([]);
+    expect(await getJobsInQueueFromDatabase(queueId)).toEqual([]);
     queue.removeHandler(type);
     queue.removeCleanup(type);
   });
