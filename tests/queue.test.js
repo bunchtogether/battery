@@ -47,7 +47,7 @@ describe('Queue', () => {
     await queue.clear();
   });
 
-  xit('Enqueues to the database and is handled', async () => {
+  it('Enqueues to the database and is handled', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     const args = [TRIGGER_NO_ERROR, value];
@@ -56,7 +56,7 @@ describe('Queue', () => {
     await expectAsync(echoEmitter).toEmit('echo', { value });
   });
 
-  xit('Gets active queueIds', async () => {
+  it('Gets active queueIds', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     const args = [TRIGGER_NO_ERROR, value];
@@ -69,7 +69,7 @@ describe('Queue', () => {
     await expectAsync(queue.getQueueIds()).toBeResolvedTo(new Set([]));
   });
 
-  xit('Enqueues to the database and is cleaned up after an error without retrying', async () => {
+  it('Enqueues to the database and is cleaned up after an error without retrying', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     let retries = 0;
@@ -89,7 +89,7 @@ describe('Queue', () => {
   });
 
 
-  xit('Cleans up completed items in the queue if the handler throws an AbortError', async () => {
+  it('Cleans up completed items in the queue if the handler throws an AbortError', async () => {
     const queueId = uuidv4();
     const valueA = uuidv4();
     const valueB = uuidv4();
@@ -106,11 +106,11 @@ describe('Queue', () => {
     const value = uuidv4();
     const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, value], 100);
     await expectAsync(queue).toEmit('dequeue', { id });
-    await queue.abortQueue(queueId);
+    queue.abortQueue(queueId);
     await expectAsync(queue).toEmit('fatalError', { queueId, id, error: jasmine.any(AbortError) });
   });
 
-  xit('Emits fatalError if the queue is aborted while running', async () => {
+  it('Emits fatalError if the queue is aborted while running', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_100MS_DELAY, value], 0);
@@ -121,7 +121,7 @@ describe('Queue', () => {
     await expectAsync(queue).toEmit('fatalError', { queueId, id, error: jasmine.any(AbortError) });
   });
 
-  xit('Aborts retry delay', async () => {
+  it('Aborts retry delay', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     queue.setRetryJobDelay('echo', (attempt, error) => {
@@ -137,7 +137,7 @@ describe('Queue', () => {
     queue.removeRetryJobDelay('echo');
   });
 
-  xit('Enqueues to the database and is cleaned up after an error without retrying if the retry delay function returns false', async () => {
+  it('Enqueues to the database and is cleaned up after an error without retrying if the retry delay function returns false', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     let retries = 0;
@@ -162,7 +162,7 @@ describe('Queue', () => {
     queue.removeRetryJobDelay('echo');
   });
 
-  xit('Enqueues to the database and is cleaned up after an error without retrying if the retry delay function throws an error', async () => {
+  it('Enqueues to the database and is cleaned up after an error without retrying if the retry delay function throws an error', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     let retries = 0;
@@ -187,7 +187,7 @@ describe('Queue', () => {
     queue.removeRetryJobDelay('echo');
   });
 
-  xit('Enqueues to the database and is cleaned up after an error without retrying if an asynchronous retry delay function throws an error', async () => {
+  it('Enqueues to the database and is cleaned up after an error without retrying if an asynchronous retry delay function throws an error', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     let retries = 0;
@@ -213,7 +213,7 @@ describe('Queue', () => {
     queue.removeRetryJobDelay('echo');
   });
 
-  xit('Enqueues to the database and is cleaned up after an error, retrying once if the retry delay function returns 0', async () => {
+  it('Enqueues to the database and is cleaned up after an error, retrying once if the retry delay function returns 0', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     let retries = 0;
@@ -246,7 +246,7 @@ describe('Queue', () => {
     queue.removeRetryJobDelay('echo');
   });
 
-  xit('Enqueues to the database and is cleaned up after an error without retrying if the asynchronous retry delay function returns false', async () => {
+  it('Enqueues to the database and is cleaned up after an error without retrying if the asynchronous retry delay function returns false', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     let retries = 0;
@@ -272,7 +272,7 @@ describe('Queue', () => {
     queue.removeRetryJobDelay('echo');
   });
 
-  xit('Enqueues to the database and is cleaned up after an error, retrying once if the asynchronous retry delay function returns 0', async () => {
+  it('Enqueues to the database and is cleaned up after an error, retrying once if the asynchronous retry delay function returns 0', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     let retries = 0;
@@ -306,7 +306,7 @@ describe('Queue', () => {
     queue.removeRetryJobDelay('echo');
   });
 
-  xit('Enqueues to the database and is cleaned up after a fatal error without retrying', async () => {
+  it('Enqueues to the database and is cleaned up after a fatal error without retrying', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     let retries = 0;
@@ -325,7 +325,7 @@ describe('Queue', () => {
     queue.removeListener('retry', handleRetry);
   });
 
-  xit('Cleans up jobs in the reverse order that they were added', async () => {
+  it('Cleans up jobs in the reverse order that they were added', async () => {
     const queueId = uuidv4();
     const expectedCleanupValues = [];
     for (let i = 0; i < 10; i += 1) {
@@ -341,7 +341,7 @@ describe('Queue', () => {
     }
   });
 
-  xit('Cleans up jobs in the reverse order that they were added following a fatal error', async () => {
+  it('Cleans up jobs in the reverse order that they were added following a fatal error', async () => {
     const queueId = uuidv4();
     const valueA = uuidv4();
     const valueB = uuidv4();
@@ -352,7 +352,7 @@ describe('Queue', () => {
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value: valueA, cleanupData: { value: valueA } });
   });
 
-  xit('Enqueues to the database and is cleaned up after an error, retrying once after a 100ms delay if the retry delay function returns 100', async () => {
+  it('Enqueues to the database and is cleaned up after an error, retrying once after a 100ms delay if the retry delay function returns 100', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     let retries = 0;
@@ -386,7 +386,7 @@ describe('Queue', () => {
     queue.removeRetryJobDelay('echo');
   });
 
-  xit('Removes completed items older than a certain age', async () => {
+  it('Removes completed items older than a certain age', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     const args = [TRIGGER_NO_ERROR, value];
@@ -407,7 +407,7 @@ describe('Queue', () => {
   });
 
 
-  xit('Delays execution of items', async () => {
+  it('Delays execution of items', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     let echoReceivedTime = -1;
@@ -426,7 +426,7 @@ describe('Queue', () => {
     expect(echoReceivedTime).toBeGreaterThan(start + 250);
   });
 
-  xit('Enqueues to the database and is cleaned up after an error following a defined delay', async () => {
+  it('Enqueues to the database and is cleaned up after an error following a defined delay', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     const args = [TRIGGER_NO_ERROR, value];
@@ -449,7 +449,7 @@ describe('Queue', () => {
     expect(echoCleanupReceivedTime).toBeGreaterThan(start + 250);
   });
 
-  xit('Enqueues to the database and stops cleanup after FatalCleanupError', async () => {
+  it('Enqueues to the database and stops cleanup after FatalCleanupError', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     const args = [TRIGGER_FATAL_ERROR_IN_CLEANUP, value];
@@ -460,7 +460,7 @@ describe('Queue', () => {
     await expectAsync(queue).toEmit('fatalCleanupError', { id, queueId });
   });
 
-  xit('Enqueues to the database and stops cleanup after Error', async () => {
+  it('Enqueues to the database and stops cleanup after Error', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     const args = [TRIGGER_ERROR_IN_CLEANUP, value];
@@ -472,7 +472,7 @@ describe('Queue', () => {
     await expectAsync(queue).toEmit('fatalCleanupError', { id, queueId });
   });
 
-  xit('Does not retry cleanup if a retry cleanup delay function returns false', async () => {
+  it('Does not retry cleanup if a retry cleanup delay function returns false', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     let cleanupAttempts = 0;
@@ -498,7 +498,7 @@ describe('Queue', () => {
     queue.removeRetryCleanupDelay('echo');
   });
 
-  xit('Does not retry cleanup if a retry cleanup delay function throws an error', async () => {
+  it('Does not retry cleanup if a retry cleanup delay function throws an error', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     let cleanupAttempts = 0;
@@ -524,7 +524,7 @@ describe('Queue', () => {
     queue.removeRetryCleanupDelay('echo');
   });
 
-  xit('Retries cleanup if a retry cleanup delay function returns 0', async () => {
+  it('Retries cleanup if a retry cleanup delay function returns 0', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     let cleanupAttempts = 0;
@@ -559,7 +559,7 @@ describe('Queue', () => {
     queue.removeRetryCleanupDelay('echo');
   });
 
-  xit('Does not retry cleanup if an asynchronous retry cleanup delay function returns false', async () => {
+  it('Does not retry cleanup if an asynchronous retry cleanup delay function returns false', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     let cleanupAttempts = 0;
@@ -587,7 +587,7 @@ describe('Queue', () => {
     queue.removeRetryCleanupDelay('echo');
   });
 
-  xit('Does not retry cleanup if an asynchronous retry cleanup delay function throws an error', async () => {
+  it('Does not retry cleanup if an asynchronous retry cleanup delay function throws an error', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     let cleanupAttempts = 0;
@@ -615,7 +615,7 @@ describe('Queue', () => {
     queue.removeRetryCleanupDelay('echo');
   });
 
-  xit('Retries cleanup if an asynchronous retry cleanup delay function returns 0', async () => {
+  it('Retries cleanup if an asynchronous retry cleanup delay function returns 0', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     let cleanupAttempts = 0;
@@ -651,7 +651,7 @@ describe('Queue', () => {
     queue.removeRetryCleanupDelay('echo');
   });
 
-  xit('Retries cleanup after 100ms if an asynchronous retry cleanup delay function returns 100', async () => {
+  it('Retries cleanup after 100ms if an asynchronous retry cleanup delay function returns 100', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     let cleanupAttempts = 0;
@@ -689,7 +689,7 @@ describe('Queue', () => {
     queue.removeRetryCleanupDelay('echo');
   });
 
-  xit('Runs cleanup on a long-running job if it was aborted', async () => {
+  it('Runs cleanup on a long-running job if it was aborted', async () => {
     const queueId = uuidv4();
     const type = uuidv4();
     let didRunHandler = false;
@@ -722,7 +722,7 @@ describe('Queue', () => {
     expect(didRunRetryJobDelay).toEqual(false);
   });
 
-  xit('Runs cleanup on a long-running job that throws an error if it was aborted', async () => {
+  it('Runs cleanup on a long-running job that throws an error if it was aborted', async () => {
     const queueId = uuidv4();
     const type = uuidv4();
     let didRunHandler = false;
@@ -756,7 +756,7 @@ describe('Queue', () => {
     expect(didRunRetryJobDelay).toEqual(false);
   });
 
-  xit('Prevents running a scheduled job that was aborted', async () => {
+  it('Prevents running a scheduled job that was aborted', async () => {
     const queueId = uuidv4();
     const type = uuidv4();
     let handlerCount = 0;
@@ -793,7 +793,7 @@ describe('Queue', () => {
     expect(retryCount).toEqual(0);
   });
 
-  xit('Emits queueActive and queueInactive events when a queue becomes active or inactive', async () => {
+  it('Emits queueActive and queueInactive events when a queue becomes active or inactive', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, value], 0);
@@ -804,7 +804,7 @@ describe('Queue', () => {
     await expectAsync(queue).toEmit('queueInactive', queueId); // Triggers after 5s or on a 'clearing' event
   });
 
-  xit('Cleans up and removes a job from the queue if a job is marked with status "clean up and remove" after a job is complete', async () => {
+  it('Cleans up and removes a job from the queue if a job is marked with status "clean up and remove" after a job is complete', async () => {
     const queueId = uuidv4();
     const valueA = uuidv4();
     const valueB = uuidv4();
@@ -849,7 +849,7 @@ describe('Queue', () => {
   });
 
 
-  xit('Cleans up and removes a job from the queue if a job is marked with status "clean up and remove" after a job is complete if jobEmitter is not active', async () => {
+  it('Cleans up and removes a job from the queue if a job is marked with status "clean up and remove" after a job is complete if jobEmitter is not active', async () => {
     queue.disableStartOnJob();
     const queueId = uuidv4();
     const valueA = uuidv4();
@@ -920,7 +920,7 @@ describe('Queue', () => {
   });
 
 
-  xit('Cleans up and removes a job from the queue if a job is marked with status "clean up and remove" while a job is in progress', async () => {
+  it('Cleans up and removes a job from the queue if a job is marked with status "clean up and remove" while a job is in progress', async () => {
     let id;
     let didRunCleanup = false;
     const handler = async () => {
@@ -965,7 +965,7 @@ describe('Queue', () => {
     queue.removeCleanup(type);
   });
 
-  xit('Removes a job marked as "cleanup and remove" while the cleanup handler is running', async () => {
+  it('Removes a job marked as "cleanup and remove" while the cleanup handler is running', async () => {
     let id;
     let didRunCleanup = false;
     const handler = async () => {
@@ -1011,7 +1011,7 @@ describe('Queue', () => {
     queue.removeCleanup(type);
   });
 
-  xit('Removes a job marked as "cleanup and remove" while the non-fatal error handler is running', async () => {
+  it('Removes a job marked as "cleanup and remove" while the non-fatal error handler is running', async () => {
     let id;
     let handlerCount = 0;
     let didRunCleanup = false;
@@ -1067,7 +1067,7 @@ describe('Queue', () => {
     queue.removeRetryJobDelay(type);
   });
 
-  xit('Removes a job marked as "cleanup and remove" before the handler starts', async () => {
+  it('Removes a job marked as "cleanup and remove" before the handler starts', async () => {
     let handlerCount = 0;
     let cleanupCount = 0;
     let idB;
@@ -1107,7 +1107,7 @@ describe('Queue', () => {
     queue.removeCleanup(type);
   });
 
-  xit('Removes a job marked as "cleanup and remove" after the job is started but before the handler runs', async () => {
+  it('Removes a job marked as "cleanup and remove" after the job is started but before the handler runs', async () => {
     let handlerCount = 0;
     let cleanupCount = 0;
     const type = uuidv4();
@@ -1131,7 +1131,7 @@ describe('Queue', () => {
     queue.removeCleanup(type);
   });
 
-  xit('Cleanly removes a job removed without emitting jobDelete events while the handler runs', async () => {
+  it('Cleanly removes a job removed without emitting jobDelete events while the handler runs', async () => {
     let handlerCount = 0;
     let cleanupCount = 0;
     let id;
@@ -1158,7 +1158,7 @@ describe('Queue', () => {
     queue.removeCleanup(type);
   });
 
-  xit('Cleanly removes a job removed while the handler runs', async () => {
+  it('Cleanly removes a job removed while the handler runs', async () => {
     let handlerCount = 0;
     let cleanupCount = 0;
     let id;
@@ -1185,7 +1185,7 @@ describe('Queue', () => {
     queue.removeCleanup(type);
   });
 
-  xit('Removes a job marked as "cleanup and remove" during a delayed start', async () => {
+  it('Removes a job marked as "cleanup and remove" during a delayed start', async () => {
     let handlerCount = 0;
     let cleanupCount = 0;
     const type = uuidv4();
