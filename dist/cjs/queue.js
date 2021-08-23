@@ -182,7 +182,6 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
           }
 
           var args = job.args;
-          console.log('START CLEANUP');
 
           _this2.startCleanup(id, queueId, args, type);
         }).catch(function (error) {

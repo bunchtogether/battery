@@ -133,7 +133,6 @@ export default class BatteryQueue extends EventEmitter {
           return;
         }
         const { args } = job;
-        console.log('START CLEANUP');
         this.startCleanup(id, queueId, args, type);
       }).catch((error) => {
         this.logger.error(`Error while cleaning up and removing ${type} job #${id} in queue ${queueId}`);
