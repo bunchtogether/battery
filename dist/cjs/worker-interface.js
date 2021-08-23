@@ -810,44 +810,44 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                 return new Promise(function (resolve, reject) {
                   var requestId = Math.random();
                   var timeout = setTimeout(function () {
-                    _this8.removeListener('enableStartOnJobComplete', handleenableStartOnJobComplete);
+                    _this8.removeListener('enableStartOnJobComplete', handleEnableStartOnJobComplete);
 
-                    _this8.removeListener('enableStartOnJobError', handleenableStartOnJobError);
+                    _this8.removeListener('enableStartOnJobError', handleEnableStartOnJobError);
 
                     reject(new Error("Did not receive enableStartOnJob response within ".concat(maxDuration, "ms")));
                   }, maxDuration);
 
-                  var handleenableStartOnJobComplete = function handleenableStartOnJobComplete(responseId) {
+                  var handleEnableStartOnJobComplete = function handleEnableStartOnJobComplete(responseId) {
                     if (responseId !== requestId) {
                       return;
                     }
 
                     clearTimeout(timeout);
 
-                    _this8.removeListener('enableStartOnJobComplete', handleenableStartOnJobComplete);
+                    _this8.removeListener('enableStartOnJobComplete', handleEnableStartOnJobComplete);
 
-                    _this8.removeListener('enableStartOnJobError', handleenableStartOnJobError);
+                    _this8.removeListener('enableStartOnJobError', handleEnableStartOnJobError);
 
                     resolve();
                   };
 
-                  var handleenableStartOnJobError = function handleenableStartOnJobError(responseId, error) {
+                  var handleEnableStartOnJobError = function handleEnableStartOnJobError(responseId, error) {
                     if (responseId !== requestId) {
                       return;
                     }
 
                     clearTimeout(timeout);
 
-                    _this8.removeListener('enableStartOnJobComplete', handleenableStartOnJobComplete);
+                    _this8.removeListener('enableStartOnJobComplete', handleEnableStartOnJobComplete);
 
-                    _this8.removeListener('enableStartOnJobError', handleenableStartOnJobError);
+                    _this8.removeListener('enableStartOnJobError', handleEnableStartOnJobError);
 
                     reject(error);
                   };
 
-                  _this8.addListener('enableStartOnJobComplete', handleenableStartOnJobComplete);
+                  _this8.addListener('enableStartOnJobComplete', handleEnableStartOnJobComplete);
 
-                  _this8.addListener('enableStartOnJobError', handleenableStartOnJobError);
+                  _this8.addListener('enableStartOnJobError', handleEnableStartOnJobError);
 
                   port.postMessage({
                     type: 'enableStartOnJob',
@@ -1021,7 +1021,7 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                 _context9.next = 18;
                 return new Promise(function (resolve, reject) {
                   var timeout = setTimeout(function () {
-                    _this10.removeListener('syncManagerOnIdle');
+                    _this10.removeListener('syncManagerOnIdle', handleOnIdleSync);
 
                     reject(new Error('Unable to sync, did not receive syncManagerOnIdle acknowledgement'));
                   }, 5000);

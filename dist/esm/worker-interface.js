@@ -446,35 +446,35 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
     await new Promise((resolve, reject) => {
       const requestId = Math.random();
       const timeout = setTimeout(() => {
-        this.removeListener('enableStartOnJobComplete', handleenableStartOnJobComplete);
-        this.removeListener('enableStartOnJobError', handleenableStartOnJobError);
+        this.removeListener('enableStartOnJobComplete', handleEnableStartOnJobComplete);
+        this.removeListener('enableStartOnJobError', handleEnableStartOnJobError);
         reject(new Error(`Did not receive enableStartOnJob response within ${maxDuration}ms`));
       }, maxDuration);
 
-      const handleenableStartOnJobComplete = responseId => {
+      const handleEnableStartOnJobComplete = responseId => {
         if (responseId !== requestId) {
           return;
         }
 
         clearTimeout(timeout);
-        this.removeListener('enableStartOnJobComplete', handleenableStartOnJobComplete);
-        this.removeListener('enableStartOnJobError', handleenableStartOnJobError);
+        this.removeListener('enableStartOnJobComplete', handleEnableStartOnJobComplete);
+        this.removeListener('enableStartOnJobError', handleEnableStartOnJobError);
         resolve();
       };
 
-      const handleenableStartOnJobError = (responseId, error) => {
+      const handleEnableStartOnJobError = (responseId, error) => {
         if (responseId !== requestId) {
           return;
         }
 
         clearTimeout(timeout);
-        this.removeListener('enableStartOnJobComplete', handleenableStartOnJobComplete);
-        this.removeListener('enableStartOnJobError', handleenableStartOnJobError);
+        this.removeListener('enableStartOnJobComplete', handleEnableStartOnJobComplete);
+        this.removeListener('enableStartOnJobError', handleEnableStartOnJobError);
         reject(error);
       };
 
-      this.addListener('enableStartOnJobComplete', handleenableStartOnJobComplete);
-      this.addListener('enableStartOnJobError', handleenableStartOnJobError);
+      this.addListener('enableStartOnJobComplete', handleEnableStartOnJobComplete);
+      this.addListener('enableStartOnJobError', handleEnableStartOnJobError);
       port.postMessage({
         type: 'enableStartOnJob',
         args: [requestId]
@@ -561,7 +561,7 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
       registration.sync.register('syncManagerOnIdle');
       await new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
-          this.removeListener('syncManagerOnIdle');
+          this.removeListener('syncManagerOnIdle', handleOnIdleSync);
           reject(new Error('Unable to sync, did not receive syncManagerOnIdle acknowledgement'));
         }, 5000);
 
