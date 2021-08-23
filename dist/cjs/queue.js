@@ -1454,16 +1454,16 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                     break;
                   }
 
-                  _context15.next = 39;
-                  return (0, _database.restoreJobToDatabaseForCleanupAndRemove)(id, queueId, type, args);
-
-                case 39:
                   _this7.emit('fatalError', {
                     id: id,
                     queueId: queueId,
                     error: _context15.t0
                   });
 
+                  _context15.next = 40;
+                  return (0, _database.restoreJobToDatabaseForCleanupAndRemove)(id, queueId, type, args);
+
+                case 40:
                   _this7.jobIds.delete(id);
 
                   _this7.removeAbortController(id, queueId);
@@ -1522,16 +1522,16 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   break;
 
                 case 58:
-                  _context15.next = 60;
-                  return (0, _database.markJobAsAbortedOrRemoveFromDatabase)(id);
-
-                case 60:
                   _this7.emit('fatalError', {
                     id: id,
                     queueId: queueId,
                     error: _context15.t0
                   });
 
+                  _context15.next = 61;
+                  return (0, _database.markJobAsAbortedOrRemoveFromDatabase)(id);
+
+                case 61:
                   _this7.jobIds.delete(id);
 
                   _this7.removeAbortController(id, queueId);

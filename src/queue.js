@@ -603,8 +603,8 @@ export default class BatteryQueue extends EventEmitter {
         if (error.name === 'JobDoesNotExistError') {
           this.logger.error(`Job does not exist error for ${type} job #${id} in queue ${queueId} attempt ${attempt}`);
           if (handlerDidRun) {
-            await restoreJobToDatabaseForCleanupAndRemove(id, queueId, type, args);
             this.emit('fatalError', { id, queueId, error });
+            await restoreJobToDatabaseForCleanupAndRemove(id, queueId, type, args);
             this.jobIds.delete(id);
             this.removeAbortController(id, queueId);
             this.startCleanup(id, queueId, args, type);
@@ -628,8 +628,8 @@ export default class BatteryQueue extends EventEmitter {
             this.removeAbortController(id, queueId);
             this.startCleanup(id, queueId, args, type);
           } else {
-            await markJobAsAbortedOrRemoveFromDatabase(id);
             this.emit('fatalError', { id, queueId, error });
+            await markJobAsAbortedOrRemoveFromDatabase(id);
             this.jobIds.delete(id);
             this.removeAbortController(id, queueId);
           }
