@@ -27,9 +27,11 @@ import {
   restoreJobToDatabaseForCleanupAndRemove,
   markCleanupStartAfterInDatabase,
   markQueueForCleanupInDatabase,
-  getQueueDataFromDatabase,
   clearDatabase,
-  updateQueueDataInDatabase,
+  setMetadataInDatabase,
+  getMetadataFromDatabase,
+  updateMetadataInDatabase,
+  clearMetadataInDatabase,
   storeAuthDataInDatabase,
   getAuthDataFromDatabase,
   removeAuthDataFromDatabase,
@@ -968,15 +970,21 @@ describe('IndexedDB Database', () => {
     }]);
   });
 
-  it('Gets and sets queue data in database', async () => {
-    const queueId = uuidv4();
-    const key = uuidv4();
-    const value = uuidv4();
+  it('Gets, sets, updates and clears arbitrary metadata', async () => {
+    const id = uuidv4();
+    const keyA = uuidv4();
+    const valueA = uuidv4();
+    const keyB = uuidv4();
+    const valueB = uuidv4();
 
-    expect(await getQueueDataFromDatabase(queueId)).toBeUndefined();
-    await updateQueueDataInDatabase(queueId, { [key]: value });
+    expect(await getMetadataFromDatabase(id)).toBeUndefined();
+    await setMetadataInDatabase(id, { [keyA]: valueA });
+    await expectAsync(getMetadataFromDatabase(id)).toBeResolvedTo({ [keyA]: valueA });
+    await updateMetadataInDatabase(id, { [keyB]: valueB });
+    await expectAsync(getMetadataFromDatabase(id)).toBeResolvedTo({ [keyA]: valueA, [keyB]: valueB });
+    await clearMetadataInDatabase(id);
 
-    await expectAsync(getQueueDataFromDatabase(queueId)).toBeResolvedTo({ [key]: value });
+    expect(await getMetadataFromDatabase(id)).toBeUndefined();
   });
 
   it('Gets and sets auth data in database', async () => {

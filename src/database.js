@@ -60,7 +60,7 @@ export const JOB_CLEANUP_STATUS = -2;
 export const JOB_CLEANUP_AND_REMOVE_STATUS = -3;
 
 export const databasePromise = (async () => {
-  const request = self.indexedDB.open('battery-queue-03', 1);
+  const request = self.indexedDB.open('battery-queue-04', 1);
 
   request.onupgradeneeded = function (e) {
     try {
@@ -76,7 +76,7 @@ export const databasePromise = (async () => {
       }
     }
     try {
-      e.target.result.createObjectStore('queue-data', { keyPath: 'queueId' });
+      e.target.result.createObjectStore('metadata', { keyPath: 'id' });
     } catch (error) {
       if (!(error.name === 'ConstraintError')) {
         throw error;
@@ -166,12 +166,12 @@ function getReadOnlyAuthObjectStore() {
   return getReadOnlyObjectStore('auth-data');
 }
 
-function getReadWriteQueueDataObjectStore() {
-  return getReadWriteObjectStore('queue-data');
+function getReadWriteMetadataObjectStore() {
+  return getReadWriteObjectStore('metadata');
 }
 
-function getReadOnlyQueueDataObjectStore() {
-  return getReadOnlyObjectStore('queue-data');
+function getReadOnlyMetadataObjectStore() {
+  return getReadOnlyObjectStore('metadata');
 }
 
 function getReadWriteJobsObjectStore() {
@@ -247,6 +247,10 @@ function getReadWriteArgLookupObjectStoreAndTransactionPromise() {
   return getReadWriteObjectStoreAndTransactionPromise('arg-lookup');
 }
 
+function getReadWriteMetadataObjectStoreAndTransactionPromise() {
+  return getReadWriteObjectStoreAndTransactionPromise('metadata');
+}
+
 function removeJobFromObjectStore(store:IDBObjectStore, id:number, queueId:string) {
   const deleteRequest = store.delete(id);
   deleteRequest.onsuccess = function () {
@@ -260,8 +264,8 @@ function removeJobFromObjectStore(store:IDBObjectStore, id:number, queueId:strin
   };
 }
 
-async function clearQueueDataDatabase() {
-  const store = await getReadWriteQueueDataObjectStore();
+async function clearAllMetadataInDatabase() {
+  const store = await getReadWriteMetadataObjectStore();
   const request = store.clear();
   await new Promise((resolve, reject) => {
     request.onsuccess = function () {
@@ -310,7 +314,7 @@ async function clearCleanupsDatabase() {
 export async function clearDatabase() {
   await clearJobsDatabase();
   await clearCleanupsDatabase();
-  await clearQueueDataDatabase();
+  await clearAllMetadataInDatabase();
 }
 
 export async function removeJobsWithQueueIdAndTypeFromDatabase(queueId:string, type:string) {
@@ -616,39 +620,85 @@ export async function getCleanupFromDatabase(id:number):Promise<Cleanup | void> 
   });
 }
 
-export async function getQueueDataFromDatabase(queueId:string) {
-  const store = await getReadOnlyQueueDataObjectStore();
-  const request = store.get(queueId);
-  const queueData = await new Promise((resolve, reject) => {
+export async function getMetadataFromDatabase(id:string) {
+  const store = await getReadOnlyMetadataObjectStore();
+  const request = store.get(id);
+  const response = await new Promise((resolve, reject) => {
     request.onsuccess = function () {
       resolve(request.result);
     };
     request.onerror = function (event) {
-      logger.error(`Request error while getting queue ${queueId} data`);
+      logger.error(`Request error while getting ${id} metadata`);
       logger.errorObject(event);
-      reject(new Error(`Request error while getting queue ${queueId} data`));
+      reject(new Error(`Request error while getting ${id} metadata`));
     };
   });
-  return typeof queueData !== 'undefined' ? queueData.data : undefined;
+  return typeof response !== 'undefined' ? response.metadata : undefined;
 }
 
-export async function updateQueueDataInDatabase(queueId:string, data:Object) {
-  const value = await getQueueDataFromDatabase(queueId);
-  const store = await getReadWriteQueueDataObjectStore();
+export async function clearMetadataInDatabase(id:string) {
+  const store = await getReadWriteMetadataObjectStore();
+  const request = store.delete(id);
+  return new Promise((resolve, reject) => {
+    request.onsuccess = function () {
+      resolve();
+    };
+    request.onerror = function (event) {
+      logger.error(`Error while clearing ${id} metadata`);
+      logger.errorObject(event);
+      reject(new Error(`Error while clearing ${id} metadata`));
+    };
+  });
+}
+
+export async function setMetadataInDatabase(id:string, metadata:Object) {
+  const store = await getReadWriteMetadataObjectStore();
   const request = store.put({
-    queueId,
-    data: merge({}, value, data),
+    id,
+    metadata,
   });
   return new Promise((resolve, reject) => {
     request.onsuccess = function () {
       resolve();
     };
     request.onerror = function (event) {
-      logger.error(`Error while updating queue ${queueId} data`);
+      logger.error(`Error while setting ${id} metadata`);
       logger.errorObject(event);
-      reject(new Error(`Error while updating queue ${queueId} data`));
+      reject(new Error(`Error while setting ${id} metadata`));
     };
   });
+}
+
+export async function updateMetadataInDatabase(id:string, metadata:Object) {
+  const [store, promise] = await getReadWriteMetadataObjectStoreAndTransactionPromise();
+  const request = store.get(id);
+  request.onsuccess = function () {
+    const response = request.result;
+    if (typeof response === 'undefined') {
+      const putRequest = store.put({
+        id,
+        metadata,
+      });
+      putRequest.onerror = function (event) {
+        logger.error(`Error in put request while updating ${id} metadata`);
+        logger.errorObject(event);
+      };
+    } else {
+      const putRequest = store.put({
+        id,
+        metadata: merge({}, response.metadata, metadata),
+      });
+      putRequest.onerror = function (event) {
+        logger.error(`Error in put request while updating ${id} metadata`);
+        logger.errorObject(event);
+      };
+    }
+  };
+  request.onerror = function (event) {
+    logger.error(`Error while updating ${id} metadata`);
+    logger.errorObject(event);
+  };
+  await promise;
 }
 
 export function markJobStatusInDatabase(id:number, status:number) {
