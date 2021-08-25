@@ -3099,20 +3099,29 @@ function _lookupArgs() {
 
           case 2:
             map = _context47.sent;
-            _context47.next = 5;
-            return _getJobsInDatabase2(_toConsumableArray(map.keys()));
+
+            if (!(map.size === 0)) {
+              _context47.next = 5;
+              break;
+            }
+
+            return _context47.abrupt("return", []);
 
           case 5:
+            _context47.next = 7;
+            return _getJobsInDatabase2(_toConsumableArray(map.keys()));
+
+          case 7:
             jobs = _context47.sent;
             results = [];
             _iterator7 = _createForOfIteratorHelper(jobs);
-            _context47.prev = 8;
+            _context47.prev = 10;
 
             _iterator7.s();
 
-          case 10:
+          case 12:
             if ((_step7 = _iterator7.n()).done) {
-              _context47.next = 19;
+              _context47.next = 21;
               break;
             }
 
@@ -3120,13 +3129,13 @@ function _lookupArgs() {
             jsonPath = map.get(id);
 
             if (!(typeof jsonPath !== 'string')) {
-              _context47.next = 15;
+              _context47.next = 17;
               break;
             }
 
-            return _context47.abrupt("continue", 17);
+            return _context47.abrupt("continue", 19);
 
-          case 15:
+          case 17:
             _iterator8 = _createForOfIteratorHelper((0, _jsonpathPlus.JSONPath)({
               path: jsonPath,
               json: args
@@ -3143,36 +3152,36 @@ function _lookupArgs() {
               _iterator8.f();
             }
 
-          case 17:
-            _context47.next = 10;
-            break;
-
           case 19:
-            _context47.next = 24;
+            _context47.next = 12;
             break;
 
           case 21:
-            _context47.prev = 21;
-            _context47.t0 = _context47["catch"](8);
+            _context47.next = 26;
+            break;
+
+          case 23:
+            _context47.prev = 23;
+            _context47.t0 = _context47["catch"](10);
 
             _iterator7.e(_context47.t0);
 
-          case 24:
-            _context47.prev = 24;
+          case 26:
+            _context47.prev = 26;
 
             _iterator7.f();
 
-            return _context47.finish(24);
+            return _context47.finish(26);
 
-          case 27:
+          case 29:
             return _context47.abrupt("return", results);
 
-          case 28:
+          case 30:
           case "end":
             return _context47.stop();
         }
       }
-    }, _callee47, null, [[8, 21, 24, 27]]);
+    }, _callee47, null, [[10, 23, 26, 29]]);
   }));
   return _lookupArgs.apply(this, arguments);
 }

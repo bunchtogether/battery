@@ -1371,6 +1371,9 @@ export async function markJobsWithArgLookupKeyCleanupAndRemoveInDatabase(key:str
 
 export async function lookupArgs(key:string) {
   const map = await getArgLookupJobPathMap(key);
+  if (map.size === 0) {
+    return [];
+  }
   const jobs = await getJobsInDatabase([...map.keys()]);
   const results = [];
   for (const { id, args } of jobs) {
