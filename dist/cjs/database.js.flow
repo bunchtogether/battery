@@ -122,7 +122,7 @@ export const databasePromise = (async () => {
 
 async function getReadWriteObjectStore(name:string) {
   const database = await databasePromise;
-  const transaction = database.transaction([name], 'readwrite');
+  const transaction = database.transaction([name], 'readwrite', { durability: 'relaxed' });
   const objectStore = transaction.objectStore(name);
   transaction.onabort = (event) => {
     logger.error(`Read-write "${name}" transaction was aborted`);
@@ -137,7 +137,7 @@ async function getReadWriteObjectStore(name:string) {
 
 async function getReadOnlyObjectStore(name:string) {
   const database = await databasePromise;
-  const transaction = database.transaction([name], 'readonly');
+  const transaction = database.transaction([name], 'readonly', { durability: 'relaxed' });
   const objectStore = transaction.objectStore(name);
   transaction.onabort = (event) => {
     logger.error(`Read-only "${name}" transaction was aborted`);
@@ -192,7 +192,7 @@ function getReadOnlyCleanupsObjectStore() {
 
 async function getReadWriteObjectStoreAndTransactionPromise(name:string) {
   const database = await databasePromise;
-  const transaction = database.transaction([name], 'readwrite');
+  const transaction = database.transaction([name], 'readwrite', { durability: 'relaxed' });
   const objectStore = transaction.objectStore(name);
   const promise = new Promise((resolve, reject) => {
     transaction.onabort = (event) => {
@@ -214,7 +214,7 @@ async function getReadWriteObjectStoreAndTransactionPromise(name:string) {
 
 async function getReadOnlyObjectStoreAndTransactionPromise(name:string) {
   const database = await databasePromise;
-  const transaction = database.transaction([name], 'readonly');
+  const transaction = database.transaction([name], 'readonly', { durability: 'relaxed' });
   const objectStore = transaction.objectStore(name);
   const promise = new Promise((resolve, reject) => {
     transaction.onabort = (event) => {

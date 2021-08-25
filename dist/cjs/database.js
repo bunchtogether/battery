@@ -325,7 +325,9 @@ function _getReadWriteObjectStore() {
 
           case 2:
             database = _context2.sent;
-            transaction = database.transaction([name], 'readwrite');
+            transaction = database.transaction([name], 'readwrite', {
+              durability: 'relaxed'
+            });
             objectStore = transaction.objectStore(name);
 
             transaction.onabort = function (event) {
@@ -366,7 +368,9 @@ function _getReadOnlyObjectStore() {
 
           case 2:
             database = _context3.sent;
-            transaction = database.transaction([name], 'readonly');
+            transaction = database.transaction([name], 'readonly', {
+              durability: 'relaxed'
+            });
             objectStore = transaction.objectStore(name);
 
             transaction.onabort = function (event) {
@@ -447,7 +451,9 @@ function _getReadWriteObjectStoreAndTransactionPromise() {
 
           case 2:
             database = _context4.sent;
-            transaction = database.transaction([name], 'readwrite');
+            transaction = database.transaction([name], 'readwrite', {
+              durability: 'relaxed'
+            });
             objectStore = transaction.objectStore(name);
             promise = new Promise(function (resolve, reject) {
               transaction.onabort = function (event) {
@@ -494,7 +500,9 @@ function _getReadOnlyObjectStoreAndTransactionPromise() {
 
           case 2:
             database = _context5.sent;
-            transaction = database.transaction([name], 'readonly');
+            transaction = database.transaction([name], 'readonly', {
+              durability: 'relaxed'
+            });
             objectStore = transaction.objectStore(name);
             promise = new Promise(function (resolve, reject) {
               transaction.onabort = function (event) {
