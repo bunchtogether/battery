@@ -35,8 +35,10 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
 
     await serviceWorker.ready;
     const messageChannel = new MessageChannel();
+    const port = messageChannel.port1;
     const controller = this.getController();
-    controller.addEventListener('statechange', () => {
+
+    const handleStateChange = () => {
       this.logger.warn(`Service worker state change to ${controller.state}`);
 
       if (controller.state !== 'redundant') {
@@ -44,12 +46,26 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
       }
 
       this.logger.warn('Detected redundant service worker, unlinking');
-      messageChannel.port1.close();
-      messageChannel.port2.close();
-      port.postMessage({
-        type: 'unlink',
-        args: []
-      });
+
+      try {
+        port.postMessage({
+          type: 'unlink',
+          args: []
+        });
+      } catch (error) {
+        this.logger.error('Error while posting unlink message to redundant service worker');
+        this.logger.errorStack(error);
+      }
+
+      try {
+        messageChannel.port1.close();
+        messageChannel.port2.close();
+      } catch (error) {
+        this.logger.error('Error while closing MessageChannel ports with redundant service worker');
+        this.logger.errorStack(error);
+      }
+
+      messageChannel.port1.onmessage = null;
       delete this.port;
       this.emit('unlink');
       self.queueMicrotask(() => {
@@ -58,10 +74,13 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
           this.logger.errorStack(error);
         });
       });
-    });
+    };
+
+    controller.addEventListener('statechange', handleStateChange);
     await new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         messageChannel.port1.onmessage = null;
+        controller.removeEventListener('statechange', handleStateChange);
         reject(new Error('Unable to link to service worker'));
       }, 1000);
 
@@ -185,8 +204,6 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
 
       this.emit(type, ...args);
     };
-
-    const port = messageChannel.port1;
 
     const handleJobAdd = (...args) => {
       port.postMessage({

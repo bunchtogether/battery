@@ -92,7 +92,7 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
       var _link = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee() {
         var _this2 = this;
 
-        var serviceWorker, messageChannel, controller, port, handleJobAdd, handleJobDelete, handleJobUpdate, handleJobsClear;
+        var serviceWorker, messageChannel, port, controller, handleStateChange, handleJobAdd, handleJobDelete, handleJobUpdate, handleJobsClear;
         return regeneratorRuntime.wrap(function _callee$(_context) {
           while (1) {
             switch (_context.prev = _context.next) {
@@ -120,8 +120,10 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
 
               case 7:
                 messageChannel = new MessageChannel();
+                port = messageChannel.port1;
                 controller = this.getController();
-                controller.addEventListener('statechange', function () {
+
+                handleStateChange = function handleStateChange() {
                   _this2.logger.warn("Service worker state change to ".concat(controller.state));
 
                   if (controller.state !== 'redundant') {
@@ -130,12 +132,27 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
 
                   _this2.logger.warn('Detected redundant service worker, unlinking');
 
-                  messageChannel.port1.close();
-                  messageChannel.port2.close();
-                  port.postMessage({
-                    type: 'unlink',
-                    args: []
-                  });
+                  try {
+                    port.postMessage({
+                      type: 'unlink',
+                      args: []
+                    });
+                  } catch (error) {
+                    _this2.logger.error('Error while posting unlink message to redundant service worker');
+
+                    _this2.logger.errorStack(error);
+                  }
+
+                  try {
+                    messageChannel.port1.close();
+                    messageChannel.port2.close();
+                  } catch (error) {
+                    _this2.logger.error('Error while closing MessageChannel ports with redundant service worker');
+
+                    _this2.logger.errorStack(error);
+                  }
+
+                  messageChannel.port1.onmessage = null;
                   delete _this2.port;
 
                   _this2.emit('unlink');
@@ -147,11 +164,14 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                       _this2.logger.errorStack(error);
                     });
                   });
-                });
-                _context.next = 12;
+                };
+
+                controller.addEventListener('statechange', handleStateChange);
+                _context.next = 14;
                 return new Promise(function (resolve, reject) {
                   var timeout = setTimeout(function () {
                     messageChannel.port1.onmessage = null;
+                    controller.removeEventListener('statechange', handleStateChange);
                     reject(new Error('Unable to link to service worker'));
                   }, 1000);
 
@@ -193,7 +213,7 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                   }, [messageChannel.port2]);
                 });
 
-              case 12:
+              case 14:
                 messageChannel.port1.onmessage = function (event) {
                   if (!(event instanceof MessageEvent)) {
                     return;
@@ -284,8 +304,6 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                   _this2.emit.apply(_this2, [type].concat(_toConsumableArray(args)));
                 };
 
-                port = messageChannel.port1;
-
                 handleJobAdd = function handleJobAdd() {
                   for (var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++) {
                     args[_key] = arguments[_key];
@@ -343,7 +361,7 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                 this.emit('link');
                 return _context.abrupt("return", messageChannel.port1);
 
-              case 26:
+              case 27:
               case "end":
                 return _context.stop();
             }
