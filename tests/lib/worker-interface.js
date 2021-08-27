@@ -11,7 +11,7 @@ const loadPromise = new Promise((resolve) => {
 
 export const serviceWorkerEmitter = new EventEmitter();
 
-const register = async (url?:string = '/worker.js') => {
+const register = async (url:string) => {
   const { navigator } = window;
   if (typeof navigator !== 'object') {
     throw new Error('Navigator does not exist');
@@ -105,11 +105,13 @@ const register = async (url?:string = '/worker.js') => {
 };
 
 let serviceWorkerPromise = null;
+let serviceWorkerUrl = null;
 
-export const getServiceWorkerAndRegistration = (url?:string) => {
-  if (serviceWorkerPromise !== null) {
+export const getServiceWorkerAndRegistration = (url?:string = '/worker.js') => {
+  if (serviceWorkerPromise !== null && url === serviceWorkerUrl) {
     return serviceWorkerPromise;
   }
+  serviceWorkerUrl = url;
   serviceWorkerPromise = register(url);
   return serviceWorkerPromise;
 };
@@ -121,6 +123,7 @@ export async function unregister() {
   const [serviceWorker, registration] = await serviceWorkerPromise; // eslint-disable-line no-unused-vars
   await registration.unregister();
   serviceWorkerPromise = null;
+  serviceWorkerUrl = null;
 }
 
 export async function postMessage(type:string, value:Object) {

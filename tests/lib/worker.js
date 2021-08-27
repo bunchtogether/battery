@@ -1,14 +1,19 @@
 // @flow
 
+import makeLogger from '../../src/logger';
 import { queue } from './queue';
+
+const logger = makeLogger('Worker');
 
 queue.listenForServiceWorkerInterface();
 
 self.addEventListener('install', (event) => {
+  logger.info('Installing');
   event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener('activate', (event) => {
+  logger.info('Activating');
   event.waitUntil(self.clients.claim());
 });
 

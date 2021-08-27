@@ -11,6 +11,8 @@ type Options = {
 
 const canUseSyncManager = 'serviceWorker' in navigator && 'SyncManager' in window;
 
+class RedundantServiceWorkerError extends Error {}
+
 export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
   declare serviceWorker: ServiceWorker;
   declare logger: Logger;
@@ -28,19 +30,7 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
     this.isSyncing = false;
   }
 
-  getController() {
-    const controller = navigator && navigator.serviceWorker && navigator.serviceWorker.controller;
-    if (controller instanceof ServiceWorker) {
-      return controller;
-    }
-    throw new Error('Service worker controller does not exist');
-  }
-
-  async link() {
-    if (this.port instanceof MessagePort) {
-      return this.port;
-    }
-
+  async getController() {
     const serviceWorker = navigator && navigator.serviceWorker;
 
     if (!serviceWorker) {
@@ -49,18 +39,49 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
 
     await serviceWorker.ready;
 
+    const { controller } = serviceWorker;
+
+    if (!controller) {
+      throw new Error('Service worker controller not available');
+    }
+
+    if (controller.state === 'redundant') {
+      this.logger.warn('Service worker in redudant state, waiting for controller change');
+      await new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+          serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+          resolve();
+        }, 5000);
+        const handleControllerChange = () => {
+          clearTimeout(timeout);
+          serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+          resolve();
+        };
+        serviceWorker.addEventListener('controllerchange', handleControllerChange);
+      });
+      return this.getController();
+    }
+
+    return controller;
+  }
+
+  async link() {
+    if (this.port instanceof MessagePort) {
+      return this.port;
+    }
+
+    const controller = await this.getController();
+
     const messageChannel = new MessageChannel();
 
     const port = messageChannel.port1;
-
-    const controller = this.getController();
 
     const handleStateChange = () => {
       this.logger.warn(`Service worker state change to ${controller.state}`);
       if (controller.state !== 'redundant') {
         return;
       }
-      this.logger.warn('Detected redundant service worker, unlinking');
+      this.logger.warn('Unlinking');
       try {
         port.postMessage({ type: 'unlink', args: [] });
       } catch (error) {
@@ -87,39 +108,57 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
 
     controller.addEventListener('statechange', handleStateChange);
 
-    await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        messageChannel.port1.onmessage = null;
-        controller.removeEventListener('statechange', handleStateChange);
-        reject(new Error('Unable to link to service worker'));
-      }, 1000);
-      messageChannel.port1.onmessage = (event:MessageEvent) => {
-        if (!(event instanceof MessageEvent)) {
-          return;
-        }
-        const { data } = event;
-        if (!data || typeof data !== 'object') {
-          this.logger.warn('Unknown message type');
-          this.logger.warnObject(event);
-          return;
-        }
-        const { type } = data;
-        if (typeof type !== 'string') {
-          this.logger.warn('Unknown message type');
-          this.logger.warnObject(event);
-          return;
-        }
-        if (type === 'BATTERY_QUEUE_WORKER_CONFIRMATION') {
+    try {
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          messageChannel.port1.onmessage = null;
+          controller.removeEventListener('statechange', handleStateChange);
+          controller.removeEventListener('statechange', handleStateChangeBeforeLink);
+          reject(new Error('Unable to link to service worker'));
+        }, 1000);
+        const handleStateChangeBeforeLink = () => {
+          if (controller.state !== 'redundant') {
+            return;
+          }
           clearTimeout(timeout);
-          resolve();
-        }
-      };
-      // $FlowFixMe
-      controller.postMessage({ type: 'BATTERY_QUEUE_WORKER_INITIALIZATION' }, [
-        messageChannel.port2,
-      ]);
-    });
-
+          controller.removeEventListener('statechange', handleStateChangeBeforeLink);
+          reject(new RedundantServiceWorkerError('Service worker in redundant state'));
+        };
+        controller.addEventListener('statechange', handleStateChangeBeforeLink);
+        messageChannel.port1.onmessage = (event:MessageEvent) => {
+          if (!(event instanceof MessageEvent)) {
+            return;
+          }
+          const { data } = event;
+          if (!data || typeof data !== 'object') {
+            this.logger.warn('Unknown message type');
+            this.logger.warnObject(event);
+            return;
+          }
+          const { type } = data;
+          if (typeof type !== 'string') {
+            this.logger.warn('Unknown message type');
+            this.logger.warnObject(event);
+            return;
+          }
+          if (type === 'BATTERY_QUEUE_WORKER_CONFIRMATION') {
+            clearTimeout(timeout);
+            controller.removeEventListener('statechange', handleStateChangeBeforeLink);
+            resolve();
+          }
+        };
+        // $FlowFixMe
+        controller.postMessage({ type: 'BATTERY_QUEUE_WORKER_INITIALIZATION' }, [
+          messageChannel.port2,
+        ]);
+      });
+    } catch (error) {
+      if (error instanceof RedundantServiceWorkerError) {
+        return messageChannel.port1;
+      }
+      controller.removeEventListener('statechange', handleStateChange);
+      throw error;
+    }
 
     messageChannel.port1.onmessage = (event:MessageEvent) => {
       if (!(event instanceof MessageEvent)) {
