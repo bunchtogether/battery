@@ -30,6 +30,7 @@ describe('Worker', () => {
 
   afterAll(async () => {
     await queueInterface.disableStartOnJob();
+    await queueInterface.unlink();
   });
 
   afterEach(async () => {
@@ -45,10 +46,11 @@ describe('Worker', () => {
     await unregister();
     getServiceWorkerAndRegistration('/worker-alt.js');
     await expectAsync(queueInterface).toEmit('unlink');
+    const linkPromise = expectAsync(queueInterface).toEmit('link');
     await unregister();
     await getServiceWorkerAndRegistration();
     queueInterface.link();
-    await expectAsync(queueInterface).toEmit('link');
+    await linkPromise;
   });
 
   it('Should clear the service worker', async () => {

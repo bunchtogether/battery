@@ -853,6 +853,10 @@ export default class BatteryQueue extends EventEmitter {
 
         return;
 
+      case 'heartbeat':
+        this.emit('heartbeat');
+        return;
+
       case 'jobAdd':
         jobEmitter.emit('jobAdd', ...args);
         return;

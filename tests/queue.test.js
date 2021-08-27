@@ -902,7 +902,6 @@ describe('Queue', () => {
       startAfter: jasmine.any(Number),
     }]);
     queue.dequeue();
-    console.log('DEQUEUE', [...queue.jobIds]);
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value: valueA, cleanupData: { value: valueA } });
     await queue.onIdle();
 

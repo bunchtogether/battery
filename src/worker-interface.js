@@ -17,9 +17,12 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
   declare serviceWorker: ServiceWorker;
   declare logger: Logger;
   declare port: MessagePort | void;
+  declare portHeartbeatInterval: void | IntervalID;
+  declare handlePortHeartbeat: () => void;
   declare queueIds: Set<string> | void;
   declare isSyncing: boolean;
   declare handleJobAdd: void | () => void;
+  declare linkPromise: void | Promise<MessagePort>;
 
   constructor(options?: Options = {}) {
     super();
@@ -45,27 +48,95 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
       throw new Error('Service worker controller not available');
     }
 
-    if (controller.state === 'redundant') {
-      this.logger.warn('Service worker in redudant state, waiting for controller change');
+    while (controller.state !== 'activated') {
+      const state = controller.state;
+      let hadControllerChange = false;
+      this.logger.info(`Service worker in "${state}" state, waiting for state or controller change`);
       await new Promise((resolve) => {
         const timeout = setTimeout(() => {
+          controller.removeEventListener('statechange', handleStateChange);
+          serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+          throw new Error(`Unable to get service worker controller, state did not change from "${state}" within 5000ms`);
+        }, 5000);
+        const handleStateChange = () => {
+          if (controller.state !== 'activated') {
+            return;
+          }
+          clearTimeout(timeout);
+          controller.removeEventListener('statechange', handleStateChange);
           serviceWorker.removeEventListener('controllerchange', handleControllerChange);
           resolve();
-        }, 5000);
+        };
         const handleControllerChange = () => {
+          hadControllerChange = true;
           clearTimeout(timeout);
+          controller.removeEventListener('statechange', handleStateChange);
           serviceWorker.removeEventListener('controllerchange', handleControllerChange);
           resolve();
         };
         serviceWorker.addEventListener('controllerchange', handleControllerChange);
+        controller.addEventListener('statechange', handleStateChange);
       });
-      return this.getController();
+      if (hadControllerChange) {
+        return this.getController();
+      }
     }
-
     return controller;
   }
 
+  async unlink() {
+    const linkPromise = this.linkPromise;
+    if (typeof linkPromise !== 'undefined') {
+      try {
+        await linkPromise;
+      } catch (error) {
+        this.logger.error('Link promise error while waiting to unlink');
+        this.logger.errorStack(error);
+      }
+    }
+    const port = this.port;
+    if (!(port instanceof MessagePort)) {
+      return;
+    }
+    try {
+      port.postMessage({ type: 'unlink', args: [] });
+    } catch (error) {
+      this.logger.error('Error while posting unlink message to redundant service worker');
+      this.logger.errorStack(error);
+    }
+    try {
+      port.close();
+    } catch (error) {
+      this.logger.error('Error while closing MessageChannel port with redundant service worker');
+      this.logger.errorStack(error);
+    }
+    port.onmessage = null;
+    delete this.port;
+    clearInterval(this.portHeartbeatInterval);
+    delete this.portHeartbeatInterval;
+    const handlePortHeartbeat = this.handlePortHeartbeat;
+    if (typeof handlePortHeartbeat === 'function') {
+      this.removeListener('heartbeat', this.handlePortHeartbeat);
+    }
+    this.emit('unlink');
+    this.logger.info('Unlinked');
+  }
+
   async link() {
+    if (this.port instanceof MessagePort) {
+      return this.port;
+    }
+    if (this.linkPromise) {
+      return this.linkPromise;
+    }
+    const linkPromise = this._link().finally(() => { // eslint-disable-line no-underscore-dangle
+      delete this.linkPromise;
+    });
+    this.linkPromise = linkPromise;
+    return linkPromise;
+  }
+
+  async _link() {
     if (this.port instanceof MessagePort) {
       return this.port;
     }
@@ -75,35 +146,20 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
     const messageChannel = new MessageChannel();
 
     const port = messageChannel.port1;
+    this.port = messageChannel.port1;
 
-    const handleStateChange = () => {
+    const handleStateChange = async () => {
       this.logger.warn(`Service worker state change to ${controller.state}`);
       if (controller.state !== 'redundant') {
         return;
       }
-      this.logger.warn('Unlinking');
       try {
-        port.postMessage({ type: 'unlink', args: [] });
+        await this.unlink();
+        await this.link();
       } catch (error) {
-        this.logger.error('Error while posting unlink message to redundant service worker');
+        this.logger.error('Unable to re-link service worker');
         this.logger.errorStack(error);
       }
-      try {
-        messageChannel.port1.close();
-        messageChannel.port2.close();
-      } catch (error) {
-        this.logger.error('Error while closing MessageChannel ports with redundant service worker');
-        this.logger.errorStack(error);
-      }
-      messageChannel.port1.onmessage = null;
-      delete this.port;
-      this.emit('unlink');
-      self.queueMicrotask(() => {
-        this.link().catch((error) => {
-          this.logger.error('Unable to re-link service worker');
-          this.logger.errorStack(error);
-        });
-      });
     };
 
     controller.addEventListener('statechange', handleStateChange);
@@ -112,7 +168,6 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
       await new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
           messageChannel.port1.onmessage = null;
-          controller.removeEventListener('statechange', handleStateChange);
           controller.removeEventListener('statechange', handleStateChangeBeforeLink);
           reject(new Error('Unable to link to service worker'));
         }, 1000);
@@ -238,8 +293,28 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
     localJobEmitter.addListener('jobUpdate', handleJobUpdate);
     localJobEmitter.addListener('jobsClear', handleJobsClear);
 
-    this.port = messageChannel.port1;
+    let didLogHeartbeatTimeout = false;
+    let didReceiveHeartbeat = true;
 
+    const handlePortHeartbeat = () => {
+      didLogHeartbeatTimeout = false;
+      didReceiveHeartbeat = true;
+    };
+    this.addListener('heartbeat', handlePortHeartbeat);
+    this.handlePortHeartbeat = handlePortHeartbeat;
+
+    const sendHeartbeat = () => {
+      if (!didReceiveHeartbeat) {
+        if (!didLogHeartbeatTimeout) {
+          this.logger.error('Did not receive port heartbeat');
+          didLogHeartbeatTimeout = true;
+        }
+      }
+      didReceiveHeartbeat = false;
+      port.postMessage({ type: 'heartbeat', args: [10000] });
+    };
+    this.portHeartbeatInterval = setInterval(sendHeartbeat, 10000);
+    sendHeartbeat();
     this.logger.info('Linked to worker');
     this.emit('link');
     return messageChannel.port1;

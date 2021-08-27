@@ -1705,7 +1705,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
               case 16:
                 port = this.port;
                 _context16.t0 = type;
-                _context16.next = _context16.t0 === 'unlink' ? 20 : _context16.t0 === 'jobAdd' ? 23 : _context16.t0 === 'jobDelete' ? 25 : _context16.t0 === 'jobUpdate' ? 27 : _context16.t0 === 'jobsClear' ? 29 : 31;
+                _context16.next = _context16.t0 === 'unlink' ? 20 : _context16.t0 === 'heartbeat' ? 23 : _context16.t0 === 'jobAdd' ? 25 : _context16.t0 === 'jobDelete' ? 27 : _context16.t0 === 'jobUpdate' ? 29 : _context16.t0 === 'jobsClear' ? 31 : 33;
                 break;
 
               case 20:
@@ -1719,114 +1719,118 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 return _context16.abrupt("return");
 
               case 23:
+                this.emit('heartbeat');
+                return _context16.abrupt("return");
+
+              case 25:
                 _database.jobEmitter.emit.apply(_database.jobEmitter, ['jobAdd'].concat(_toConsumableArray(args)));
 
                 return _context16.abrupt("return");
 
-              case 25:
+              case 27:
                 _database.jobEmitter.emit.apply(_database.jobEmitter, ['jobDelete'].concat(_toConsumableArray(args)));
 
                 return _context16.abrupt("return");
 
-              case 27:
+              case 29:
                 _database.jobEmitter.emit.apply(_database.jobEmitter, ['jobUpdate'].concat(_toConsumableArray(args)));
 
                 return _context16.abrupt("return");
 
-              case 29:
+              case 31:
                 _database.jobEmitter.emit.apply(_database.jobEmitter, ['jobsClear'].concat(_toConsumableArray(args)));
 
                 return _context16.abrupt("return");
 
-              case 31:
-                return _context16.abrupt("break", 32);
+              case 33:
+                return _context16.abrupt("break", 34);
 
-              case 32:
+              case 34:
                 _args16 = _toArray(args), requestId = _args16[0], requestArgs = _args16.slice(1);
 
                 if (!(typeof requestId !== 'number')) {
-                  _context16.next = 35;
+                  _context16.next = 37;
                   break;
                 }
 
                 throw new Error('Request arguments should start with a requestId number');
 
-              case 35:
+              case 37:
                 _context16.t1 = type;
-                _context16.next = _context16.t1 === 'clear' ? 38 : _context16.t1 === 'abortQueue' ? 50 : _context16.t1 === 'dequeue' ? 65 : _context16.t1 === 'enableStartOnJob' ? 77 : _context16.t1 === 'disableStartOnJob' ? 79 : _context16.t1 === 'getQueueIds' ? 81 : _context16.t1 === 'idle' ? 94 : 111;
+                _context16.next = _context16.t1 === 'clear' ? 40 : _context16.t1 === 'abortQueue' ? 52 : _context16.t1 === 'dequeue' ? 67 : _context16.t1 === 'enableStartOnJob' ? 79 : _context16.t1 === 'disableStartOnJob' ? 81 : _context16.t1 === 'getQueueIds' ? 83 : _context16.t1 === 'idle' ? 96 : 113;
                 break;
 
-              case 38:
-                _context16.prev = 38;
-                _context16.next = 41;
+              case 40:
+                _context16.prev = 40;
+                _context16.next = 43;
                 return this.clear();
 
-              case 41:
+              case 43:
                 this.emit('clearComplete', requestId);
-                _context16.next = 49;
+                _context16.next = 51;
                 break;
 
-              case 44:
-                _context16.prev = 44;
-                _context16.t2 = _context16["catch"](38);
+              case 46:
+                _context16.prev = 46;
+                _context16.t2 = _context16["catch"](40);
                 this.emit('clearError', requestId, _context16.t2);
                 this.logger.error('Unable to handle clear message');
                 this.emit('error', _context16.t2);
 
-              case 49:
-                return _context16.abrupt("break", 112);
+              case 51:
+                return _context16.abrupt("break", 114);
 
-              case 50:
-                _context16.prev = 50;
+              case 52:
+                _context16.prev = 52;
                 _requestArgs = _slicedToArray(requestArgs, 1), queueId = _requestArgs[0];
 
                 if (!(typeof queueId !== 'string')) {
-                  _context16.next = 54;
+                  _context16.next = 56;
                   break;
                 }
 
                 throw new Error("Invalid \"queueId\" argument with type ".concat(_typeof(queueId), ", should be type string"));
 
-              case 54:
-                _context16.next = 56;
+              case 56:
+                _context16.next = 58;
                 return this.abortQueue(queueId);
 
-              case 56:
+              case 58:
                 this.emit('abortQueueComplete', requestId);
-                _context16.next = 64;
+                _context16.next = 66;
                 break;
 
-              case 59:
-                _context16.prev = 59;
-                _context16.t3 = _context16["catch"](50);
+              case 61:
+                _context16.prev = 61;
+                _context16.t3 = _context16["catch"](52);
                 this.emit('abortQueueError', requestId, _context16.t3);
                 this.logger.error('Unable to handle abort queue message');
                 this.emit('error', _context16.t3);
 
-              case 64:
-                return _context16.abrupt("break", 112);
+              case 66:
+                return _context16.abrupt("break", 114);
 
-              case 65:
-                _context16.prev = 65;
-                _context16.next = 68;
+              case 67:
+                _context16.prev = 67;
+                _context16.next = 70;
                 return this.dequeue();
 
-              case 68:
+              case 70:
                 this.emit('dequeueComplete', requestId);
-                _context16.next = 76;
+                _context16.next = 78;
                 break;
 
-              case 71:
-                _context16.prev = 71;
-                _context16.t4 = _context16["catch"](65);
+              case 73:
+                _context16.prev = 73;
+                _context16.t4 = _context16["catch"](67);
                 this.emit('dequeueError', requestId, _context16.t4);
                 this.logger.error('Unable to handle dequeue message');
                 this.emit('error', _context16.t4);
 
-              case 76:
-                return _context16.abrupt("break", 112);
+              case 78:
+                return _context16.abrupt("break", 114);
 
-              case 77:
+              case 79:
                 try {
                   this.enableStartOnJob();
                   this.emit('enableStartOnJobComplete', requestId);
@@ -1836,9 +1840,9 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   this.emit('error', error);
                 }
 
-                return _context16.abrupt("break", 112);
+                return _context16.abrupt("break", 114);
 
-              case 79:
+              case 81:
                 try {
                   this.disableStartOnJob();
                   this.emit('disableStartOnJobComplete', requestId);
@@ -1848,76 +1852,76 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   this.emit('error', error);
                 }
 
-                return _context16.abrupt("break", 112);
+                return _context16.abrupt("break", 114);
 
-              case 81:
-                _context16.prev = 81;
-                _context16.next = 84;
+              case 83:
+                _context16.prev = 83;
+                _context16.next = 86;
                 return this.getQueueIds();
 
-              case 84:
+              case 86:
                 queueIds = _context16.sent;
                 this.emit('getQueuesComplete', requestId, _toConsumableArray(queueIds));
-                _context16.next = 93;
+                _context16.next = 95;
                 break;
 
-              case 88:
-                _context16.prev = 88;
-                _context16.t5 = _context16["catch"](81);
+              case 90:
+                _context16.prev = 90;
+                _context16.t5 = _context16["catch"](83);
                 this.emit('getQueuesError', requestId, _context16.t5);
                 this.logger.error('Unable to handle getQueueIds message');
                 this.emit('error', _context16.t5);
 
-              case 93:
-                return _context16.abrupt("break", 112);
+              case 95:
+                return _context16.abrupt("break", 114);
 
-              case 94:
-                _context16.prev = 94;
+              case 96:
+                _context16.prev = 96;
                 _requestArgs2 = _slicedToArray(requestArgs, 2), maxDuration = _requestArgs2[0], start = _requestArgs2[1];
 
                 if (!(typeof maxDuration !== 'number')) {
-                  _context16.next = 98;
+                  _context16.next = 100;
                   break;
                 }
 
                 throw new Error("Invalid \"queueId\" argument with type ".concat(_typeof(maxDuration), ", should be type number"));
 
-              case 98:
+              case 100:
                 if (!(typeof start !== 'number')) {
-                  _context16.next = 100;
+                  _context16.next = 102;
                   break;
                 }
 
                 throw new Error("Invalid \"queueId\" argument with type ".concat(_typeof(start), ", should be type number"));
 
-              case 100:
-                _context16.next = 102;
+              case 102:
+                _context16.next = 104;
                 return this.onIdle(maxDuration - (Date.now() - start));
 
-              case 102:
+              case 104:
                 this.emit('idleComplete', requestId);
-                _context16.next = 110;
+                _context16.next = 112;
                 break;
 
-              case 105:
-                _context16.prev = 105;
-                _context16.t6 = _context16["catch"](94);
+              case 107:
+                _context16.prev = 107;
+                _context16.t6 = _context16["catch"](96);
                 this.emit('idleError', requestId, _context16.t6);
                 this.logger.error('Unable to handle idle message');
                 this.emit('error', _context16.t6);
 
-              case 110:
-                return _context16.abrupt("break", 112);
+              case 112:
+                return _context16.abrupt("break", 114);
 
-              case 111:
+              case 113:
                 this.logger.warn("Unknown worker interface message type ".concat(type));
 
-              case 112:
+              case 114:
               case "end":
                 return _context16.stop();
             }
           }
-        }, _callee15, this, [[38, 44], [50, 59], [65, 71], [81, 88], [94, 105]]);
+        }, _callee15, this, [[40, 46], [52, 61], [67, 73], [83, 90], [96, 107]]);
       }));
 
       function handlePortMessage(_x19) {

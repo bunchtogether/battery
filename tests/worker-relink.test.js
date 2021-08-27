@@ -14,6 +14,10 @@ describe('Worker (Relink)', () => {
     jasmine.addAsyncMatchers(asyncEmitMatchers);
   });
 
+  afterAll(async () => {
+    await queueInterface.unlink();
+  });
+
   it('Should relink if a service worker is redundant', async () => {
     await getServiceWorkerAndRegistration();
     const serviceWorker = navigator && navigator.serviceWorker;
