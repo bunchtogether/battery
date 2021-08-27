@@ -18,7 +18,8 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
   declare logger: Logger;
   declare port: MessagePort | void;
   declare portHeartbeatInterval: void | IntervalID;
-  declare handlePortHeartbeat: () => void;
+  declare handlePortHeartbeat: void | () => void;
+  declare handleBeforeUnload: void | () => void;
   declare queueIds: Set<string> | void;
   declare isSyncing: boolean;
   declare handleJobAdd: void | () => void;
@@ -33,14 +34,14 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
     this.isSyncing = false;
   }
 
-  async getController() {
+  async getRegistrationAndController() {
     const serviceWorker = navigator && navigator.serviceWorker;
 
     if (!serviceWorker) {
       throw new Error('Service worker not available');
     }
 
-    await serviceWorker.ready;
+    const registration = await serviceWorker.ready;
 
     const { controller } = serviceWorker;
 
@@ -78,10 +79,10 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
         controller.addEventListener('statechange', handleStateChange);
       });
       if (hadControllerChange) {
-        return this.getController();
+        return this.getRegistrationAndController();
       }
     }
-    return controller;
+    return [registration, controller];
   }
 
   async unlink() {
@@ -118,6 +119,10 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
     if (typeof handlePortHeartbeat === 'function') {
       this.removeListener('heartbeat', this.handlePortHeartbeat);
     }
+    const handleBeforeUnload = this.handleBeforeUnload;
+    if (typeof handlePortHeartbeat === 'function') {
+      window.removeEventListener('beforeunload', handleBeforeUnload, { capture: true });
+    }
     this.emit('unlink');
     this.logger.info('Unlinked');
   }
@@ -141,7 +146,7 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
       return this.port;
     }
 
-    const controller = await this.getController();
+    const [registration, controller] = await this.getRegistrationAndController();
 
     const messageChannel = new MessageChannel();
 
@@ -315,6 +320,16 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
     };
     this.portHeartbeatInterval = setInterval(sendHeartbeat, 10000);
     sendHeartbeat();
+    const handleBeforeUnload = () => {
+      if (!canUseSyncManager) {
+        return;
+      }
+      // $FlowFixMe
+      registration.sync.register('unload');
+    };
+    this.handleBeforeUnload = handleBeforeUnload;
+    window.addEventListener('beforeunload', handleBeforeUnload, { capture: true });
+
     this.logger.info('Linked to worker');
     this.emit('link');
     return messageChannel.port1;

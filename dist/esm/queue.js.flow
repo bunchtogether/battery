@@ -62,6 +62,7 @@ export default class BatteryQueue extends EventEmitter {
   declare handleJobAdd: void | () => void;
   declare handleJobUpdate: void | (number, string, string, number) => void;
   declare handleJobDelete: void | (number, string) => void;
+  declare heartbeatExpiresTimestamp: void | number;
 
   constructor(options?: Options = {}) {
     super();
@@ -78,6 +79,18 @@ export default class BatteryQueue extends EventEmitter {
     this.logger = options.logger || makeLogger('Battery Queue');
     this.addListener('error', (error) => {
       this.logger.errorStack(error);
+    });
+    let heartbeatExpiresTimeout;
+    this.addListener('heartbeat', (interval:number) => {
+      clearTimeout(heartbeatExpiresTimeout);
+      this.heartbeatExpiresTimestamp = Date.now() + Math.round(interval * 2.5);
+      heartbeatExpiresTimeout = setTimeout(() => {
+        if (typeof this.heartbeatExpiresTimestamp !== 'number') {
+          return;
+        }
+        this.logger.warn(`Heartbeat timeout after ${Math.round(interval * 2.1)}ms`);
+        this.unloadClient();
+      }, Math.round(interval * 2.1));
     });
   }
 
@@ -703,7 +716,7 @@ export default class BatteryQueue extends EventEmitter {
         }
         return;
       case 'heartbeat':
-        this.emit('heartbeat');
+        this.emit('heartbeat', ...args);
         return;
       case 'jobAdd':
         jobEmitter.emit('jobAdd', ...args);
@@ -811,6 +824,22 @@ export default class BatteryQueue extends EventEmitter {
     }
   }
 
+  async unloadClient() {
+    this.logger.info('Detected client unload');
+    const heartbeatExpiresTimestamp = this.heartbeatExpiresTimestamp;
+    if (typeof heartbeatExpiresTimestamp !== 'number') {
+      return;
+    }
+    delete this.heartbeatExpiresTimestamp;
+    await new Promise((resolve) => setTimeout(resolve, heartbeatExpiresTimestamp));
+    if (typeof this.heartbeatExpiresTimestamp === 'number') {
+      this.logger.info('Cancelling client unload, heartbeat detected');
+      return;
+    }
+    this.logger.info('Unloading');
+    this.emit('unloadClient');
+  }
+
   listenForServiceWorkerInterface() {
     let activeEmitCallback;
     let handleJobAdd;
@@ -821,9 +850,15 @@ export default class BatteryQueue extends EventEmitter {
     self.addEventListener('sync', (event) => {
       this.logger.info(`SyncManager event ${event.tag}${event.lastChance ? ', last chance' : ''}`);
       if (event.tag === 'syncManagerOnIdle') {
-        this.logger.info('Starting SyncManager handler');
+        this.logger.info('Starting SyncManager idle handler');
         this.emit('syncManagerOnIdle');
         event.waitUntil(this.onIdle().catch((error) => {
+          this.logger.error(`SyncManager event handler failed${event.lastChance ? ' on last chance' : ''}`);
+          this.logger.errorStack(error);
+        }));
+      } else if (event.tag === 'unload') {
+        this.logger.info('Starting SyncManager unload client handler');
+        event.waitUntil(this.unloadClient().catch((error) => {
           this.logger.error(`SyncManager event handler failed${event.lastChance ? ' on last chance' : ''}`);
           this.logger.errorStack(error);
         }));

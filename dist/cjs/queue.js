@@ -104,6 +104,22 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
       _this.logger.errorStack(error);
     });
 
+    var heartbeatExpiresTimeout;
+
+    _this.addListener('heartbeat', function (interval) {
+      clearTimeout(heartbeatExpiresTimeout);
+      _this.heartbeatExpiresTimestamp = Date.now() + Math.round(interval * 2.5);
+      heartbeatExpiresTimeout = setTimeout(function () {
+        if (typeof _this.heartbeatExpiresTimestamp !== 'number') {
+          return;
+        }
+
+        _this.logger.warn("Heartbeat timeout after ".concat(Math.round(interval * 2.1), "ms"));
+
+        _this.unloadClient();
+      }, Math.round(interval * 2.1));
+    });
+
     return _this;
   }
 
@@ -1719,7 +1735,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 return _context16.abrupt("return");
 
               case 23:
-                this.emit('heartbeat');
+                this.emit.apply(this, ['heartbeat'].concat(_toConsumableArray(args)));
                 return _context16.abrupt("return");
 
               case 25:
@@ -1931,6 +1947,59 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
       return handlePortMessage;
     }()
   }, {
+    key: "unloadClient",
+    value: function () {
+      var _unloadClient = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee16() {
+        var heartbeatExpiresTimestamp;
+        return regeneratorRuntime.wrap(function _callee16$(_context17) {
+          while (1) {
+            switch (_context17.prev = _context17.next) {
+              case 0:
+                this.logger.info('Detected client unload');
+                heartbeatExpiresTimestamp = this.heartbeatExpiresTimestamp;
+
+                if (!(typeof heartbeatExpiresTimestamp !== 'number')) {
+                  _context17.next = 4;
+                  break;
+                }
+
+                return _context17.abrupt("return");
+
+              case 4:
+                delete this.heartbeatExpiresTimestamp;
+                _context17.next = 7;
+                return new Promise(function (resolve) {
+                  return setTimeout(resolve, heartbeatExpiresTimestamp);
+                });
+
+              case 7:
+                if (!(typeof this.heartbeatExpiresTimestamp === 'number')) {
+                  _context17.next = 10;
+                  break;
+                }
+
+                this.logger.info('Cancelling client unload, heartbeat detected');
+                return _context17.abrupt("return");
+
+              case 10:
+                this.logger.info('Unloading');
+                this.emit('unloadClient');
+
+              case 12:
+              case "end":
+                return _context17.stop();
+            }
+          }
+        }, _callee16, this);
+      }));
+
+      function unloadClient() {
+        return _unloadClient.apply(this, arguments);
+      }
+
+      return unloadClient;
+    }()
+  }, {
     key: "listenForServiceWorkerInterface",
     value: function listenForServiceWorkerInterface() {
       var _this8 = this;
@@ -1944,11 +2013,19 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
         _this8.logger.info("SyncManager event ".concat(event.tag).concat(event.lastChance ? ', last chance' : ''));
 
         if (event.tag === 'syncManagerOnIdle') {
-          _this8.logger.info('Starting SyncManager handler');
+          _this8.logger.info('Starting SyncManager idle handler');
 
           _this8.emit('syncManagerOnIdle');
 
           event.waitUntil(_this8.onIdle().catch(function (error) {
+            _this8.logger.error("SyncManager event handler failed".concat(event.lastChance ? ' on last chance' : ''));
+
+            _this8.logger.errorStack(error);
+          }));
+        } else if (event.tag === 'unload') {
+          _this8.logger.info('Starting SyncManager unload client handler');
+
+          event.waitUntil(_this8.unloadClient().catch(function (error) {
             _this8.logger.error("SyncManager event handler failed".concat(event.lastChance ? ' on last chance' : ''));
 
             _this8.logger.errorStack(error);

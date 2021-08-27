@@ -17,13 +17,21 @@ function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableTo
 
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 
-function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
-
 function _iterableToArray(iter) { if (typeof Symbol !== "undefined" && iter[Symbol.iterator] != null || iter["@@iterator"] != null) return Array.from(iter); }
 
 function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) return _arrayLikeToArray(arr); }
 
+function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest(); }
+
+function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+
+function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
+
 function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
+
+function _iterableToArrayLimit(arr, i) { var _i = arr == null ? null : typeof Symbol !== "undefined" && arr[Symbol.iterator] || arr["@@iterator"]; if (_i == null) return; var _arr = []; var _n = true; var _d = false; var _s, _e; try { for (_i = _i.call(arr); !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"] != null) _i["return"](); } finally { if (_d) throw _e; } } return _arr; }
+
+function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
 
 function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
 
@@ -96,12 +104,12 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
   }
 
   _createClass(BatteryQueueServiceWorkerInterface, [{
-    key: "getController",
+    key: "getRegistrationAndController",
     value: function () {
-      var _getController = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee() {
+      var _getRegistrationAndController = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee() {
         var _this2 = this;
 
-        var serviceWorker, controller, _loop, _ret;
+        var serviceWorker, registration, controller, _loop, _ret;
 
         return regeneratorRuntime.wrap(function _callee$(_context2) {
           while (1) {
@@ -121,16 +129,17 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                 return serviceWorker.ready;
 
               case 5:
+                registration = _context2.sent;
                 controller = serviceWorker.controller;
 
                 if (controller) {
-                  _context2.next = 8;
+                  _context2.next = 9;
                   break;
                 }
 
                 throw new Error('Service worker controller not available');
 
-              case 8:
+              case 9:
                 _loop = /*#__PURE__*/regeneratorRuntime.mark(function _loop() {
                   var state, hadControllerChange;
                   return regeneratorRuntime.wrap(function _loop$(_context) {
@@ -180,7 +189,7 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                           }
 
                           return _context.abrupt("return", {
-                            v: _this2.getController()
+                            v: _this2.getRegistrationAndController()
                           });
 
                         case 7:
@@ -191,32 +200,32 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                   }, _loop);
                 });
 
-              case 9:
+              case 10:
                 if (!(controller.state !== 'activated')) {
-                  _context2.next = 16;
+                  _context2.next = 17;
                   break;
                 }
 
-                return _context2.delegateYield(_loop(), "t0", 11);
+                return _context2.delegateYield(_loop(), "t0", 12);
 
-              case 11:
+              case 12:
                 _ret = _context2.t0;
 
                 if (!(_typeof(_ret) === "object")) {
-                  _context2.next = 14;
+                  _context2.next = 15;
                   break;
                 }
 
                 return _context2.abrupt("return", _ret.v);
 
-              case 14:
-                _context2.next = 9;
+              case 15:
+                _context2.next = 10;
                 break;
 
-              case 16:
-                return _context2.abrupt("return", controller);
-
               case 17:
+                return _context2.abrupt("return", [registration, controller]);
+
+              case 18:
               case "end":
                 return _context2.stop();
             }
@@ -224,17 +233,17 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
         }, _callee);
       }));
 
-      function getController() {
-        return _getController.apply(this, arguments);
+      function getRegistrationAndController() {
+        return _getRegistrationAndController.apply(this, arguments);
       }
 
-      return getController;
+      return getRegistrationAndController;
     }()
   }, {
     key: "unlink",
     value: function () {
       var _unlink = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee2() {
-        var linkPromise, port, handlePortHeartbeat;
+        var linkPromise, port, handlePortHeartbeat, handleBeforeUnload;
         return regeneratorRuntime.wrap(function _callee2$(_context3) {
           while (1) {
             switch (_context3.prev = _context3.next) {
@@ -298,10 +307,18 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                   this.removeListener('heartbeat', this.handlePortHeartbeat);
                 }
 
+                handleBeforeUnload = this.handleBeforeUnload;
+
+                if (typeof handlePortHeartbeat === 'function') {
+                  window.removeEventListener('beforeunload', handleBeforeUnload, {
+                    capture: true
+                  });
+                }
+
                 this.emit('unlink');
                 this.logger.info('Unlinked');
 
-              case 24:
+              case 26:
               case "end":
                 return _context3.stop();
             }
@@ -369,7 +386,8 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
       var _link3 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee5() {
         var _this4 = this;
 
-        var controller, messageChannel, port, handleStateChange, handleJobAdd, handleJobDelete, handleJobUpdate, handleJobsClear, didLogHeartbeatTimeout, didReceiveHeartbeat, handlePortHeartbeat, sendHeartbeat;
+        var _yield$this$getRegist, _yield$this$getRegist2, registration, controller, messageChannel, port, handleStateChange, handleJobAdd, handleJobDelete, handleJobUpdate, handleJobsClear, didLogHeartbeatTimeout, didReceiveHeartbeat, handlePortHeartbeat, sendHeartbeat, handleBeforeUnload;
+
         return regeneratorRuntime.wrap(function _callee5$(_context6) {
           while (1) {
             switch (_context6.prev = _context6.next) {
@@ -383,10 +401,13 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
 
               case 2:
                 _context6.next = 4;
-                return this.getController();
+                return this.getRegistrationAndController();
 
               case 4:
-                controller = _context6.sent;
+                _yield$this$getRegist = _context6.sent;
+                _yield$this$getRegist2 = _slicedToArray(_yield$this$getRegist, 2);
+                registration = _yield$this$getRegist2[0];
+                controller = _yield$this$getRegist2[1];
                 messageChannel = new MessageChannel();
                 port = messageChannel.port1;
                 this.port = messageChannel.port1;
@@ -441,8 +462,8 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                 }();
 
                 controller.addEventListener('statechange', handleStateChange);
-                _context6.prev = 10;
-                _context6.next = 13;
+                _context6.prev = 13;
+                _context6.next = 16;
                 return new Promise(function (resolve, reject) {
                   var timeout = setTimeout(function () {
                     messageChannel.port1.onmessage = null;
@@ -501,26 +522,26 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                   }, [messageChannel.port2]);
                 });
 
-              case 13:
-                _context6.next = 21;
+              case 16:
+                _context6.next = 24;
                 break;
 
-              case 15:
-                _context6.prev = 15;
-                _context6.t0 = _context6["catch"](10);
+              case 18:
+                _context6.prev = 18;
+                _context6.t0 = _context6["catch"](13);
 
                 if (!(_context6.t0 instanceof RedundantServiceWorkerError)) {
-                  _context6.next = 19;
+                  _context6.next = 22;
                   break;
                 }
 
                 return _context6.abrupt("return", messageChannel.port1);
 
-              case 19:
+              case 22:
                 controller.removeEventListener('statechange', handleStateChange);
                 throw _context6.t0;
 
-              case 21:
+              case 24:
                 messageChannel.port1.onmessage = function (event) {
                   if (!(event instanceof MessageEvent)) {
                     return;
@@ -692,16 +713,30 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
 
                 this.portHeartbeatInterval = setInterval(sendHeartbeat, 10000);
                 sendHeartbeat();
+
+                handleBeforeUnload = function handleBeforeUnload() {
+                  if (!canUseSyncManager) {
+                    return;
+                  } // $FlowFixMe
+
+
+                  registration.sync.register('unload');
+                };
+
+                this.handleBeforeUnload = handleBeforeUnload;
+                window.addEventListener('beforeunload', handleBeforeUnload, {
+                  capture: true
+                });
                 this.logger.info('Linked to worker');
                 this.emit('link');
                 return _context6.abrupt("return", messageChannel.port1);
 
-              case 41:
+              case 47:
               case "end":
                 return _context6.stop();
             }
           }
-        }, _callee5, this, [[10, 15]]);
+        }, _callee5, this, [[13, 18]]);
       }));
 
       function _link() {
@@ -1326,7 +1361,8 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
       var _sync = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee13() {
         var _this12 = this;
 
-        var serviceWorker, registration;
+        var serviceWorker, _registration;
+
         return regeneratorRuntime.wrap(function _callee13$(_context14) {
           while (1) {
             switch (_context14.prev = _context14.next) {
@@ -1368,9 +1404,11 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                 return serviceWorker.ready;
 
               case 14:
-                registration = _context14.sent;
+                _registration = _context14.sent;
+
                 // $FlowFixMe
-                registration.sync.register('syncManagerOnIdle');
+                _registration.sync.register('syncManagerOnIdle');
+
                 _context14.next = 18;
                 return new Promise(function (resolve, reject) {
                   var timeout = setTimeout(function () {

@@ -1,5 +1,6 @@
 // @flow
 
+import './tests/worker-unload.test.js';
 import './tests/worker-relink.test.js';
 import './tests/worker.test.js';
 import './tests/database.test.js';
