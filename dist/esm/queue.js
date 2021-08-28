@@ -1011,7 +1011,25 @@ export default class BatteryQueue extends EventEmitter {
     }
 
     delete this.heartbeatExpiresTimestamp;
-    await new Promise(resolve => setTimeout(resolve, heartbeatExpiresTimestamp));
+    const delay = heartbeatExpiresTimestamp - Date.now();
+
+    if (delay > 0) {
+      await new Promise(resolve => {
+        const timeout = setTimeout(() => {
+          clearTimeout(timeout);
+          this.removeListener('heartbeat', handleHeartbeat);
+          resolve();
+        }, delay);
+
+        const handleHeartbeat = () => {
+          clearTimeout(timeout);
+          this.removeListener('heartbeat', handleHeartbeat);
+          resolve();
+        };
+
+        this.addListener('heartbeat', handleHeartbeat);
+      });
+    }
 
     if (typeof this.heartbeatExpiresTimestamp === 'number') {
       this.logger.info('Cancelling client unload, heartbeat detected');

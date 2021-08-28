@@ -1950,7 +1950,9 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
     key: "unloadClient",
     value: function () {
       var _unloadClient = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee16() {
-        var heartbeatExpiresTimestamp;
+        var _this8 = this;
+
+        var heartbeatExpiresTimestamp, delay;
         return regeneratorRuntime.wrap(function _callee16$(_context17) {
           while (1) {
             switch (_context17.prev = _context17.next) {
@@ -1967,25 +1969,48 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
               case 4:
                 delete this.heartbeatExpiresTimestamp;
-                _context17.next = 7;
+                delay = heartbeatExpiresTimestamp - Date.now();
+
+                if (!(delay > 0)) {
+                  _context17.next = 9;
+                  break;
+                }
+
+                _context17.next = 9;
                 return new Promise(function (resolve) {
-                  return setTimeout(resolve, heartbeatExpiresTimestamp);
+                  var timeout = setTimeout(function () {
+                    clearTimeout(timeout);
+
+                    _this8.removeListener('heartbeat', handleHeartbeat);
+
+                    resolve();
+                  }, delay);
+
+                  var handleHeartbeat = function handleHeartbeat() {
+                    clearTimeout(timeout);
+
+                    _this8.removeListener('heartbeat', handleHeartbeat);
+
+                    resolve();
+                  };
+
+                  _this8.addListener('heartbeat', handleHeartbeat);
                 });
 
-              case 7:
+              case 9:
                 if (!(typeof this.heartbeatExpiresTimestamp === 'number')) {
-                  _context17.next = 10;
+                  _context17.next = 12;
                   break;
                 }
 
                 this.logger.info('Cancelling client unload, heartbeat detected');
                 return _context17.abrupt("return");
 
-              case 10:
+              case 12:
                 this.logger.info('Unloading');
                 this.emit('unloadClient');
 
-              case 12:
+              case 14:
               case "end":
                 return _context17.stop();
             }
@@ -2002,7 +2027,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
   }, {
     key: "listenForServiceWorkerInterface",
     value: function listenForServiceWorkerInterface() {
-      var _this8 = this;
+      var _this9 = this;
 
       var activeEmitCallback;
       var handleJobAdd;
@@ -2010,28 +2035,28 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
       var handleJobUpdate;
       var handleJobsClear;
       self.addEventListener('sync', function (event) {
-        _this8.logger.info("SyncManager event ".concat(event.tag).concat(event.lastChance ? ', last chance' : ''));
+        _this9.logger.info("SyncManager event ".concat(event.tag).concat(event.lastChance ? ', last chance' : ''));
 
         if (event.tag === 'syncManagerOnIdle') {
-          _this8.logger.info('Starting SyncManager idle handler');
+          _this9.logger.info('Starting SyncManager idle handler');
 
-          _this8.emit('syncManagerOnIdle');
+          _this9.emit('syncManagerOnIdle');
 
-          event.waitUntil(_this8.onIdle().catch(function (error) {
-            _this8.logger.error("SyncManager event handler failed".concat(event.lastChance ? ' on last chance' : ''));
+          event.waitUntil(_this9.onIdle().catch(function (error) {
+            _this9.logger.error("SyncManager event handler failed".concat(event.lastChance ? ' on last chance' : ''));
 
-            _this8.logger.errorStack(error);
+            _this9.logger.errorStack(error);
           }));
         } else if (event.tag === 'unload') {
-          _this8.logger.info('Starting SyncManager unload client handler');
+          _this9.logger.info('Starting SyncManager unload client handler');
 
-          event.waitUntil(_this8.unloadClient().catch(function (error) {
-            _this8.logger.error("SyncManager event handler failed".concat(event.lastChance ? ' on last chance' : ''));
+          event.waitUntil(_this9.unloadClient().catch(function (error) {
+            _this9.logger.error("SyncManager event handler failed".concat(event.lastChance ? ' on last chance' : ''));
 
-            _this8.logger.errorStack(error);
+            _this9.logger.errorStack(error);
           }));
         } else {
-          _this8.logger.warn("Received unknown SyncManager event tag ".concat(event.tag));
+          _this9.logger.warn("Received unknown SyncManager event tag ".concat(event.tag));
         }
       });
       self.addEventListener('message', function (event) {
@@ -2061,13 +2086,13 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
           return;
         }
 
-        _this8.emitCallbacks = _this8.emitCallbacks.filter(function (x) {
+        _this9.emitCallbacks = _this9.emitCallbacks.filter(function (x) {
           return x !== activeEmitCallback;
         });
-        var previousPort = _this8.port;
+        var previousPort = _this9.port;
 
         if (previousPort instanceof MessagePort) {
-          _this8.logger.info('Closing previous worker interface');
+          _this9.logger.info('Closing previous worker interface');
 
           previousPort.close();
         }
@@ -2092,9 +2117,9 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
           type: 'BATTERY_QUEUE_WORKER_CONFIRMATION'
         });
 
-        _this8.logger.info('Linked to worker interface');
+        _this9.logger.info('Linked to worker interface');
 
-        port.onmessage = _this8.handlePortMessage.bind(_this8);
+        port.onmessage = _this9.handlePortMessage.bind(_this9);
 
         handleJobAdd = function handleJobAdd() {
           for (var _len2 = arguments.length, args = new Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
@@ -2157,14 +2182,14 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
         activeEmitCallback = emitCallback;
 
-        _this8.emitCallbacks.push(emitCallback);
+        _this9.emitCallbacks.push(emitCallback);
 
-        _this8.port = port;
+        _this9.port = port;
       });
       self.addEventListener('messageerror', function (event) {
-        _this8.logger.error('Service worker interface message error');
+        _this9.logger.error('Service worker interface message error');
 
-        _this8.logger.errorObject(event);
+        _this9.logger.errorObject(event);
       });
     }
   }]);
