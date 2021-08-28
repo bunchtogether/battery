@@ -1,7 +1,7 @@
 import PQueue from 'p-queue';
 import EventEmitter from 'events';
 import makeLogger from './logger';
-import { jobEmitter, localJobEmitter, clearDatabase, dequeueFromDatabase, dequeueFromDatabaseNotIn, incrementJobAttemptInDatabase, incrementCleanupAttemptInDatabase, markJobCompleteInDatabase, markJobPendingInDatabase, markJobErrorInDatabase, markJobStartAfterInDatabase, markJobAsAbortedOrRemoveFromDatabase, markCleanupStartAfterInDatabase, updateCleanupValuesInDatabase, getCleanupFromDatabase, removePathFromCleanupDataInDatabase, getJobFromDatabase, markQueueForCleanupInDatabase, removeCleanupFromDatabase, restoreJobToDatabaseForCleanupAndRemove, JOB_PENDING_STATUS, JOB_ERROR_STATUS, JOB_CLEANUP_STATUS, JOB_CLEANUP_AND_REMOVE_STATUS } from './database';
+import { jobEmitter, localJobEmitter, clearDatabase, dequeueFromDatabase, dequeueFromDatabaseNotIn, incrementJobAttemptInDatabase, incrementCleanupAttemptInDatabase, markJobCompleteInDatabase, markJobPendingInDatabase, markJobErrorInDatabase, markJobStartAfterInDatabase, markJobAsAbortedOrRemoveFromDatabase, markCleanupStartAfterInDatabase, updateCleanupValuesInDatabase, getCleanupFromDatabase, removePathFromCleanupDataInDatabase, getJobFromDatabase, markQueueForCleanupInDatabase, removeCleanupFromDatabase, restoreJobToDatabaseForCleanupAndRemove, removeAbortQueueOnUnload, getScheduledAbortOnUnloadQueues, getAllAbortOnUnloadQueues, JOB_PENDING_STATUS, JOB_ERROR_STATUS, JOB_CLEANUP_STATUS, JOB_CLEANUP_AND_REMOVE_STATUS } from './database';
 import { AbortError } from './errors';
 const PRIORITY_OFFSET = Math.floor(Number.MAX_SAFE_INTEGER / 2);
 export default class BatteryQueue extends EventEmitter {
@@ -23,11 +23,10 @@ export default class BatteryQueue extends EventEmitter {
     this.addListener('error', error => {
       this.logger.errorStack(error);
     });
-    let heartbeatExpiresTimeout;
     this.addListener('heartbeat', interval => {
-      clearTimeout(heartbeatExpiresTimeout);
+      clearTimeout(this.heartbeatExpiresTimeout);
       this.heartbeatExpiresTimestamp = Date.now() + Math.round(interval * 2.5);
-      heartbeatExpiresTimeout = setTimeout(() => {
+      this.heartbeatExpiresTimeout = setTimeout(() => {
         if (typeof this.heartbeatExpiresTimestamp !== 'number') {
           return;
         }
@@ -1010,6 +1009,7 @@ export default class BatteryQueue extends EventEmitter {
       return;
     }
 
+    clearTimeout(this.heartbeatExpiresTimeout);
     delete this.heartbeatExpiresTimestamp;
     const delay = heartbeatExpiresTimestamp - Date.now();
 
@@ -1037,7 +1037,24 @@ export default class BatteryQueue extends EventEmitter {
     }
 
     this.logger.info('Unloading');
+    const queueIds = await getAllAbortOnUnloadQueues();
+
+    for (const queueId of queueIds) {
+      try {
+        await this.abortQueue(queueId);
+        await removeAbortQueueOnUnload(queueId);
+      } catch (error) {
+        this.logger.error(`Error in scheduled queue ${queueId} abort`);
+        this.logger.errorStack(error);
+        removeAbortQueueOnUnload(queueId).catch(error2 => {
+          this.logger.error(`Unable to remove scheduled queue ${queueId} abort`);
+          this.logger.errorStack(error2);
+        });
+      }
+    }
+
     this.emit('unloadClient');
+    await this.onIdle();
   }
 
   listenForServiceWorkerInterface() {
@@ -1066,7 +1083,7 @@ export default class BatteryQueue extends EventEmitter {
         this.logger.warn(`Received unknown SyncManager event tag ${event.tag}`);
       }
     });
-    self.addEventListener('message', event => {
+    self.addEventListener('message', async event => {
       if (!(event instanceof ExtendableMessageEvent)) {
         return;
       }
@@ -1121,10 +1138,6 @@ export default class BatteryQueue extends EventEmitter {
         localJobEmitter.removeListener('jobsClear', handleJobsClear);
       }
 
-      port.postMessage({
-        type: 'BATTERY_QUEUE_WORKER_CONFIRMATION'
-      });
-      this.logger.info('Linked to worker interface');
       port.onmessage = this.handlePortMessage.bind(this);
 
       handleJobAdd = (...args) => {
@@ -1170,6 +1183,26 @@ export default class BatteryQueue extends EventEmitter {
       activeEmitCallback = emitCallback;
       this.emitCallbacks.push(emitCallback);
       this.port = port;
+      const queueIds = await getScheduledAbortOnUnloadQueues();
+
+      for (const queueId of queueIds) {
+        try {
+          await this.abortQueue(queueId);
+          await removeAbortQueueOnUnload(queueId);
+        } catch (error) {
+          this.logger.error(`Error in scheduled queue ${queueId} abort`);
+          this.logger.errorStack(error);
+          removeAbortQueueOnUnload(queueId).catch(error2 => {
+            this.logger.error(`Unable to remove scheduled queue ${queueId} abort`);
+            this.logger.errorStack(error2);
+          });
+        }
+      }
+
+      port.postMessage({
+        type: 'BATTERY_QUEUE_WORKER_CONFIRMATION'
+      });
+      this.logger.info('Linked to worker interface');
     });
     self.addEventListener('messageerror', event => {
       this.logger.error('Service worker interface message error');

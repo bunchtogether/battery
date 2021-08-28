@@ -54,6 +54,10 @@ exports.markJobsWithArgLookupKeyCleanupAndRemoveInDatabase = _markJobsWithArgLoo
 exports.lookupArgs = _lookupArgs2;
 exports.lookupArg = _lookupArg2;
 exports.removeArgLookupsForJob = _removeArgLookupsForJob2;
+exports.scheduleAbortQueueOnUnload = _scheduleAbortQueueOnUnload2;
+exports.removeAbortQueueOnUnload = _removeAbortQueueOnUnload2;
+exports.getAllAbortOnUnloadQueues = _getAllAbortOnUnloadQueues2;
+exports.getScheduledAbortOnUnloadQueues = _getScheduledAbortOnUnloadQueues2;
 exports.databasePromise = exports.JOB_CLEANUP_AND_REMOVE_STATUS = exports.JOB_CLEANUP_STATUS = exports.JOB_ERROR_STATUS = exports.JOB_PENDING_STATUS = exports.JOB_COMPLETE_STATUS = exports.JOB_ABORTED_STATUS = exports.QUEUE_EMPTY_STATUS = exports.QUEUE_COMPLETE_STATUS = exports.QUEUE_PENDING_STATUS = exports.QUEUE_ERROR_STATUS = exports.CleanupDoesNotExistError = exports.JobDoesNotExistError = exports.jobEmitter = exports.localJobEmitter = void 0;
 
 var _jsonpathPlus = require("jsonpath-plus");
@@ -201,7 +205,7 @@ var _databasePromise = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(f
     while (1) {
       switch (_context.prev = _context.next) {
         case 0:
-          request = self.indexedDB.open('battery-queue-04', 1);
+          request = self.indexedDB.open('battery-queue-05', 1);
 
           request.onupgradeneeded = function (e) {
             try {
@@ -275,6 +279,21 @@ var _databasePromise = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(f
               });
 
               _store2.createIndex('keyIndex', 'key', {
+                unique: false
+              });
+            } catch (error) {
+              if (!(error.name === 'ConstraintError')) {
+                throw error;
+              }
+            }
+
+            try {
+              var _store3 = e.target.result.createObjectStore('abort-on-unload', {
+                keyPath: 'queueId',
+                autoIncrement: true
+              });
+
+              _store3.createIndex('startAfterIndex', 'startAfter', {
                 unique: false
               });
             } catch (error) {
@@ -401,6 +420,14 @@ function getReadWriteArgLookupObjectStore() {
 
 function getReadOnlyArgLookupObjectStore() {
   return getReadOnlyObjectStore('arg-lookup');
+}
+
+function getReadWriteAbortOnUnloadObjectStore() {
+  return getReadWriteObjectStore('abort-on-unload');
+}
+
+function getReadOnlyAbortOnUnloadObjectStore() {
+  return getReadOnlyObjectStore('abort-on-unload');
 }
 
 function getReadWriteAuthObjectStore() {
@@ -651,24 +678,64 @@ function _clearJobsDatabase() {
   return _clearJobsDatabase.apply(this, arguments);
 }
 
-function clearCleanupsDatabase() {
-  return _clearCleanupsDatabase.apply(this, arguments);
+function clearAbortOnUnloadDatabase() {
+  return _clearAbortOnUnloadDatabase.apply(this, arguments);
 }
 
-function _clearCleanupsDatabase() {
-  _clearCleanupsDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee8() {
+function _clearAbortOnUnloadDatabase() {
+  _clearAbortOnUnloadDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee8() {
     var store, request;
     return regeneratorRuntime.wrap(function _callee8$(_context8) {
       while (1) {
         switch (_context8.prev = _context8.next) {
           case 0:
             _context8.next = 2;
-            return getReadWriteCleanupsObjectStore();
+            return getReadWriteAbortOnUnloadObjectStore();
 
           case 2:
             store = _context8.sent;
             request = store.clear();
             _context8.next = 6;
+            return new Promise(function (resolve, reject) {
+              request.onsuccess = function () {
+                resolve();
+              };
+
+              request.onerror = function (event) {
+                logger.error('Error while clearing abort queue on unload database');
+                logger.errorObject(event);
+                reject(new Error('Error while clearing abort queue on unload database'));
+              };
+            });
+
+          case 6:
+          case "end":
+            return _context8.stop();
+        }
+      }
+    }, _callee8);
+  }));
+  return _clearAbortOnUnloadDatabase.apply(this, arguments);
+}
+
+function clearCleanupsDatabase() {
+  return _clearCleanupsDatabase.apply(this, arguments);
+}
+
+function _clearCleanupsDatabase() {
+  _clearCleanupsDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee9() {
+    var store, request;
+    return regeneratorRuntime.wrap(function _callee9$(_context9) {
+      while (1) {
+        switch (_context9.prev = _context9.next) {
+          case 0:
+            _context9.next = 2;
+            return getReadWriteCleanupsObjectStore();
+
+          case 2:
+            store = _context9.sent;
+            request = store.clear();
+            _context9.next = 6;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve();
@@ -683,10 +750,10 @@ function _clearCleanupsDatabase() {
 
           case 6:
           case "end":
-            return _context8.stop();
+            return _context9.stop();
         }
       }
-    }, _callee8);
+    }, _callee9);
   }));
   return _clearCleanupsDatabase.apply(this, arguments);
 }
@@ -696,28 +763,32 @@ function _clearDatabase2() {
 }
 
 function _clearDatabase() {
-  _clearDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee9() {
-    return regeneratorRuntime.wrap(function _callee9$(_context9) {
+  _clearDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee10() {
+    return regeneratorRuntime.wrap(function _callee10$(_context10) {
       while (1) {
-        switch (_context9.prev = _context9.next) {
+        switch (_context10.prev = _context10.next) {
           case 0:
-            _context9.next = 2;
+            _context10.next = 2;
             return clearJobsDatabase();
 
           case 2:
-            _context9.next = 4;
+            _context10.next = 4;
             return clearCleanupsDatabase();
 
           case 4:
-            _context9.next = 6;
-            return clearAllMetadataInDatabase();
+            _context10.next = 6;
+            return clearAbortOnUnloadDatabase();
 
           case 6:
+            _context10.next = 8;
+            return clearAllMetadataInDatabase();
+
+          case 8:
           case "end":
-            return _context9.stop();
+            return _context10.stop();
         }
       }
-    }, _callee9);
+    }, _callee10);
   }));
   return _clearDatabase.apply(this, arguments);
 }
@@ -727,18 +798,18 @@ function _removeJobsWithQueueIdAndTypeFromDatabase2(_x5, _x6) {
 }
 
 function _removeJobsWithQueueIdAndTypeFromDatabase() {
-  _removeJobsWithQueueIdAndTypeFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee10(queueId, type) {
+  _removeJobsWithQueueIdAndTypeFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee11(queueId, type) {
     var _yield$getReadWriteJo, _yield$getReadWriteJo2, store, promise, index, request;
 
-    return regeneratorRuntime.wrap(function _callee10$(_context10) {
+    return regeneratorRuntime.wrap(function _callee11$(_context11) {
       while (1) {
-        switch (_context10.prev = _context10.next) {
+        switch (_context11.prev = _context11.next) {
           case 0:
-            _context10.next = 2;
+            _context11.next = 2;
             return getReadWriteJobsObjectStoreAndTransactionPromise();
 
           case 2:
-            _yield$getReadWriteJo = _context10.sent;
+            _yield$getReadWriteJo = _context11.sent;
             _yield$getReadWriteJo2 = _slicedToArray(_yield$getReadWriteJo, 2);
             store = _yield$getReadWriteJo2[0];
             promise = _yield$getReadWriteJo2[1];
@@ -767,15 +838,15 @@ function _removeJobsWithQueueIdAndTypeFromDatabase() {
               logger.errorObject(event);
             };
 
-            _context10.next = 12;
+            _context11.next = 12;
             return promise;
 
           case 12:
           case "end":
-            return _context10.stop();
+            return _context11.stop();
         }
       }
-    }, _callee10);
+    }, _callee11);
   }));
   return _removeJobsWithQueueIdAndTypeFromDatabase.apply(this, arguments);
 }
@@ -785,18 +856,18 @@ function _removeQueueIdFromJobsDatabase2(_x7) {
 }
 
 function _removeQueueIdFromJobsDatabase() {
-  _removeQueueIdFromJobsDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee11(queueId) {
+  _removeQueueIdFromJobsDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee12(queueId) {
     var _yield$getReadWriteJo3, _yield$getReadWriteJo4, store, promise, index, request;
 
-    return regeneratorRuntime.wrap(function _callee11$(_context11) {
+    return regeneratorRuntime.wrap(function _callee12$(_context12) {
       while (1) {
-        switch (_context11.prev = _context11.next) {
+        switch (_context12.prev = _context12.next) {
           case 0:
-            _context11.next = 2;
+            _context12.next = 2;
             return getReadWriteJobsObjectStoreAndTransactionPromise();
 
           case 2:
-            _yield$getReadWriteJo3 = _context11.sent;
+            _yield$getReadWriteJo3 = _context12.sent;
             _yield$getReadWriteJo4 = _slicedToArray(_yield$getReadWriteJo3, 2);
             store = _yield$getReadWriteJo4[0];
             promise = _yield$getReadWriteJo4[1];
@@ -825,15 +896,15 @@ function _removeQueueIdFromJobsDatabase() {
               logger.errorObject(event);
             };
 
-            _context11.next = 12;
+            _context12.next = 12;
             return promise;
 
           case 12:
           case "end":
-            return _context11.stop();
+            return _context12.stop();
         }
       }
-    }, _callee11);
+    }, _callee12);
   }));
   return _removeQueueIdFromJobsDatabase.apply(this, arguments);
 }
@@ -843,21 +914,21 @@ function removeQueueIdFromCleanupsDatabase(_x8) {
 }
 
 function _removeQueueIdFromCleanupsDatabase() {
-  _removeQueueIdFromCleanupsDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee12(queueId) {
+  _removeQueueIdFromCleanupsDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee13(queueId) {
     var store, index, request;
-    return regeneratorRuntime.wrap(function _callee12$(_context12) {
+    return regeneratorRuntime.wrap(function _callee13$(_context13) {
       while (1) {
-        switch (_context12.prev = _context12.next) {
+        switch (_context13.prev = _context13.next) {
           case 0:
-            _context12.next = 2;
+            _context13.next = 2;
             return getReadWriteCleanupsObjectStore();
 
           case 2:
-            store = _context12.sent;
+            store = _context13.sent;
             index = store.index('queueIdIndex'); // $FlowFixMe
 
             request = index.openCursor(IDBKeyRange.only(queueId));
-            _context12.next = 7;
+            _context13.next = 7;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function (event) {
                 var cursor = event.target.result;
@@ -879,10 +950,10 @@ function _removeQueueIdFromCleanupsDatabase() {
 
           case 7:
           case "end":
-            return _context12.stop();
+            return _context13.stop();
         }
       }
-    }, _callee12);
+    }, _callee13);
   }));
   return _removeQueueIdFromCleanupsDatabase.apply(this, arguments);
 }
@@ -892,24 +963,24 @@ function _removeQueueIdFromDatabase2(_x9) {
 }
 
 function _removeQueueIdFromDatabase() {
-  _removeQueueIdFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee13(queueId) {
-    return regeneratorRuntime.wrap(function _callee13$(_context13) {
+  _removeQueueIdFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee14(queueId) {
+    return regeneratorRuntime.wrap(function _callee14$(_context14) {
       while (1) {
-        switch (_context13.prev = _context13.next) {
+        switch (_context14.prev = _context14.next) {
           case 0:
-            _context13.next = 2;
+            _context14.next = 2;
             return _removeQueueIdFromJobsDatabase2(queueId);
 
           case 2:
-            _context13.next = 4;
+            _context14.next = 4;
             return removeQueueIdFromCleanupsDatabase(queueId);
 
           case 4:
           case "end":
-            return _context13.stop();
+            return _context14.stop();
         }
       }
-    }, _callee13);
+    }, _callee14);
   }));
   return _removeQueueIdFromDatabase.apply(this, arguments);
 }
@@ -919,18 +990,18 @@ function _removeCompletedExpiredItemsFromDatabase2(_x10) {
 }
 
 function _removeCompletedExpiredItemsFromDatabase() {
-  _removeCompletedExpiredItemsFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee14(maxAge) {
+  _removeCompletedExpiredItemsFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee15(maxAge) {
     var _yield$getReadWriteJo5, _yield$getReadWriteJo6, store, promise, index, request;
 
-    return regeneratorRuntime.wrap(function _callee14$(_context14) {
+    return regeneratorRuntime.wrap(function _callee15$(_context15) {
       while (1) {
-        switch (_context14.prev = _context14.next) {
+        switch (_context15.prev = _context15.next) {
           case 0:
-            _context14.next = 2;
+            _context15.next = 2;
             return getReadWriteJobsObjectStoreAndTransactionPromise();
 
           case 2:
-            _yield$getReadWriteJo5 = _context14.sent;
+            _yield$getReadWriteJo5 = _context15.sent;
             _yield$getReadWriteJo6 = _slicedToArray(_yield$getReadWriteJo5, 2);
             store = _yield$getReadWriteJo6[0];
             promise = _yield$getReadWriteJo6[1];
@@ -967,15 +1038,15 @@ function _removeCompletedExpiredItemsFromDatabase() {
               logger.errorObject(event);
             };
 
-            _context14.next = 12;
+            _context15.next = 12;
             return promise;
 
           case 12:
           case "end":
-            return _context14.stop();
+            return _context15.stop();
         }
       }
-    }, _callee14);
+    }, _callee15);
   }));
   return _removeCompletedExpiredItemsFromDatabase.apply(this, arguments);
 }
@@ -985,19 +1056,19 @@ function _updateJobInDatabase2(_x11, _x12) {
 }
 
 function _updateJobInDatabase() {
-  _updateJobInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee15(id, transform) {
+  _updateJobInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee16(id, transform) {
     var store, request;
-    return regeneratorRuntime.wrap(function _callee15$(_context15) {
+    return regeneratorRuntime.wrap(function _callee16$(_context16) {
       while (1) {
-        switch (_context15.prev = _context15.next) {
+        switch (_context16.prev = _context16.next) {
           case 0:
-            _context15.next = 2;
+            _context16.next = 2;
             return getReadWriteJobsObjectStore();
 
           case 2:
-            store = _context15.sent;
+            store = _context16.sent;
             request = store.get(id);
-            _context15.next = 6;
+            _context16.next = 6;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 var newValue;
@@ -1065,10 +1136,10 @@ function _updateJobInDatabase() {
 
           case 6:
           case "end":
-            return _context15.stop();
+            return _context16.stop();
         }
       }
-    }, _callee15);
+    }, _callee16);
   }));
   return _updateJobInDatabase.apply(this, arguments);
 }
@@ -1078,19 +1149,19 @@ function _getJobFromDatabase2(_x13) {
 }
 
 function _getJobFromDatabase() {
-  _getJobFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee16(id) {
+  _getJobFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee17(id) {
     var store, request;
-    return regeneratorRuntime.wrap(function _callee16$(_context16) {
+    return regeneratorRuntime.wrap(function _callee17$(_context17) {
       while (1) {
-        switch (_context16.prev = _context16.next) {
+        switch (_context17.prev = _context17.next) {
           case 0:
-            _context16.next = 2;
+            _context17.next = 2;
             return getReadOnlyJobsObjectStore();
 
           case 2:
-            store = _context16.sent;
+            store = _context17.sent;
             request = store.get(id);
-            return _context16.abrupt("return", new Promise(function (resolve, reject) {
+            return _context17.abrupt("return", new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve(request.result);
               };
@@ -1104,10 +1175,10 @@ function _getJobFromDatabase() {
 
           case 5:
           case "end":
-            return _context16.stop();
+            return _context17.stop();
         }
       }
-    }, _callee16);
+    }, _callee17);
   }));
   return _getJobFromDatabase.apply(this, arguments);
 }
@@ -1117,19 +1188,19 @@ function _updateCleanupInDatabase2(_x14, _x15) {
 }
 
 function _updateCleanupInDatabase() {
-  _updateCleanupInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee17(id, transform) {
+  _updateCleanupInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee18(id, transform) {
     var store, request;
-    return regeneratorRuntime.wrap(function _callee17$(_context17) {
+    return regeneratorRuntime.wrap(function _callee18$(_context18) {
       while (1) {
-        switch (_context17.prev = _context17.next) {
+        switch (_context18.prev = _context18.next) {
           case 0:
-            _context17.next = 2;
+            _context18.next = 2;
             return getReadWriteCleanupsObjectStore();
 
           case 2:
-            store = _context17.sent;
+            store = _context18.sent;
             request = store.get(id);
-            _context17.next = 6;
+            _context18.next = 6;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 var newValue;
@@ -1167,10 +1238,10 @@ function _updateCleanupInDatabase() {
 
           case 6:
           case "end":
-            return _context17.stop();
+            return _context18.stop();
         }
       }
-    }, _callee17);
+    }, _callee18);
   }));
   return _updateCleanupInDatabase.apply(this, arguments);
 }
@@ -1180,12 +1251,12 @@ function _removePathFromCleanupDataInDatabase2(_x16, _x17) {
 }
 
 function _removePathFromCleanupDataInDatabase() {
-  _removePathFromCleanupDataInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee18(id, path) {
-    return regeneratorRuntime.wrap(function _callee18$(_context18) {
+  _removePathFromCleanupDataInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee19(id, path) {
+    return regeneratorRuntime.wrap(function _callee19$(_context19) {
       while (1) {
-        switch (_context18.prev = _context18.next) {
+        switch (_context19.prev = _context19.next) {
           case 0:
-            _context18.next = 2;
+            _context19.next = 2;
             return _updateCleanupInDatabase2(id, function (value) {
               if (typeof value === 'undefined') {
                 return;
@@ -1208,10 +1279,10 @@ function _removePathFromCleanupDataInDatabase() {
 
           case 2:
           case "end":
-            return _context18.stop();
+            return _context19.stop();
         }
       }
-    }, _callee18);
+    }, _callee19);
   }));
   return _removePathFromCleanupDataInDatabase.apply(this, arguments);
 }
@@ -1221,13 +1292,13 @@ function _updateCleanupValuesInDatabase2(_x18, _x19, _x20) {
 }
 
 function _updateCleanupValuesInDatabase() {
-  _updateCleanupValuesInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee19(id, queueId, data) {
-    return regeneratorRuntime.wrap(function _callee19$(_context19) {
+  _updateCleanupValuesInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee20(id, queueId, data) {
+    return regeneratorRuntime.wrap(function _callee20$(_context20) {
       while (1) {
-        switch (_context19.prev = _context19.next) {
+        switch (_context20.prev = _context20.next) {
           case 0:
             if (!(typeof id !== 'number')) {
-              _context19.next = 2;
+              _context20.next = 2;
               break;
             }
 
@@ -1235,7 +1306,7 @@ function _updateCleanupValuesInDatabase() {
 
           case 2:
             if (!(typeof queueId !== 'string')) {
-              _context19.next = 4;
+              _context20.next = 4;
               break;
             }
 
@@ -1243,14 +1314,14 @@ function _updateCleanupValuesInDatabase() {
 
           case 4:
             if (!(_typeof(data) !== 'object')) {
-              _context19.next = 6;
+              _context20.next = 6;
               break;
             }
 
             throw new TypeError("Unable to update cleanup in database, received invalid \"data\" argument type \"".concat(_typeof(data), "\""));
 
           case 6:
-            _context19.next = 8;
+            _context20.next = 8;
             return _updateCleanupInDatabase2(id, function (value) {
               var combinedData = typeof value === 'undefined' ? data : (0, _merge.default)({}, value.data, data);
               return {
@@ -1264,10 +1335,10 @@ function _updateCleanupValuesInDatabase() {
 
           case 8:
           case "end":
-            return _context19.stop();
+            return _context20.stop();
         }
       }
-    }, _callee19);
+    }, _callee20);
   }));
   return _updateCleanupValuesInDatabase.apply(this, arguments);
 }
@@ -1277,19 +1348,19 @@ function _silentlyRemoveJobFromDatabase2(_x21) {
 }
 
 function _silentlyRemoveJobFromDatabase() {
-  _silentlyRemoveJobFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee20(id) {
+  _silentlyRemoveJobFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee21(id) {
     var store, request;
-    return regeneratorRuntime.wrap(function _callee20$(_context20) {
+    return regeneratorRuntime.wrap(function _callee21$(_context21) {
       while (1) {
-        switch (_context20.prev = _context20.next) {
+        switch (_context21.prev = _context21.next) {
           case 0:
-            _context20.next = 2;
+            _context21.next = 2;
             return getReadWriteJobsObjectStore();
 
           case 2:
-            store = _context20.sent;
+            store = _context21.sent;
             request = store.delete(id);
-            _context20.next = 6;
+            _context21.next = 6;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve();
@@ -1304,10 +1375,10 @@ function _silentlyRemoveJobFromDatabase() {
 
           case 6:
           case "end":
-            return _context20.stop();
+            return _context21.stop();
         }
       }
-    }, _callee20);
+    }, _callee21);
   }));
   return _silentlyRemoveJobFromDatabase.apply(this, arguments);
 }
@@ -1317,19 +1388,19 @@ function _removeJobFromDatabase2(_x22) {
 }
 
 function _removeJobFromDatabase() {
-  _removeJobFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee21(id) {
+  _removeJobFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee22(id) {
     var store, request;
-    return regeneratorRuntime.wrap(function _callee21$(_context21) {
+    return regeneratorRuntime.wrap(function _callee22$(_context22) {
       while (1) {
-        switch (_context21.prev = _context21.next) {
+        switch (_context22.prev = _context22.next) {
           case 0:
-            _context21.next = 2;
+            _context22.next = 2;
             return getReadWriteJobsObjectStore();
 
           case 2:
-            store = _context21.sent;
+            store = _context22.sent;
             request = store.get(id);
-            _context21.next = 6;
+            _context22.next = 6;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 var job = request.result;
@@ -1368,10 +1439,10 @@ function _removeJobFromDatabase() {
 
           case 6:
           case "end":
-            return _context21.stop();
+            return _context22.stop();
         }
       }
-    }, _callee21);
+    }, _callee22);
   }));
   return _removeJobFromDatabase.apply(this, arguments);
 }
@@ -1381,19 +1452,19 @@ function _removeCleanupFromDatabase2(_x23) {
 }
 
 function _removeCleanupFromDatabase() {
-  _removeCleanupFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee22(id) {
+  _removeCleanupFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee23(id) {
     var store, request;
-    return regeneratorRuntime.wrap(function _callee22$(_context22) {
+    return regeneratorRuntime.wrap(function _callee23$(_context23) {
       while (1) {
-        switch (_context22.prev = _context22.next) {
+        switch (_context23.prev = _context23.next) {
           case 0:
-            _context22.next = 2;
+            _context23.next = 2;
             return getReadWriteCleanupsObjectStore();
 
           case 2:
-            store = _context22.sent;
+            store = _context23.sent;
             request = store.delete(id);
-            return _context22.abrupt("return", new Promise(function (resolve, reject) {
+            return _context23.abrupt("return", new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve();
               };
@@ -1407,10 +1478,10 @@ function _removeCleanupFromDatabase() {
 
           case 5:
           case "end":
-            return _context22.stop();
+            return _context23.stop();
         }
       }
-    }, _callee22);
+    }, _callee23);
   }));
   return _removeCleanupFromDatabase.apply(this, arguments);
 }
@@ -1420,19 +1491,19 @@ function _getCleanupFromDatabase2(_x24) {
 }
 
 function _getCleanupFromDatabase() {
-  _getCleanupFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee23(id) {
+  _getCleanupFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee24(id) {
     var store, request;
-    return regeneratorRuntime.wrap(function _callee23$(_context23) {
+    return regeneratorRuntime.wrap(function _callee24$(_context24) {
       while (1) {
-        switch (_context23.prev = _context23.next) {
+        switch (_context24.prev = _context24.next) {
           case 0:
-            _context23.next = 2;
+            _context24.next = 2;
             return getReadOnlyCleanupsObjectStore();
 
           case 2:
-            store = _context23.sent;
+            store = _context24.sent;
             request = store.get(id);
-            return _context23.abrupt("return", new Promise(function (resolve, reject) {
+            return _context24.abrupt("return", new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve(request.result);
               };
@@ -1446,10 +1517,10 @@ function _getCleanupFromDatabase() {
 
           case 5:
           case "end":
-            return _context23.stop();
+            return _context24.stop();
         }
       }
-    }, _callee23);
+    }, _callee24);
   }));
   return _getCleanupFromDatabase.apply(this, arguments);
 }
@@ -1459,19 +1530,19 @@ function _getMetadataFromDatabase2(_x25) {
 }
 
 function _getMetadataFromDatabase() {
-  _getMetadataFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee24(id) {
+  _getMetadataFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee25(id) {
     var store, request, response;
-    return regeneratorRuntime.wrap(function _callee24$(_context24) {
+    return regeneratorRuntime.wrap(function _callee25$(_context25) {
       while (1) {
-        switch (_context24.prev = _context24.next) {
+        switch (_context25.prev = _context25.next) {
           case 0:
-            _context24.next = 2;
+            _context25.next = 2;
             return getReadOnlyMetadataObjectStore();
 
           case 2:
-            store = _context24.sent;
+            store = _context25.sent;
             request = store.get(id);
-            _context24.next = 6;
+            _context25.next = 6;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve(request.result);
@@ -1485,15 +1556,15 @@ function _getMetadataFromDatabase() {
             });
 
           case 6:
-            response = _context24.sent;
-            return _context24.abrupt("return", typeof response !== 'undefined' ? response.metadata : undefined);
+            response = _context25.sent;
+            return _context25.abrupt("return", typeof response !== 'undefined' ? response.metadata : undefined);
 
           case 8:
           case "end":
-            return _context24.stop();
+            return _context25.stop();
         }
       }
-    }, _callee24);
+    }, _callee25);
   }));
   return _getMetadataFromDatabase.apply(this, arguments);
 }
@@ -1503,19 +1574,19 @@ function _clearMetadataInDatabase2(_x26) {
 }
 
 function _clearMetadataInDatabase() {
-  _clearMetadataInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee25(id) {
+  _clearMetadataInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee26(id) {
     var store, request;
-    return regeneratorRuntime.wrap(function _callee25$(_context25) {
+    return regeneratorRuntime.wrap(function _callee26$(_context26) {
       while (1) {
-        switch (_context25.prev = _context25.next) {
+        switch (_context26.prev = _context26.next) {
           case 0:
-            _context25.next = 2;
+            _context26.next = 2;
             return getReadWriteMetadataObjectStore();
 
           case 2:
-            store = _context25.sent;
+            store = _context26.sent;
             request = store.delete(id);
-            return _context25.abrupt("return", new Promise(function (resolve, reject) {
+            return _context26.abrupt("return", new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve();
               };
@@ -1529,10 +1600,10 @@ function _clearMetadataInDatabase() {
 
           case 5:
           case "end":
-            return _context25.stop();
+            return _context26.stop();
         }
       }
-    }, _callee25);
+    }, _callee26);
   }));
   return _clearMetadataInDatabase.apply(this, arguments);
 }
@@ -1542,22 +1613,22 @@ function _setMetadataInDatabase2(_x27, _x28) {
 }
 
 function _setMetadataInDatabase() {
-  _setMetadataInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee26(id, metadata) {
+  _setMetadataInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee27(id, metadata) {
     var store, request;
-    return regeneratorRuntime.wrap(function _callee26$(_context26) {
+    return regeneratorRuntime.wrap(function _callee27$(_context27) {
       while (1) {
-        switch (_context26.prev = _context26.next) {
+        switch (_context27.prev = _context27.next) {
           case 0:
-            _context26.next = 2;
+            _context27.next = 2;
             return getReadWriteMetadataObjectStore();
 
           case 2:
-            store = _context26.sent;
+            store = _context27.sent;
             request = store.put({
               id: id,
               metadata: metadata
             });
-            return _context26.abrupt("return", new Promise(function (resolve, reject) {
+            return _context27.abrupt("return", new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve();
               };
@@ -1571,10 +1642,10 @@ function _setMetadataInDatabase() {
 
           case 5:
           case "end":
-            return _context26.stop();
+            return _context27.stop();
         }
       }
-    }, _callee26);
+    }, _callee27);
   }));
   return _setMetadataInDatabase.apply(this, arguments);
 }
@@ -1584,18 +1655,18 @@ function _updateMetadataInDatabase2(_x29, _x30) {
 }
 
 function _updateMetadataInDatabase() {
-  _updateMetadataInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee27(id, metadata) {
+  _updateMetadataInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee28(id, metadata) {
     var _yield$getReadWriteMe, _yield$getReadWriteMe2, store, promise, request;
 
-    return regeneratorRuntime.wrap(function _callee27$(_context27) {
+    return regeneratorRuntime.wrap(function _callee28$(_context28) {
       while (1) {
-        switch (_context27.prev = _context27.next) {
+        switch (_context28.prev = _context28.next) {
           case 0:
-            _context27.next = 2;
+            _context28.next = 2;
             return getReadWriteMetadataObjectStoreAndTransactionPromise();
 
           case 2:
-            _yield$getReadWriteMe = _context27.sent;
+            _yield$getReadWriteMe = _context28.sent;
             _yield$getReadWriteMe2 = _slicedToArray(_yield$getReadWriteMe, 2);
             store = _yield$getReadWriteMe2[0];
             promise = _yield$getReadWriteMe2[1];
@@ -1632,15 +1703,15 @@ function _updateMetadataInDatabase() {
               logger.errorObject(event);
             };
 
-            _context27.next = 11;
+            _context28.next = 11;
             return promise;
 
           case 11:
           case "end":
-            return _context27.stop();
+            return _context28.stop();
         }
       }
-    }, _callee27);
+    }, _callee28);
   }));
   return _updateMetadataInDatabase.apply(this, arguments);
 }
@@ -1760,22 +1831,22 @@ function _markQueueForCleanupInDatabase2(_x31) {
 }
 
 function _markQueueForCleanupInDatabase() {
-  _markQueueForCleanupInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee28(queueId) {
+  _markQueueForCleanupInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee29(queueId) {
     var store, index, request, jobs;
-    return regeneratorRuntime.wrap(function _callee28$(_context28) {
+    return regeneratorRuntime.wrap(function _callee29$(_context29) {
       while (1) {
-        switch (_context28.prev = _context28.next) {
+        switch (_context29.prev = _context29.next) {
           case 0:
-            _context28.next = 2;
+            _context29.next = 2;
             return getReadWriteJobsObjectStore();
 
           case 2:
-            store = _context28.sent;
+            store = _context29.sent;
             index = store.index('queueIdIndex'); // $FlowFixMe
 
             request = index.openCursor(IDBKeyRange.only(queueId));
             jobs = [];
-            _context28.next = 8;
+            _context29.next = 8;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function (event) {
                 var cursor = event.target.result;
@@ -1840,14 +1911,14 @@ function _markQueueForCleanupInDatabase() {
             });
 
           case 8:
-            return _context28.abrupt("return", jobs);
+            return _context29.abrupt("return", jobs);
 
           case 9:
           case "end":
-            return _context28.stop();
+            return _context29.stop();
         }
       }
-    }, _callee28);
+    }, _callee29);
   }));
   return _markQueueForCleanupInDatabase.apply(this, arguments);
 }
@@ -1857,12 +1928,12 @@ function _incrementJobAttemptInDatabase2(_x32) {
 }
 
 function _incrementJobAttemptInDatabase() {
-  _incrementJobAttemptInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee29(id) {
-    return regeneratorRuntime.wrap(function _callee29$(_context29) {
+  _incrementJobAttemptInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee30(id) {
+    return regeneratorRuntime.wrap(function _callee30$(_context30) {
       while (1) {
-        switch (_context29.prev = _context29.next) {
+        switch (_context30.prev = _context30.next) {
           case 0:
-            _context29.next = 2;
+            _context30.next = 2;
             return _updateJobInDatabase2(id, function (value) {
               if (typeof value === 'undefined') {
                 throw new _JobDoesNotExistError("Unable to increment attempts for job ".concat(id, " in database, job does not exist"));
@@ -1876,10 +1947,10 @@ function _incrementJobAttemptInDatabase() {
 
           case 2:
           case "end":
-            return _context29.stop();
+            return _context30.stop();
         }
       }
-    }, _callee29);
+    }, _callee30);
   }));
   return _incrementJobAttemptInDatabase.apply(this, arguments);
 }
@@ -1889,14 +1960,14 @@ function _incrementCleanupAttemptInDatabase2(_x33, _x34) {
 }
 
 function _incrementCleanupAttemptInDatabase() {
-  _incrementCleanupAttemptInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee30(id, queueId) {
+  _incrementCleanupAttemptInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee31(id, queueId) {
     var attempt;
-    return regeneratorRuntime.wrap(function _callee30$(_context30) {
+    return regeneratorRuntime.wrap(function _callee31$(_context31) {
       while (1) {
-        switch (_context30.prev = _context30.next) {
+        switch (_context31.prev = _context31.next) {
           case 0:
             attempt = 1;
-            _context30.next = 3;
+            _context31.next = 3;
             return _updateCleanupInDatabase2(id, function (value) {
               if (typeof value === 'undefined') {
                 return {
@@ -1916,14 +1987,14 @@ function _incrementCleanupAttemptInDatabase() {
             });
 
           case 3:
-            return _context30.abrupt("return", attempt);
+            return _context31.abrupt("return", attempt);
 
           case 4:
           case "end":
-            return _context30.stop();
+            return _context31.stop();
         }
       }
-    }, _callee30);
+    }, _callee31);
   }));
   return _incrementCleanupAttemptInDatabase.apply(this, arguments);
 }
@@ -1933,15 +2004,15 @@ function _bulkEnqueueToDatabase2(_x35, _x36, _x37) {
 }
 
 function _bulkEnqueueToDatabase() {
-  _bulkEnqueueToDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee31(queueId, items, delay) {
+  _bulkEnqueueToDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee32(queueId, items, delay) {
     var i, _items$i, type, args, ids, store;
 
-    return regeneratorRuntime.wrap(function _callee31$(_context31) {
+    return regeneratorRuntime.wrap(function _callee32$(_context32) {
       while (1) {
-        switch (_context31.prev = _context31.next) {
+        switch (_context32.prev = _context32.next) {
           case 0:
             if (!(typeof queueId !== 'string')) {
-              _context31.next = 2;
+              _context32.next = 2;
               break;
             }
 
@@ -1949,7 +2020,7 @@ function _bulkEnqueueToDatabase() {
 
           case 2:
             if (Array.isArray(items)) {
-              _context31.next = 4;
+              _context32.next = 4;
               break;
             }
 
@@ -1960,14 +2031,14 @@ function _bulkEnqueueToDatabase() {
 
           case 5:
             if (!(i < items.length)) {
-              _context31.next = 14;
+              _context32.next = 14;
               break;
             }
 
             _items$i = _slicedToArray(items[i], 2), type = _items$i[0], args = _items$i[1];
 
             if (!(typeof type !== 'string')) {
-              _context31.next = 9;
+              _context32.next = 9;
               break;
             }
 
@@ -1975,7 +2046,7 @@ function _bulkEnqueueToDatabase() {
 
           case 9:
             if (Array.isArray(args)) {
-              _context31.next = 11;
+              _context32.next = 11;
               break;
             }
 
@@ -1983,12 +2054,12 @@ function _bulkEnqueueToDatabase() {
 
           case 11:
             i += 1;
-            _context31.next = 5;
+            _context32.next = 5;
             break;
 
           case 14:
             if (!(typeof delay !== 'number')) {
-              _context31.next = 16;
+              _context32.next = 16;
               break;
             }
 
@@ -1996,12 +2067,12 @@ function _bulkEnqueueToDatabase() {
 
           case 16:
             ids = [];
-            _context31.next = 19;
+            _context32.next = 19;
             return getReadWriteJobsObjectStore();
 
           case 19:
-            store = _context31.sent;
-            _context31.next = 22;
+            store = _context32.sent;
+            _context32.next = 22;
             return new Promise(function (resolve, reject) {
               var _loop = function _loop(_i2) {
                 var _items$_i = _slicedToArray(items[_i2], 2),
@@ -2043,14 +2114,14 @@ function _bulkEnqueueToDatabase() {
             });
 
           case 22:
-            return _context31.abrupt("return", ids);
+            return _context32.abrupt("return", ids);
 
           case 23:
           case "end":
-            return _context31.stop();
+            return _context32.stop();
         }
       }
-    }, _callee31);
+    }, _callee32);
   }));
   return _bulkEnqueueToDatabase.apply(this, arguments);
 }
@@ -2060,14 +2131,14 @@ function _enqueueToDatabase2(_x38, _x39, _x40, _x41) {
 }
 
 function _enqueueToDatabase() {
-  _enqueueToDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee32(queueId, type, args, delay) {
+  _enqueueToDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee33(queueId, type, args, delay) {
     var value, store, request, id;
-    return regeneratorRuntime.wrap(function _callee32$(_context32) {
+    return regeneratorRuntime.wrap(function _callee33$(_context33) {
       while (1) {
-        switch (_context32.prev = _context32.next) {
+        switch (_context33.prev = _context33.next) {
           case 0:
             if (!(typeof queueId !== 'string')) {
-              _context32.next = 2;
+              _context33.next = 2;
               break;
             }
 
@@ -2075,7 +2146,7 @@ function _enqueueToDatabase() {
 
           case 2:
             if (!(typeof type !== 'string')) {
-              _context32.next = 4;
+              _context33.next = 4;
               break;
             }
 
@@ -2083,7 +2154,7 @@ function _enqueueToDatabase() {
 
           case 4:
             if (Array.isArray(args)) {
-              _context32.next = 6;
+              _context33.next = 6;
               break;
             }
 
@@ -2091,7 +2162,7 @@ function _enqueueToDatabase() {
 
           case 6:
             if (!(typeof delay !== 'number')) {
-              _context32.next = 8;
+              _context33.next = 8;
               break;
             }
 
@@ -2106,97 +2177,6 @@ function _enqueueToDatabase() {
               created: Date.now(),
               status: _JOB_PENDING_STATUS,
               startAfter: Date.now() + delay
-            };
-            _context32.next = 11;
-            return getReadWriteJobsObjectStore();
-
-          case 11:
-            store = _context32.sent;
-            request = store.put(value);
-            _context32.next = 15;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function () {
-                resolve(request.result);
-              };
-
-              request.onerror = function (event) {
-                logger.error("Request error while enqueueing ".concat(type, " job"));
-                logger.errorObject(event);
-                reject(new Error("Request error while enqueueing ".concat(type, " job")));
-              };
-            });
-
-          case 15:
-            id = _context32.sent;
-
-            _localJobEmitter.emit('jobAdd', id, queueId, type);
-
-            _jobEmitter.emit('jobAdd', id, queueId, type);
-
-            return _context32.abrupt("return", id);
-
-          case 19:
-          case "end":
-            return _context32.stop();
-        }
-      }
-    }, _callee32);
-  }));
-  return _enqueueToDatabase.apply(this, arguments);
-}
-
-function _restoreJobToDatabaseForCleanupAndRemove2(_x42, _x43, _x44, _x45) {
-  return _restoreJobToDatabaseForCleanupAndRemove.apply(this, arguments);
-}
-
-function _restoreJobToDatabaseForCleanupAndRemove() {
-  _restoreJobToDatabaseForCleanupAndRemove = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee33(id, queueId, type, args) {
-    var value, store, request;
-    return regeneratorRuntime.wrap(function _callee33$(_context33) {
-      while (1) {
-        switch (_context33.prev = _context33.next) {
-          case 0:
-            if (!(typeof id !== 'number')) {
-              _context33.next = 2;
-              break;
-            }
-
-            throw new TypeError("Unable to restore to database, received invalid \"id\" argument type \"".concat(_typeof(id), "\""));
-
-          case 2:
-            if (!(typeof queueId !== 'string')) {
-              _context33.next = 4;
-              break;
-            }
-
-            throw new TypeError("Unable to restore to database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\""));
-
-          case 4:
-            if (!(typeof type !== 'string')) {
-              _context33.next = 6;
-              break;
-            }
-
-            throw new TypeError("Unable to restore to database, received invalid \"type\" argument type \"".concat(_typeof(type), "\""));
-
-          case 6:
-            if (Array.isArray(args)) {
-              _context33.next = 8;
-              break;
-            }
-
-            throw new TypeError("Unable to restore to database, received invalid \"args\" argument type \"".concat(_typeof(args), "\""));
-
-          case 8:
-            value = {
-              id: id,
-              queueId: queueId,
-              type: type,
-              args: args,
-              attempt: 1,
-              created: Date.now(),
-              status: _JOB_CLEANUP_AND_REMOVE_STATUS,
-              startAfter: Date.now()
             };
             _context33.next = 11;
             return getReadWriteJobsObjectStore();
@@ -2218,18 +2198,109 @@ function _restoreJobToDatabaseForCleanupAndRemove() {
             });
 
           case 15:
+            id = _context33.sent;
+
             _localJobEmitter.emit('jobAdd', id, queueId, type);
 
             _jobEmitter.emit('jobAdd', id, queueId, type);
 
             return _context33.abrupt("return", id);
 
-          case 18:
+          case 19:
           case "end":
             return _context33.stop();
         }
       }
     }, _callee33);
+  }));
+  return _enqueueToDatabase.apply(this, arguments);
+}
+
+function _restoreJobToDatabaseForCleanupAndRemove2(_x42, _x43, _x44, _x45) {
+  return _restoreJobToDatabaseForCleanupAndRemove.apply(this, arguments);
+}
+
+function _restoreJobToDatabaseForCleanupAndRemove() {
+  _restoreJobToDatabaseForCleanupAndRemove = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee34(id, queueId, type, args) {
+    var value, store, request;
+    return regeneratorRuntime.wrap(function _callee34$(_context34) {
+      while (1) {
+        switch (_context34.prev = _context34.next) {
+          case 0:
+            if (!(typeof id !== 'number')) {
+              _context34.next = 2;
+              break;
+            }
+
+            throw new TypeError("Unable to restore to database, received invalid \"id\" argument type \"".concat(_typeof(id), "\""));
+
+          case 2:
+            if (!(typeof queueId !== 'string')) {
+              _context34.next = 4;
+              break;
+            }
+
+            throw new TypeError("Unable to restore to database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\""));
+
+          case 4:
+            if (!(typeof type !== 'string')) {
+              _context34.next = 6;
+              break;
+            }
+
+            throw new TypeError("Unable to restore to database, received invalid \"type\" argument type \"".concat(_typeof(type), "\""));
+
+          case 6:
+            if (Array.isArray(args)) {
+              _context34.next = 8;
+              break;
+            }
+
+            throw new TypeError("Unable to restore to database, received invalid \"args\" argument type \"".concat(_typeof(args), "\""));
+
+          case 8:
+            value = {
+              id: id,
+              queueId: queueId,
+              type: type,
+              args: args,
+              attempt: 1,
+              created: Date.now(),
+              status: _JOB_CLEANUP_AND_REMOVE_STATUS,
+              startAfter: Date.now()
+            };
+            _context34.next = 11;
+            return getReadWriteJobsObjectStore();
+
+          case 11:
+            store = _context34.sent;
+            request = store.put(value);
+            _context34.next = 15;
+            return new Promise(function (resolve, reject) {
+              request.onsuccess = function () {
+                resolve(request.result);
+              };
+
+              request.onerror = function (event) {
+                logger.error("Request error while enqueueing ".concat(type, " job"));
+                logger.errorObject(event);
+                reject(new Error("Request error while enqueueing ".concat(type, " job")));
+              };
+            });
+
+          case 15:
+            _localJobEmitter.emit('jobAdd', id, queueId, type);
+
+            _jobEmitter.emit('jobAdd', id, queueId, type);
+
+            return _context34.abrupt("return", id);
+
+          case 18:
+          case "end":
+            return _context34.stop();
+        }
+      }
+    }, _callee34);
   }));
   return _restoreJobToDatabaseForCleanupAndRemove.apply(this, arguments);
 }
@@ -2239,21 +2310,21 @@ function _dequeueFromDatabase2() {
 }
 
 function _dequeueFromDatabase() {
-  _dequeueFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee34() {
+  _dequeueFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee35() {
     var store, index, request, jobs;
-    return regeneratorRuntime.wrap(function _callee34$(_context34) {
+    return regeneratorRuntime.wrap(function _callee35$(_context35) {
       while (1) {
-        switch (_context34.prev = _context34.next) {
+        switch (_context35.prev = _context35.next) {
           case 0:
-            _context34.next = 2;
+            _context35.next = 2;
             return getReadOnlyJobsObjectStore();
 
           case 2:
-            store = _context34.sent;
+            store = _context35.sent;
             index = store.index('statusIndex'); // $FlowFixMe
 
             request = index.getAll(IDBKeyRange.bound(_JOB_CLEANUP_AND_REMOVE_STATUS, _JOB_PENDING_STATUS));
-            _context34.next = 7;
+            _context35.next = 7;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function (event) {
                 resolve(event.target.result);
@@ -2267,15 +2338,15 @@ function _dequeueFromDatabase() {
             });
 
           case 7:
-            jobs = _context34.sent;
-            return _context34.abrupt("return", jobs);
+            jobs = _context35.sent;
+            return _context35.abrupt("return", jobs);
 
           case 9:
           case "end":
-            return _context34.stop();
+            return _context35.stop();
         }
       }
-    }, _callee34);
+    }, _callee35);
   }));
   return _dequeueFromDatabase.apply(this, arguments);
 }
@@ -2304,26 +2375,26 @@ function _dequeueFromDatabaseNotIn2(_x46) {
 }
 
 function _dequeueFromDatabaseNotIn() {
-  _dequeueFromDatabaseNotIn = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee35(ids) {
+  _dequeueFromDatabaseNotIn = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee36(ids) {
     var _yield$getReadOnlyJob, _yield$getReadOnlyJob2, store, promise, index, jobs, request;
 
-    return regeneratorRuntime.wrap(function _callee35$(_context35) {
+    return regeneratorRuntime.wrap(function _callee36$(_context36) {
       while (1) {
-        switch (_context35.prev = _context35.next) {
+        switch (_context36.prev = _context36.next) {
           case 0:
             if (!(ids.length === 0)) {
-              _context35.next = 2;
+              _context36.next = 2;
               break;
             }
 
-            return _context35.abrupt("return", _dequeueFromDatabase2());
+            return _context36.abrupt("return", _dequeueFromDatabase2());
 
           case 2:
-            _context35.next = 4;
+            _context36.next = 4;
             return getReadOnlyJobsObjectStoreAndTransactionPromise();
 
           case 4:
-            _yield$getReadOnlyJob = _context35.sent;
+            _yield$getReadOnlyJob = _context36.sent;
             _yield$getReadOnlyJob2 = _slicedToArray(_yield$getReadOnlyJob, 2);
             store = _yield$getReadOnlyJob2[0];
             promise = _yield$getReadOnlyJob2[1];
@@ -2373,18 +2444,18 @@ function _dequeueFromDatabaseNotIn() {
               logger.errorObject(event);
             };
 
-            _context35.next = 15;
+            _context36.next = 15;
             return promise;
 
           case 15:
-            return _context35.abrupt("return", jobs);
+            return _context36.abrupt("return", jobs);
 
           case 16:
           case "end":
-            return _context35.stop();
+            return _context36.stop();
         }
       }
-    }, _callee35);
+    }, _callee36);
   }));
   return _dequeueFromDatabaseNotIn.apply(this, arguments);
 }
@@ -2394,29 +2465,29 @@ function _getJobsInQueueFromDatabase2(_x47) {
 }
 
 function _getJobsInQueueFromDatabase() {
-  _getJobsInQueueFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee36(queueId) {
+  _getJobsInQueueFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee37(queueId) {
     var store, index, request, jobs;
-    return regeneratorRuntime.wrap(function _callee36$(_context36) {
+    return regeneratorRuntime.wrap(function _callee37$(_context37) {
       while (1) {
-        switch (_context36.prev = _context36.next) {
+        switch (_context37.prev = _context37.next) {
           case 0:
             if (!(typeof queueId !== 'string')) {
-              _context36.next = 2;
+              _context37.next = 2;
               break;
             }
 
             throw new TypeError("Unable to get jobs in queue from database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\""));
 
           case 2:
-            _context36.next = 4;
+            _context37.next = 4;
             return getReadOnlyJobsObjectStore();
 
           case 4:
-            store = _context36.sent;
+            store = _context37.sent;
             index = store.index('queueIdIndex'); // $FlowFixMe
 
             request = index.getAll(IDBKeyRange.only(queueId));
-            _context36.next = 9;
+            _context37.next = 9;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function (event) {
                 resolve(event.target.result);
@@ -2430,15 +2501,15 @@ function _getJobsInQueueFromDatabase() {
             });
 
           case 9:
-            jobs = _context36.sent;
-            return _context36.abrupt("return", jobs);
+            jobs = _context37.sent;
+            return _context37.abrupt("return", jobs);
 
           case 11:
           case "end":
-            return _context36.stop();
+            return _context37.stop();
         }
       }
-    }, _callee36);
+    }, _callee37);
   }));
   return _getJobsInQueueFromDatabase.apply(this, arguments);
 }
@@ -2448,26 +2519,26 @@ function _getJobsInDatabase2(_x48) {
 }
 
 function _getJobsInDatabase() {
-  _getJobsInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee37(jobIds) {
+  _getJobsInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee38(jobIds) {
     var _yield$getReadOnlyJob3, _yield$getReadOnlyJob4, store, promise, jobs, _iterator5, _step5, _loop3;
 
-    return regeneratorRuntime.wrap(function _callee37$(_context37) {
+    return regeneratorRuntime.wrap(function _callee38$(_context38) {
       while (1) {
-        switch (_context37.prev = _context37.next) {
+        switch (_context38.prev = _context38.next) {
           case 0:
             if (Array.isArray(jobIds)) {
-              _context37.next = 2;
+              _context38.next = 2;
               break;
             }
 
             throw new TypeError("Unable to get jobs from database, received invalid \"jobIds\" argument type \"".concat(_typeof(jobIds), "\""));
 
           case 2:
-            _context37.next = 4;
+            _context38.next = 4;
             return getReadOnlyJobsObjectStoreAndTransactionPromise();
 
           case 4:
-            _yield$getReadOnlyJob3 = _context37.sent;
+            _yield$getReadOnlyJob3 = _context38.sent;
             _yield$getReadOnlyJob4 = _slicedToArray(_yield$getReadOnlyJob3, 2);
             store = _yield$getReadOnlyJob4[0];
             promise = _yield$getReadOnlyJob4[1];
@@ -2500,18 +2571,18 @@ function _getJobsInDatabase() {
               _iterator5.f();
             }
 
-            _context37.next = 13;
+            _context38.next = 13;
             return promise;
 
           case 13:
-            return _context37.abrupt("return", jobs);
+            return _context38.abrupt("return", jobs);
 
           case 14:
           case "end":
-            return _context37.stop();
+            return _context38.stop();
         }
       }
-    }, _callee37);
+    }, _callee38);
   }));
   return _getJobsInDatabase.apply(this, arguments);
 }
@@ -2521,25 +2592,25 @@ function _getCompletedJobsCountFromDatabase2(_x49) {
 }
 
 function _getCompletedJobsCountFromDatabase() {
-  _getCompletedJobsCountFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee38(queueId) {
+  _getCompletedJobsCountFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee39(queueId) {
     var jobs;
-    return regeneratorRuntime.wrap(function _callee38$(_context38) {
+    return regeneratorRuntime.wrap(function _callee39$(_context39) {
       while (1) {
-        switch (_context38.prev = _context38.next) {
+        switch (_context39.prev = _context39.next) {
           case 0:
-            _context38.next = 2;
+            _context39.next = 2;
             return _getCompletedJobsFromDatabase2(queueId);
 
           case 2:
-            jobs = _context38.sent;
-            return _context38.abrupt("return", jobs.length);
+            jobs = _context39.sent;
+            return _context39.abrupt("return", jobs.length);
 
           case 4:
           case "end":
-            return _context38.stop();
+            return _context39.stop();
         }
       }
-    }, _callee38);
+    }, _callee39);
   }));
   return _getCompletedJobsCountFromDatabase.apply(this, arguments);
 }
@@ -2549,30 +2620,30 @@ function _getCompletedJobsFromDatabase2(_x50) {
 }
 
 function _getCompletedJobsFromDatabase() {
-  _getCompletedJobsFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee39(queueId) {
+  _getCompletedJobsFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee40(queueId) {
     var store, index, request, jobs;
-    return regeneratorRuntime.wrap(function _callee39$(_context39) {
+    return regeneratorRuntime.wrap(function _callee40$(_context40) {
       while (1) {
-        switch (_context39.prev = _context39.next) {
+        switch (_context40.prev = _context40.next) {
           case 0:
             if (!(typeof queueId !== 'string')) {
-              _context39.next = 2;
+              _context40.next = 2;
               break;
             }
 
             throw new TypeError("Unable to get completed jobs database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\""));
 
           case 2:
-            _context39.next = 4;
+            _context40.next = 4;
             return getReadOnlyJobsObjectStore();
 
           case 4:
-            store = _context39.sent;
+            store = _context40.sent;
             index = store.index('statusQueueIdIndex'); // $FlowFixMe
 
             request = index.openCursor(IDBKeyRange.only([queueId, _JOB_COMPLETE_STATUS]));
             jobs = [];
-            _context39.next = 10;
+            _context40.next = 10;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function (event) {
                 var cursor = event.target.result;
@@ -2593,14 +2664,14 @@ function _getCompletedJobsFromDatabase() {
             });
 
           case 10:
-            return _context39.abrupt("return", jobs);
+            return _context40.abrupt("return", jobs);
 
           case 11:
           case "end":
-            return _context39.stop();
+            return _context40.stop();
         }
       }
-    }, _callee39);
+    }, _callee40);
   }));
   return _getCompletedJobsFromDatabase.apply(this, arguments);
 }
@@ -2610,14 +2681,14 @@ function _storeAuthDataInDatabase2(_x51, _x52) {
 }
 
 function _storeAuthDataInDatabase() {
-  _storeAuthDataInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee40(id, data) {
+  _storeAuthDataInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee41(id, data) {
     var store, request;
-    return regeneratorRuntime.wrap(function _callee40$(_context40) {
+    return regeneratorRuntime.wrap(function _callee41$(_context41) {
       while (1) {
-        switch (_context40.prev = _context40.next) {
+        switch (_context41.prev = _context41.next) {
           case 0:
             if (!(typeof id !== 'string')) {
-              _context40.next = 2;
+              _context41.next = 2;
               break;
             }
 
@@ -2625,23 +2696,23 @@ function _storeAuthDataInDatabase() {
 
           case 2:
             if (!(_typeof(data) !== 'object')) {
-              _context40.next = 4;
+              _context41.next = 4;
               break;
             }
 
             throw new TypeError("Unable to store auth data in database, received invalid \"data\" argument type \"".concat(_typeof(data), "\""));
 
           case 4:
-            _context40.next = 6;
+            _context41.next = 6;
             return getReadWriteAuthObjectStore();
 
           case 6:
-            store = _context40.sent;
+            store = _context41.sent;
             request = store.put({
               id: id,
               data: data
             });
-            _context40.next = 10;
+            _context41.next = 10;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve();
@@ -2656,10 +2727,10 @@ function _storeAuthDataInDatabase() {
 
           case 10:
           case "end":
-            return _context40.stop();
+            return _context41.stop();
         }
       }
-    }, _callee40);
+    }, _callee41);
   }));
   return _storeAuthDataInDatabase.apply(this, arguments);
 }
@@ -2669,60 +2740,8 @@ function _getAuthDataFromDatabase2(_x53) {
 }
 
 function _getAuthDataFromDatabase() {
-  _getAuthDataFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee41(id) {
+  _getAuthDataFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee42(id) {
     var store, request, authData;
-    return regeneratorRuntime.wrap(function _callee41$(_context41) {
-      while (1) {
-        switch (_context41.prev = _context41.next) {
-          case 0:
-            if (!(typeof id !== 'string')) {
-              _context41.next = 2;
-              break;
-            }
-
-            throw new TypeError("Unable to store auth data in database, received invalid \"id\" argument type \"".concat(_typeof(id), "\""));
-
-          case 2:
-            _context41.next = 4;
-            return getReadOnlyAuthObjectStore();
-
-          case 4:
-            store = _context41.sent;
-            request = store.get(id);
-            _context41.next = 8;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function () {
-                resolve(request.result);
-              };
-
-              request.onerror = function (event) {
-                logger.error("Request error while getting auth data for ".concat(id));
-                logger.errorObject(event);
-                reject(new Error("Request error while getting auth data for ".concat(id)));
-              };
-            });
-
-          case 8:
-            authData = _context41.sent;
-            return _context41.abrupt("return", typeof authData !== 'undefined' ? authData.data : undefined);
-
-          case 10:
-          case "end":
-            return _context41.stop();
-        }
-      }
-    }, _callee41);
-  }));
-  return _getAuthDataFromDatabase.apply(this, arguments);
-}
-
-function _removeAuthDataFromDatabase2(_x54) {
-  return _removeAuthDataFromDatabase.apply(this, arguments);
-}
-
-function _removeAuthDataFromDatabase() {
-  _removeAuthDataFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee42(id) {
-    var store, request;
     return regeneratorRuntime.wrap(function _callee42$(_context42) {
       while (1) {
         switch (_context42.prev = _context42.next) {
@@ -2736,12 +2755,64 @@ function _removeAuthDataFromDatabase() {
 
           case 2:
             _context42.next = 4;
-            return getReadWriteAuthObjectStore();
+            return getReadOnlyAuthObjectStore();
 
           case 4:
             store = _context42.sent;
+            request = store.get(id);
+            _context42.next = 8;
+            return new Promise(function (resolve, reject) {
+              request.onsuccess = function () {
+                resolve(request.result);
+              };
+
+              request.onerror = function (event) {
+                logger.error("Request error while getting auth data for ".concat(id));
+                logger.errorObject(event);
+                reject(new Error("Request error while getting auth data for ".concat(id)));
+              };
+            });
+
+          case 8:
+            authData = _context42.sent;
+            return _context42.abrupt("return", typeof authData !== 'undefined' ? authData.data : undefined);
+
+          case 10:
+          case "end":
+            return _context42.stop();
+        }
+      }
+    }, _callee42);
+  }));
+  return _getAuthDataFromDatabase.apply(this, arguments);
+}
+
+function _removeAuthDataFromDatabase2(_x54) {
+  return _removeAuthDataFromDatabase.apply(this, arguments);
+}
+
+function _removeAuthDataFromDatabase() {
+  _removeAuthDataFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee43(id) {
+    var store, request;
+    return regeneratorRuntime.wrap(function _callee43$(_context43) {
+      while (1) {
+        switch (_context43.prev = _context43.next) {
+          case 0:
+            if (!(typeof id !== 'string')) {
+              _context43.next = 2;
+              break;
+            }
+
+            throw new TypeError("Unable to store auth data in database, received invalid \"id\" argument type \"".concat(_typeof(id), "\""));
+
+          case 2:
+            _context43.next = 4;
+            return getReadWriteAuthObjectStore();
+
+          case 4:
+            store = _context43.sent;
             request = store.delete(id);
-            return _context42.abrupt("return", new Promise(function (resolve, reject) {
+            return _context43.abrupt("return", new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve();
               };
@@ -2755,10 +2826,10 @@ function _removeAuthDataFromDatabase() {
 
           case 7:
           case "end":
-            return _context42.stop();
+            return _context43.stop();
         }
       }
-    }, _callee42);
+    }, _callee43);
   }));
   return _removeAuthDataFromDatabase.apply(this, arguments);
 }
@@ -2768,18 +2839,18 @@ function _getQueueStatus2(_x55) {
 }
 
 function _getQueueStatus() {
-  _getQueueStatus = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee43(queueId) {
+  _getQueueStatus = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee44(queueId) {
     var store, index, abortedRequest, completeRequest, pendingRequest, errorRequest, cleanupRequest, cleanupAndRemoveRequest, abortedCountPromise, completeCountPromise, pendingCountPromise, errorCountPromise, cleanupCountPromise, cleanupAndRemoveCountPromise, _yield$Promise$all, _yield$Promise$all2, abortedCount, completeCount, pendingCount, errorCount, cleanupCount, cleanupAndRemoveCount;
 
-    return regeneratorRuntime.wrap(function _callee43$(_context43) {
+    return regeneratorRuntime.wrap(function _callee44$(_context44) {
       while (1) {
-        switch (_context43.prev = _context43.next) {
+        switch (_context44.prev = _context44.next) {
           case 0:
-            _context43.next = 2;
+            _context44.next = 2;
             return getReadOnlyJobsObjectStore();
 
           case 2:
-            store = _context43.sent;
+            store = _context44.sent;
             index = store.index('statusQueueIdIndex'); // $FlowFixMe
 
             abortedRequest = index.getAllKeys(IDBKeyRange.only([queueId, _JOB_ABORTED_STATUS])); // $FlowFixMe
@@ -2859,11 +2930,11 @@ function _getQueueStatus() {
                 reject(new Error("Request error while getting status of queue ".concat(queueId)));
               };
             });
-            _context43.next = 18;
+            _context44.next = 18;
             return Promise.all([abortedCountPromise, completeCountPromise, pendingCountPromise, errorCountPromise, cleanupCountPromise, cleanupAndRemoveCountPromise]);
 
           case 18:
-            _yield$Promise$all = _context43.sent;
+            _yield$Promise$all = _context44.sent;
             _yield$Promise$all2 = _slicedToArray(_yield$Promise$all, 6);
             abortedCount = _yield$Promise$all2[0];
             completeCount = _yield$Promise$all2[1];
@@ -2873,37 +2944,37 @@ function _getQueueStatus() {
             cleanupAndRemoveCount = _yield$Promise$all2[5];
 
             if (!(abortedCount > 0 || cleanupCount > 0)) {
-              _context43.next = 28;
+              _context44.next = 28;
               break;
             }
 
-            return _context43.abrupt("return", _QUEUE_ERROR_STATUS);
+            return _context44.abrupt("return", _QUEUE_ERROR_STATUS);
 
           case 28:
             if (!(errorCount > 0 || pendingCount > 0 || cleanupAndRemoveCount > 0)) {
-              _context43.next = 30;
+              _context44.next = 30;
               break;
             }
 
-            return _context43.abrupt("return", _QUEUE_PENDING_STATUS);
+            return _context44.abrupt("return", _QUEUE_PENDING_STATUS);
 
           case 30:
             if (!(completeCount > 0)) {
-              _context43.next = 32;
+              _context44.next = 32;
               break;
             }
 
-            return _context43.abrupt("return", _QUEUE_COMPLETE_STATUS);
+            return _context44.abrupt("return", _QUEUE_COMPLETE_STATUS);
 
           case 32:
-            return _context43.abrupt("return", _QUEUE_EMPTY_STATUS);
+            return _context44.abrupt("return", _QUEUE_EMPTY_STATUS);
 
           case 33:
           case "end":
-            return _context43.stop();
+            return _context44.stop();
         }
       }
-    }, _callee43);
+    }, _callee44);
   }));
   return _getQueueStatus.apply(this, arguments);
 }
@@ -2913,14 +2984,14 @@ function _addArgLookup2(_x56, _x57, _x58) {
 }
 
 function _addArgLookup() {
-  _addArgLookup = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee44(jobId, key, jsonPath) {
+  _addArgLookup = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee45(jobId, key, jsonPath) {
     var store, request;
-    return regeneratorRuntime.wrap(function _callee44$(_context44) {
+    return regeneratorRuntime.wrap(function _callee45$(_context45) {
       while (1) {
-        switch (_context44.prev = _context44.next) {
+        switch (_context45.prev = _context45.next) {
           case 0:
             if (!(typeof jobId !== 'number')) {
-              _context44.next = 2;
+              _context45.next = 2;
               break;
             }
 
@@ -2928,7 +2999,7 @@ function _addArgLookup() {
 
           case 2:
             if (!(typeof key !== 'string')) {
-              _context44.next = 4;
+              _context45.next = 4;
               break;
             }
 
@@ -2936,24 +3007,24 @@ function _addArgLookup() {
 
           case 4:
             if (!(typeof jsonPath !== 'string')) {
-              _context44.next = 6;
+              _context45.next = 6;
               break;
             }
 
             throw new TypeError("Unable add argument lookup, received invalid \"jsonPath\" argument type \"".concat(_typeof(jsonPath), "\""));
 
           case 6:
-            _context44.next = 8;
+            _context45.next = 8;
             return getReadWriteArgLookupObjectStore();
 
           case 8:
-            store = _context44.sent;
+            store = _context45.sent;
             request = store.put({
               jobId: jobId,
               key: key,
               jsonPath: jsonPath
             });
-            return _context44.abrupt("return", new Promise(function (resolve, reject) {
+            return _context45.abrupt("return", new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve();
               };
@@ -2967,10 +3038,10 @@ function _addArgLookup() {
 
           case 11:
           case "end":
-            return _context44.stop();
+            return _context45.stop();
         }
       }
-    }, _callee44);
+    }, _callee45);
   }));
   return _addArgLookup.apply(this, arguments);
 }
@@ -2980,29 +3051,29 @@ function _getArgLookupJobPathMap2(_x59) {
 }
 
 function _getArgLookupJobPathMap() {
-  _getArgLookupJobPathMap = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee45(key) {
+  _getArgLookupJobPathMap = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee46(key) {
     var store, index, request;
-    return regeneratorRuntime.wrap(function _callee45$(_context45) {
+    return regeneratorRuntime.wrap(function _callee46$(_context46) {
       while (1) {
-        switch (_context45.prev = _context45.next) {
+        switch (_context46.prev = _context46.next) {
           case 0:
             if (!(typeof key !== 'string')) {
-              _context45.next = 2;
+              _context46.next = 2;
               break;
             }
 
             throw new TypeError("Unable to lookup arguments, received invalid \"key\" argument type \"".concat(_typeof(key), "\""));
 
           case 2:
-            _context45.next = 4;
+            _context46.next = 4;
             return getReadOnlyArgLookupObjectStore();
 
           case 4:
-            store = _context45.sent;
+            store = _context46.sent;
             index = store.index('keyIndex'); // $FlowFixMe
 
             request = index.getAll(IDBKeyRange.only(key));
-            return _context45.abrupt("return", new Promise(function (resolve, reject) {
+            return _context46.abrupt("return", new Promise(function (resolve, reject) {
               request.onsuccess = function (event) {
                 var map = new Map(event.target.result.map(function (x) {
                   return [x.jobId, x.jsonPath];
@@ -3019,10 +3090,10 @@ function _getArgLookupJobPathMap() {
 
           case 8:
           case "end":
-            return _context45.stop();
+            return _context46.stop();
         }
       }
-    }, _callee45);
+    }, _callee46);
   }));
   return _getArgLookupJobPathMap.apply(this, arguments);
 }
@@ -3032,71 +3103,8 @@ function _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase2(_x60) {
 }
 
 function _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase() {
-  _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee46(key) {
+  _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee47(key) {
     var map, _iterator6, _step6, jobId;
-
-    return regeneratorRuntime.wrap(function _callee46$(_context46) {
-      while (1) {
-        switch (_context46.prev = _context46.next) {
-          case 0:
-            _context46.next = 2;
-            return _getArgLookupJobPathMap2(key);
-
-          case 2:
-            map = _context46.sent;
-            _iterator6 = _createForOfIteratorHelper(map.keys());
-            _context46.prev = 4;
-
-            _iterator6.s();
-
-          case 6:
-            if ((_step6 = _iterator6.n()).done) {
-              _context46.next = 12;
-              break;
-            }
-
-            jobId = _step6.value;
-            _context46.next = 10;
-            return _markJobCleanupAndRemoveInDatabase(jobId);
-
-          case 10:
-            _context46.next = 6;
-            break;
-
-          case 12:
-            _context46.next = 17;
-            break;
-
-          case 14:
-            _context46.prev = 14;
-            _context46.t0 = _context46["catch"](4);
-
-            _iterator6.e(_context46.t0);
-
-          case 17:
-            _context46.prev = 17;
-
-            _iterator6.f();
-
-            return _context46.finish(17);
-
-          case 20:
-          case "end":
-            return _context46.stop();
-        }
-      }
-    }, _callee46, null, [[4, 14, 17, 20]]);
-  }));
-  return _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase.apply(this, arguments);
-}
-
-function _lookupArgs2(_x61) {
-  return _lookupArgs.apply(this, arguments);
-}
-
-function _lookupArgs() {
-  _lookupArgs = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee47(key) {
-    var map, jobs, results, _iterator7, _step7, _step7$value, id, args, jsonPath, _iterator8, _step8, result;
 
     return regeneratorRuntime.wrap(function _callee47$(_context47) {
       while (1) {
@@ -3107,29 +3115,92 @@ function _lookupArgs() {
 
           case 2:
             map = _context47.sent;
+            _iterator6 = _createForOfIteratorHelper(map.keys());
+            _context47.prev = 4;
 
-            if (!(map.size === 0)) {
-              _context47.next = 5;
+            _iterator6.s();
+
+          case 6:
+            if ((_step6 = _iterator6.n()).done) {
+              _context47.next = 12;
               break;
             }
 
-            return _context47.abrupt("return", []);
+            jobId = _step6.value;
+            _context47.next = 10;
+            return _markJobCleanupAndRemoveInDatabase(jobId);
+
+          case 10:
+            _context47.next = 6;
+            break;
+
+          case 12:
+            _context47.next = 17;
+            break;
+
+          case 14:
+            _context47.prev = 14;
+            _context47.t0 = _context47["catch"](4);
+
+            _iterator6.e(_context47.t0);
+
+          case 17:
+            _context47.prev = 17;
+
+            _iterator6.f();
+
+            return _context47.finish(17);
+
+          case 20:
+          case "end":
+            return _context47.stop();
+        }
+      }
+    }, _callee47, null, [[4, 14, 17, 20]]);
+  }));
+  return _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase.apply(this, arguments);
+}
+
+function _lookupArgs2(_x61) {
+  return _lookupArgs.apply(this, arguments);
+}
+
+function _lookupArgs() {
+  _lookupArgs = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee48(key) {
+    var map, jobs, results, _iterator7, _step7, _step7$value, id, args, jsonPath, _iterator8, _step8, result;
+
+    return regeneratorRuntime.wrap(function _callee48$(_context48) {
+      while (1) {
+        switch (_context48.prev = _context48.next) {
+          case 0:
+            _context48.next = 2;
+            return _getArgLookupJobPathMap2(key);
+
+          case 2:
+            map = _context48.sent;
+
+            if (!(map.size === 0)) {
+              _context48.next = 5;
+              break;
+            }
+
+            return _context48.abrupt("return", []);
 
           case 5:
-            _context47.next = 7;
+            _context48.next = 7;
             return _getJobsInDatabase2(_toConsumableArray(map.keys()));
 
           case 7:
-            jobs = _context47.sent;
+            jobs = _context48.sent;
             results = [];
             _iterator7 = _createForOfIteratorHelper(jobs);
-            _context47.prev = 10;
+            _context48.prev = 10;
 
             _iterator7.s();
 
           case 12:
             if ((_step7 = _iterator7.n()).done) {
-              _context47.next = 21;
+              _context48.next = 21;
               break;
             }
 
@@ -3137,11 +3208,11 @@ function _lookupArgs() {
             jsonPath = map.get(id);
 
             if (!(typeof jsonPath !== 'string')) {
-              _context47.next = 17;
+              _context48.next = 17;
               break;
             }
 
-            return _context47.abrupt("continue", 19);
+            return _context48.abrupt("continue", 19);
 
           case 17:
             _iterator8 = _createForOfIteratorHelper((0, _jsonpathPlus.JSONPath)({
@@ -3161,35 +3232,35 @@ function _lookupArgs() {
             }
 
           case 19:
-            _context47.next = 12;
+            _context48.next = 12;
             break;
 
           case 21:
-            _context47.next = 26;
+            _context48.next = 26;
             break;
 
           case 23:
-            _context47.prev = 23;
-            _context47.t0 = _context47["catch"](10);
+            _context48.prev = 23;
+            _context48.t0 = _context48["catch"](10);
 
-            _iterator7.e(_context47.t0);
+            _iterator7.e(_context48.t0);
 
           case 26:
-            _context47.prev = 26;
+            _context48.prev = 26;
 
             _iterator7.f();
 
-            return _context47.finish(26);
+            return _context48.finish(26);
 
           case 29:
-            return _context47.abrupt("return", results);
+            return _context48.abrupt("return", results);
 
           case 30:
           case "end":
-            return _context47.stop();
+            return _context48.stop();
         }
       }
-    }, _callee47, null, [[10, 23, 26, 29]]);
+    }, _callee48, null, [[10, 23, 26, 29]]);
   }));
   return _lookupArgs.apply(this, arguments);
 }
@@ -3199,25 +3270,25 @@ function _lookupArg2(_x62) {
 }
 
 function _lookupArg() {
-  _lookupArg = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee48(key) {
+  _lookupArg = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee49(key) {
     var results;
-    return regeneratorRuntime.wrap(function _callee48$(_context48) {
+    return regeneratorRuntime.wrap(function _callee49$(_context49) {
       while (1) {
-        switch (_context48.prev = _context48.next) {
+        switch (_context49.prev = _context49.next) {
           case 0:
-            _context48.next = 2;
+            _context49.next = 2;
             return _lookupArgs2(key);
 
           case 2:
-            results = _context48.sent;
-            return _context48.abrupt("return", results[0]);
+            results = _context49.sent;
+            return _context49.abrupt("return", results[0]);
 
           case 4:
           case "end":
-            return _context48.stop();
+            return _context49.stop();
         }
       }
-    }, _callee48);
+    }, _callee49);
   }));
   return _lookupArg.apply(this, arguments);
 }
@@ -3236,18 +3307,18 @@ function _removeArgLookupsForJob2(_x63) {
 }
 
 function _removeArgLookupsForJob() {
-  _removeArgLookupsForJob = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee49(jobId) {
+  _removeArgLookupsForJob = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee50(jobId) {
     var _yield$getReadWriteAr, _yield$getReadWriteAr2, store, promise, index, request;
 
-    return regeneratorRuntime.wrap(function _callee49$(_context49) {
+    return regeneratorRuntime.wrap(function _callee50$(_context50) {
       while (1) {
-        switch (_context49.prev = _context49.next) {
+        switch (_context50.prev = _context50.next) {
           case 0:
-            _context49.next = 2;
+            _context50.next = 2;
             return getReadWriteArgLookupObjectStoreAndTransactionPromise();
 
           case 2:
-            _yield$getReadWriteAr = _context49.sent;
+            _yield$getReadWriteAr = _context50.sent;
             _yield$getReadWriteAr2 = _slicedToArray(_yield$getReadWriteAr, 2);
             store = _yield$getReadWriteAr2[0];
             promise = _yield$getReadWriteAr2[1];
@@ -3281,17 +3352,217 @@ function _removeArgLookupsForJob() {
               logger.errorObject(event);
             };
 
-            _context49.next = 12;
+            _context50.next = 12;
             return promise;
 
           case 12:
           case "end":
-            return _context49.stop();
+            return _context50.stop();
         }
       }
-    }, _callee49);
+    }, _callee50);
   }));
   return _removeArgLookupsForJob.apply(this, arguments);
+}
+
+function _scheduleAbortQueueOnUnload2(_x64, _x65) {
+  return _scheduleAbortQueueOnUnload.apply(this, arguments);
+}
+
+function _scheduleAbortQueueOnUnload() {
+  _scheduleAbortQueueOnUnload = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee51(queueId, startAfter) {
+    var store, request;
+    return regeneratorRuntime.wrap(function _callee51$(_context51) {
+      while (1) {
+        switch (_context51.prev = _context51.next) {
+          case 0:
+            if (!(typeof queueId !== 'string')) {
+              _context51.next = 2;
+              break;
+            }
+
+            throw new TypeError("Unable schedule abort queue on client unload, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\""));
+
+          case 2:
+            if (!(typeof startAfter !== 'number')) {
+              _context51.next = 4;
+              break;
+            }
+
+            throw new TypeError("Unable schedule abort queue on client unload, received invalid \"startAfter\" argument type \"".concat(_typeof(startAfter), "\""));
+
+          case 4:
+            _context51.next = 6;
+            return getReadWriteAbortOnUnloadObjectStore();
+
+          case 6:
+            store = _context51.sent;
+            request = store.put({
+              queueId: queueId,
+              startAfter: startAfter
+            });
+            return _context51.abrupt("return", new Promise(function (resolve, reject) {
+              request.onsuccess = function () {
+                resolve();
+              };
+
+              request.onerror = function (event) {
+                logger.error("Error while scheduling abort queue ".concat(queueId, " on client unload"));
+                logger.errorObject(event);
+                reject(new Error("Error while scheduling abort queue ".concat(queueId, " on client unload")));
+              };
+            }));
+
+          case 9:
+          case "end":
+            return _context51.stop();
+        }
+      }
+    }, _callee51);
+  }));
+  return _scheduleAbortQueueOnUnload.apply(this, arguments);
+}
+
+function _removeAbortQueueOnUnload2(_x66) {
+  return _removeAbortQueueOnUnload.apply(this, arguments);
+}
+
+function _removeAbortQueueOnUnload() {
+  _removeAbortQueueOnUnload = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee52(queueId) {
+    var store, request;
+    return regeneratorRuntime.wrap(function _callee52$(_context52) {
+      while (1) {
+        switch (_context52.prev = _context52.next) {
+          case 0:
+            if (!(typeof queueId !== 'string')) {
+              _context52.next = 2;
+              break;
+            }
+
+            throw new TypeError("Unable remove scheduled abort queue on client unload, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\""));
+
+          case 2:
+            _context52.next = 4;
+            return getReadWriteAbortOnUnloadObjectStore();
+
+          case 4:
+            store = _context52.sent;
+            request = store.delete(queueId);
+            return _context52.abrupt("return", new Promise(function (resolve, reject) {
+              request.onsuccess = function () {
+                resolve();
+              };
+
+              request.onerror = function (event) {
+                logger.error("Error while removing scheduled abort queue ".concat(queueId, " on client unload"));
+                logger.errorObject(event);
+                reject(new Error("Error while removing scheduled abort queue ".concat(queueId, " on client unload")));
+              };
+            }));
+
+          case 7:
+          case "end":
+            return _context52.stop();
+        }
+      }
+    }, _callee52);
+  }));
+  return _removeAbortQueueOnUnload.apply(this, arguments);
+}
+
+function _getAllAbortOnUnloadQueues2() {
+  return _getAllAbortOnUnloadQueues.apply(this, arguments);
+}
+
+function _getAllAbortOnUnloadQueues() {
+  _getAllAbortOnUnloadQueues = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee53() {
+    var store, request, queueIds;
+    return regeneratorRuntime.wrap(function _callee53$(_context53) {
+      while (1) {
+        switch (_context53.prev = _context53.next) {
+          case 0:
+            _context53.next = 2;
+            return getReadOnlyAbortOnUnloadObjectStore();
+
+          case 2:
+            store = _context53.sent;
+            // $FlowFixMe
+            request = store.getAll();
+            _context53.next = 6;
+            return new Promise(function (resolve, reject) {
+              request.onsuccess = function (event) {
+                resolve(event.target.result.map(function (x) {
+                  return x.queueId;
+                }));
+              };
+
+              request.onerror = function (event) {
+                logger.error('Error while getting abort queue IDs');
+                logger.errorObject(event);
+                reject(new Error('Error while getting abort queue IDs'));
+              };
+            });
+
+          case 6:
+            queueIds = _context53.sent;
+            return _context53.abrupt("return", queueIds);
+
+          case 8:
+          case "end":
+            return _context53.stop();
+        }
+      }
+    }, _callee53);
+  }));
+  return _getAllAbortOnUnloadQueues.apply(this, arguments);
+}
+
+function _getScheduledAbortOnUnloadQueues2() {
+  return _getScheduledAbortOnUnloadQueues.apply(this, arguments);
+}
+
+function _getScheduledAbortOnUnloadQueues() {
+  _getScheduledAbortOnUnloadQueues = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee54() {
+    var store, index, request, queueIds;
+    return regeneratorRuntime.wrap(function _callee54$(_context54) {
+      while (1) {
+        switch (_context54.prev = _context54.next) {
+          case 0:
+            _context54.next = 2;
+            return getReadOnlyAbortOnUnloadObjectStore();
+
+          case 2:
+            store = _context54.sent;
+            index = store.index('startAfterIndex'); // $FlowFixMe
+
+            request = index.getAll(IDBKeyRange.upperBound(Date.now()));
+            _context54.next = 7;
+            return new Promise(function (resolve, reject) {
+              request.onsuccess = function (event) {
+                resolve(event.target.result.map(function (x) {
+                  return x.queueId;
+                }));
+              };
+
+              request.onerror = function (event) {
+                logger.error('Error while getting scheduled abort queue IDs');
+                logger.errorObject(event);
+                reject(new Error('Error while getting scheduled abort queue IDs'));
+              };
+            });
+
+          case 7:
+            queueIds = _context54.sent;
+            return _context54.abrupt("return", queueIds);
+
+          case 9:
+          case "end":
+            return _context54.stop();
+        }
+      }
+    }, _callee54);
+  }));
+  return _getScheduledAbortOnUnloadQueues.apply(this, arguments);
 }
 
 export var localJobEmitter = exports.localJobEmitter;
@@ -3360,4 +3631,8 @@ export var markJobsWithArgLookupKeyCleanupAndRemoveInDatabase = exports.markJobs
 export var lookupArgs = exports.lookupArgs;
 export var lookupArg = exports.lookupArg;
 export var removeArgLookupsForJob = exports.removeArgLookupsForJob;
+export var scheduleAbortQueueOnUnload = exports.scheduleAbortQueueOnUnload;
+export var removeAbortQueueOnUnload = exports.removeAbortQueueOnUnload;
+export var getAllAbortOnUnloadQueues = exports.getAllAbortOnUnloadQueues;
+export var getScheduledAbortOnUnloadQueues = exports.getScheduledAbortOnUnloadQueues;
 //# sourceMappingURL=database.js.map

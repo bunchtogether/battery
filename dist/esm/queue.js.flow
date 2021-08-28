@@ -26,6 +26,9 @@ import {
   markQueueForCleanupInDatabase,
   removeCleanupFromDatabase,
   restoreJobToDatabaseForCleanupAndRemove,
+  removeAbortQueueOnUnload,
+  getScheduledAbortOnUnloadQueues,
+  getAllAbortOnUnloadQueues,
   JOB_PENDING_STATUS,
   JOB_ERROR_STATUS,
   JOB_CLEANUP_STATUS,
@@ -63,6 +66,7 @@ export default class BatteryQueue extends EventEmitter {
   declare handleJobUpdate: void | (number, string, string, number) => void;
   declare handleJobDelete: void | (number, string) => void;
   declare heartbeatExpiresTimestamp: void | number;
+  declare heartbeatExpiresTimeout: void | TimeoutID;
 
   constructor(options?: Options = {}) {
     super();
@@ -80,11 +84,10 @@ export default class BatteryQueue extends EventEmitter {
     this.addListener('error', (error) => {
       this.logger.errorStack(error);
     });
-    let heartbeatExpiresTimeout;
     this.addListener('heartbeat', (interval:number) => {
-      clearTimeout(heartbeatExpiresTimeout);
+      clearTimeout(this.heartbeatExpiresTimeout);
       this.heartbeatExpiresTimestamp = Date.now() + Math.round(interval * 2.5);
-      heartbeatExpiresTimeout = setTimeout(() => {
+      this.heartbeatExpiresTimeout = setTimeout(() => {
         if (typeof this.heartbeatExpiresTimestamp !== 'number') {
           return;
         }
@@ -830,6 +833,7 @@ export default class BatteryQueue extends EventEmitter {
     if (typeof heartbeatExpiresTimestamp !== 'number') {
       return;
     }
+    clearTimeout(this.heartbeatExpiresTimeout);
     delete this.heartbeatExpiresTimestamp;
     const delay = heartbeatExpiresTimestamp - Date.now();
     if (delay > 0) {
@@ -852,7 +856,22 @@ export default class BatteryQueue extends EventEmitter {
       return;
     }
     this.logger.info('Unloading');
+    const queueIds = await getAllAbortOnUnloadQueues();
+    for (const queueId of queueIds) {
+      try {
+        await this.abortQueue(queueId);
+        await removeAbortQueueOnUnload(queueId);
+      } catch (error) {
+        this.logger.error(`Error in scheduled queue ${queueId} abort`);
+        this.logger.errorStack(error);
+        removeAbortQueueOnUnload(queueId).catch((error2) => {
+          this.logger.error(`Unable to remove scheduled queue ${queueId} abort`);
+          this.logger.errorStack(error2);
+        });
+      }
+    }
     this.emit('unloadClient');
+    await this.onIdle();
   }
 
   listenForServiceWorkerInterface() {
@@ -882,7 +901,7 @@ export default class BatteryQueue extends EventEmitter {
       }
     });
 
-    self.addEventListener('message', (event:ExtendableMessageEvent) => {
+    self.addEventListener('message', async (event:ExtendableMessageEvent) => {
       if (!(event instanceof ExtendableMessageEvent)) {
         return;
       }
@@ -919,8 +938,6 @@ export default class BatteryQueue extends EventEmitter {
       if (typeof handleJobsClear === 'function') {
         localJobEmitter.removeListener('jobsClear', handleJobsClear);
       }
-      port.postMessage({ type: 'BATTERY_QUEUE_WORKER_CONFIRMATION' });
-      this.logger.info('Linked to worker interface');
       port.onmessage = this.handlePortMessage.bind(this);
 
       handleJobAdd = (...args:Array<any>) => {
@@ -945,6 +962,22 @@ export default class BatteryQueue extends EventEmitter {
       activeEmitCallback = emitCallback;
       this.emitCallbacks.push(emitCallback);
       this.port = port;
+      const queueIds = await getScheduledAbortOnUnloadQueues();
+      for (const queueId of queueIds) {
+        try {
+          await this.abortQueue(queueId);
+          await removeAbortQueueOnUnload(queueId);
+        } catch (error) {
+          this.logger.error(`Error in scheduled queue ${queueId} abort`);
+          this.logger.errorStack(error);
+          removeAbortQueueOnUnload(queueId).catch((error2) => {
+            this.logger.error(`Unable to remove scheduled queue ${queueId} abort`);
+            this.logger.errorStack(error2);
+          });
+        }
+      }
+      port.postMessage({ type: 'BATTERY_QUEUE_WORKER_CONFIRMATION' });
+      this.logger.info('Linked to worker interface');
     });
     self.addEventListener('messageerror', (event:MessageEvent) => {
       this.logger.error('Service worker interface message error');
