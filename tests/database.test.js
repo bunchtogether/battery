@@ -40,10 +40,9 @@ import {
   removeJobsWithQueueIdAndTypeFromDatabase,
   removeQueueIdFromJobsDatabase,
   removeCompletedExpiredItemsFromDatabase,
-  scheduleAbortQueueOnUnload,
-  removeAbortQueueOnUnload,
-  getAllAbortOnUnloadQueues,
-  getScheduledAbortOnUnloadQueues,
+  updateUnloadDataInDatabase,
+  getUnloadDataFromDatabase,
+  clearUnloadDataInDatabase,
   updateJobInDatabase,
   JOB_PENDING_STATUS,
   JOB_COMPLETE_STATUS,
@@ -320,7 +319,7 @@ describe('IndexedDB Database', () => {
       throw new Error('Cleanup does not exist');
     }
 
-    expect(cleanupAfterDatabase.startAfter).toBeGreaterThan(Date.now());
+    expect(cleanupAfterDatabase.startAfter).toBeGreaterThan(Date.now() - 1);
   });
 
   it('Adds and removes jobs from the database', async () => {
@@ -908,7 +907,7 @@ describe('IndexedDB Database', () => {
       throw new Error('Job does not exist');
     }
 
-    expect(jobAfterUpdate.startAfter).toBeGreaterThan(Date.now());
+    expect(jobAfterUpdate.startAfter).toBeGreaterThan(Date.now() - 1);
   });
 
   it('Marks errored jobs for cleanup when marking queue for cleanup', async () => {
@@ -1006,20 +1005,21 @@ describe('IndexedDB Database', () => {
     expect(await getAuthDataFromDatabase(id)).toBeUndefined();
   });
 
-  it('Gets and sets queue IDs scheduled to abort in database', async () => {
-    const queueIdA = uuidv4();
-    const queueIdB = uuidv4();
-    await expectAsync(getAllAbortOnUnloadQueues()).toBeResolvedTo([]);
-    await expectAsync(getScheduledAbortOnUnloadQueues()).toBeResolvedTo([]);
-    await scheduleAbortQueueOnUnload(queueIdA, 0);
-    await scheduleAbortQueueOnUnload(queueIdB, Date.now() + 10000);
-    await
+  it('Gets and sets unload data in database', async () => {
+    const keyA = uuidv4();
+    const valueA = uuidv4();
+    const keyB = uuidv4();
+    const valueB = uuidv4();
 
-    expect(new Set(await getAllAbortOnUnloadQueues())).toEqual(new Set([queueIdA, queueIdB]));
-    await expectAsync(getScheduledAbortOnUnloadQueues()).toBeResolvedTo([queueIdA]);
-    await removeAbortQueueOnUnload(queueIdA);
-    await removeAbortQueueOnUnload(queueIdB);
-    await expectAsync(getAllAbortOnUnloadQueues()).toBeResolvedTo([]);
-    await expectAsync(getScheduledAbortOnUnloadQueues()).toBeResolvedTo([]);
+    expect(await getUnloadDataFromDatabase()).toBeUndefined();
+    await updateUnloadDataInDatabase(() => ({ [keyA]: valueA }));
+    await updateUnloadDataInDatabase((existing:Object) => {
+      expect(existing).toEqual({ [keyA]: valueA });
+      return Object.assign({ [keyB]: valueB }, existing);
+    });
+    await expectAsync(getUnloadDataFromDatabase()).toBeResolvedTo(({ [keyA]: valueA, [keyB]: valueB }));
+    await clearUnloadDataInDatabase();
+
+    expect(await getUnloadDataFromDatabase()).toBeUndefined();
   });
 });

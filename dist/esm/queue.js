@@ -1,7 +1,7 @@
 import PQueue from 'p-queue';
 import EventEmitter from 'events';
 import makeLogger from './logger';
-import { jobEmitter, localJobEmitter, clearDatabase, dequeueFromDatabase, dequeueFromDatabaseNotIn, incrementJobAttemptInDatabase, incrementCleanupAttemptInDatabase, markJobCompleteInDatabase, markJobPendingInDatabase, markJobErrorInDatabase, markJobStartAfterInDatabase, markJobAsAbortedOrRemoveFromDatabase, markCleanupStartAfterInDatabase, updateCleanupValuesInDatabase, getCleanupFromDatabase, removePathFromCleanupDataInDatabase, getJobFromDatabase, markQueueForCleanupInDatabase, removeCleanupFromDatabase, restoreJobToDatabaseForCleanupAndRemove, removeAbortQueueOnUnload, getScheduledAbortOnUnloadQueues, getAllAbortOnUnloadQueues, JOB_PENDING_STATUS, JOB_ERROR_STATUS, JOB_CLEANUP_STATUS, JOB_CLEANUP_AND_REMOVE_STATUS } from './database';
+import { jobEmitter, localJobEmitter, clearDatabase, dequeueFromDatabase, dequeueFromDatabaseNotIn, incrementJobAttemptInDatabase, incrementCleanupAttemptInDatabase, markJobCompleteInDatabase, markJobPendingInDatabase, markJobErrorInDatabase, markJobStartAfterInDatabase, markJobAsAbortedOrRemoveFromDatabase, markCleanupStartAfterInDatabase, updateCleanupValuesInDatabase, getCleanupFromDatabase, removePathFromCleanupDataInDatabase, getJobFromDatabase, markQueueForCleanupInDatabase, removeCleanupFromDatabase, restoreJobToDatabaseForCleanupAndRemove, getUnloadDataFromDatabase, clearUnloadDataInDatabase, JOB_PENDING_STATUS, JOB_ERROR_STATUS, JOB_CLEANUP_STATUS, JOB_CLEANUP_AND_REMOVE_STATUS } from './database';
 import { AbortError } from './errors';
 const PRIORITY_OFFSET = Math.floor(Number.MAX_SAFE_INTEGER / 2);
 export default class BatteryQueue extends EventEmitter {
@@ -152,6 +152,22 @@ export default class BatteryQueue extends EventEmitter {
     await this.dequeue();
     const queueIds = new Set(this.queueMap.keys());
     return queueIds;
+  }
+
+  setUnload(handleUnload) {
+    if (typeof this.handleUnload === 'function') {
+      throw new Error('Unload handler already exists');
+    }
+
+    this.handleUnload = handleUnload;
+  }
+
+  removeUnload() {
+    if (typeof this.handleUnload !== 'function') {
+      throw new Error('Unload handler does not exist');
+    }
+
+    delete this.handleUnload;
   }
 
   setRetryJobDelay(type, retryJobDelayFunction) {
@@ -1037,19 +1053,16 @@ export default class BatteryQueue extends EventEmitter {
     }
 
     this.logger.info('Unloading');
-    const queueIds = await getAllAbortOnUnloadQueues();
+    const handleUnload = this.handleUnload;
 
-    for (const queueId of queueIds) {
+    if (typeof handleUnload === 'function') {
       try {
-        await this.abortQueue(queueId);
-        await removeAbortQueueOnUnload(queueId);
+        const unloadData = await getUnloadDataFromDatabase();
+        await handleUnload(unloadData);
+        await clearUnloadDataInDatabase();
       } catch (error) {
-        this.logger.error(`Error in scheduled queue ${queueId} abort`);
+        this.logger.error('Error in unload handler');
         this.logger.errorStack(error);
-        removeAbortQueueOnUnload(queueId).catch(error2 => {
-          this.logger.error(`Unable to remove scheduled queue ${queueId} abort`);
-          this.logger.errorStack(error2);
-        });
       }
     }
 
@@ -1083,7 +1096,7 @@ export default class BatteryQueue extends EventEmitter {
         this.logger.warn(`Received unknown SyncManager event tag ${event.tag}`);
       }
     });
-    self.addEventListener('message', async event => {
+    self.addEventListener('message', event => {
       if (!(event instanceof ExtendableMessageEvent)) {
         return;
       }
@@ -1183,22 +1196,6 @@ export default class BatteryQueue extends EventEmitter {
       activeEmitCallback = emitCallback;
       this.emitCallbacks.push(emitCallback);
       this.port = port;
-      const queueIds = await getScheduledAbortOnUnloadQueues();
-
-      for (const queueId of queueIds) {
-        try {
-          await this.abortQueue(queueId);
-          await removeAbortQueueOnUnload(queueId);
-        } catch (error) {
-          this.logger.error(`Error in scheduled queue ${queueId} abort`);
-          this.logger.errorStack(error);
-          removeAbortQueueOnUnload(queueId).catch(error2 => {
-            this.logger.error(`Unable to remove scheduled queue ${queueId} abort`);
-            this.logger.errorStack(error2);
-          });
-        }
-      }
-
       port.postMessage({
         type: 'BATTERY_QUEUE_WORKER_CONFIRMATION'
       });

@@ -26,9 +26,8 @@ import {
   markQueueForCleanupInDatabase,
   removeCleanupFromDatabase,
   restoreJobToDatabaseForCleanupAndRemove,
-  removeAbortQueueOnUnload,
-  getScheduledAbortOnUnloadQueues,
-  getAllAbortOnUnloadQueues,
+  getUnloadDataFromDatabase,
+  clearUnloadDataInDatabase,
   JOB_PENDING_STATUS,
   JOB_ERROR_STATUS,
   JOB_CLEANUP_STATUS,
@@ -42,6 +41,7 @@ type HandlerFunction = (Array<any>, AbortSignal, (Object) => Promise<void>) => P
 type CleanupFunction = (Object | void, Array<any>, Array<string> => Promise<void>) => Promise<void>;
 type RetryDelayFunction = (number, Error) => number | false | Promise<number | false>;
 type EmitCallback = (string, Array<any>) => void;
+type UnloadFunction = (Object | void) => Promise<void> | void;
 
 type Options = {
   logger?: Logger,
@@ -56,6 +56,7 @@ export default class BatteryQueue extends EventEmitter {
   declare retryCleanupDelayMap: Map<string, RetryDelayFunction>;
   declare cleanupMap: Map<string, CleanupFunction>;
   declare queueMap: Map<string, PQueue>;
+  declare handleUnload: void | UnloadFunction;
   declare abortControllerMap: Map<string, Map<number, AbortController>>;
   declare isClearing: boolean;
   declare onIdlePromise: Promise<void> | void;
@@ -188,6 +189,20 @@ export default class BatteryQueue extends EventEmitter {
     await this.dequeue();
     const queueIds:Set<string> = new Set(this.queueMap.keys());
     return queueIds;
+  }
+
+  setUnload(handleUnload:UnloadFunction) {
+    if (typeof this.handleUnload === 'function') {
+      throw new Error('Unload handler already exists');
+    }
+    this.handleUnload = handleUnload;
+  }
+
+  removeUnload() {
+    if (typeof this.handleUnload !== 'function') {
+      throw new Error('Unload handler does not exist');
+    }
+    delete this.handleUnload;
   }
 
   setRetryJobDelay(type:string, retryJobDelayFunction:RetryDelayFunction) {
@@ -856,18 +871,15 @@ export default class BatteryQueue extends EventEmitter {
       return;
     }
     this.logger.info('Unloading');
-    const queueIds = await getAllAbortOnUnloadQueues();
-    for (const queueId of queueIds) {
+    const handleUnload = this.handleUnload;
+    if (typeof handleUnload === 'function') {
       try {
-        await this.abortQueue(queueId);
-        await removeAbortQueueOnUnload(queueId);
+        const unloadData = await getUnloadDataFromDatabase();
+        await handleUnload(unloadData);
+        await clearUnloadDataInDatabase();
       } catch (error) {
-        this.logger.error(`Error in scheduled queue ${queueId} abort`);
+        this.logger.error('Error in unload handler');
         this.logger.errorStack(error);
-        removeAbortQueueOnUnload(queueId).catch((error2) => {
-          this.logger.error(`Unable to remove scheduled queue ${queueId} abort`);
-          this.logger.errorStack(error2);
-        });
       }
     }
     this.emit('unloadClient');
@@ -901,7 +913,7 @@ export default class BatteryQueue extends EventEmitter {
       }
     });
 
-    self.addEventListener('message', async (event:ExtendableMessageEvent) => {
+    self.addEventListener('message', (event:ExtendableMessageEvent) => {
       if (!(event instanceof ExtendableMessageEvent)) {
         return;
       }
@@ -962,20 +974,6 @@ export default class BatteryQueue extends EventEmitter {
       activeEmitCallback = emitCallback;
       this.emitCallbacks.push(emitCallback);
       this.port = port;
-      const queueIds = await getScheduledAbortOnUnloadQueues();
-      for (const queueId of queueIds) {
-        try {
-          await this.abortQueue(queueId);
-          await removeAbortQueueOnUnload(queueId);
-        } catch (error) {
-          this.logger.error(`Error in scheduled queue ${queueId} abort`);
-          this.logger.errorStack(error);
-          removeAbortQueueOnUnload(queueId).catch((error2) => {
-            this.logger.error(`Unable to remove scheduled queue ${queueId} abort`);
-            this.logger.errorStack(error2);
-          });
-        }
-      }
       port.postMessage({ type: 'BATTERY_QUEUE_WORKER_CONFIRMATION' });
       this.logger.info('Linked to worker interface');
     });

@@ -2,10 +2,16 @@
 
 import makeLogger from '../../src/logger';
 import { queue } from './queue';
+import { postMessage } from './worker-utils';
 
 const logger = makeLogger('Worker');
 
 queue.listenForServiceWorkerInterface();
+
+queue.setUnload((data: void | Object) => {
+  logger.info('Running unload handler');
+  postMessage('unloadHandler', data);
+});
 
 self.addEventListener('install', (event) => {
   logger.info('Installing');

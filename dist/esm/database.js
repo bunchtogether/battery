@@ -33,7 +33,7 @@ export const JOB_ERROR_STATUS = -1;
 export const JOB_CLEANUP_STATUS = -2;
 export const JOB_CLEANUP_AND_REMOVE_STATUS = -3;
 export const databasePromise = (async () => {
-  const request = self.indexedDB.open('battery-queue-05', 1);
+  const request = self.indexedDB.open('battery-queue-06', 1);
 
   request.onupgradeneeded = function (e) {
     try {
@@ -111,20 +111,6 @@ export const databasePromise = (async () => {
         throw error;
       }
     }
-
-    try {
-      const store = e.target.result.createObjectStore('abort-on-unload', {
-        keyPath: 'queueId',
-        autoIncrement: true
-      });
-      store.createIndex('startAfterIndex', 'startAfter', {
-        unique: false
-      });
-    } catch (error) {
-      if (!(error.name === 'ConstraintError')) {
-        throw error;
-      }
-    }
   };
 
   const db = await new Promise((resolve, reject) => {
@@ -185,14 +171,6 @@ function getReadWriteArgLookupObjectStore() {
 
 function getReadOnlyArgLookupObjectStore() {
   return getReadOnlyObjectStore('arg-lookup');
-}
-
-function getReadWriteAbortOnUnloadObjectStore() {
-  return getReadWriteObjectStore('abort-on-unload');
-}
-
-function getReadOnlyAbortOnUnloadObjectStore() {
-  return getReadOnlyObjectStore('abort-on-unload');
 }
 
 function getReadWriteAuthObjectStore() {
@@ -344,22 +322,6 @@ async function clearJobsDatabase() {
   jobEmitter.emit('jobsClear');
 }
 
-async function clearAbortOnUnloadDatabase() {
-  const store = await getReadWriteAbortOnUnloadObjectStore();
-  const request = store.clear();
-  await new Promise((resolve, reject) => {
-    request.onsuccess = function () {
-      resolve();
-    };
-
-    request.onerror = function (event) {
-      logger.error('Error while clearing abort queue on unload database');
-      logger.errorObject(event);
-      reject(new Error('Error while clearing abort queue on unload database'));
-    };
-  });
-}
-
 async function clearCleanupsDatabase() {
   const store = await getReadWriteCleanupsObjectStore();
   const request = store.clear();
@@ -379,7 +341,6 @@ async function clearCleanupsDatabase() {
 export async function clearDatabase() {
   await clearJobsDatabase();
   await clearCleanupsDatabase();
-  await clearAbortOnUnloadDatabase();
   await clearAllMetadataInDatabase();
 }
 export async function removeJobsWithQueueIdAndTypeFromDatabase(queueId, type) {
@@ -1610,84 +1571,68 @@ export async function removeArgLookupsForJob(jobId) {
 
   await promise;
 }
-export async function scheduleAbortQueueOnUnload(queueId, startAfter) {
-  if (typeof queueId !== 'string') {
-    throw new TypeError(`Unable schedule abort queue on client unload, received invalid "queueId" argument type "${typeof queueId}"`);
-  }
-
-  if (typeof startAfter !== 'number') {
-    throw new TypeError(`Unable schedule abort queue on client unload, received invalid "startAfter" argument type "${typeof startAfter}"`);
-  }
-
-  const store = await getReadWriteAbortOnUnloadObjectStore();
-  const request = store.put({
-    queueId,
-    startAfter
-  });
-  return new Promise((resolve, reject) => {
+const UNLOAD_DATA_ID = '_UNLOAD_DATA';
+export async function updateUnloadDataInDatabase(transform) {
+  const store = await getReadWriteMetadataObjectStore();
+  const request = store.get(UNLOAD_DATA_ID);
+  await new Promise((resolve, reject) => {
     request.onsuccess = function () {
-      resolve();
+      let newValue;
+      const response = request.result;
+      const value = typeof response !== 'undefined' ? response.metadata : undefined;
+
+      try {
+        newValue = transform(value);
+      } catch (error) {
+        reject(error);
+        return;
+      }
+
+      if (typeof newValue === 'undefined') {
+        resolve();
+      } else if (newValue === false) {
+        if (typeof value !== 'undefined') {
+          const deleteRequest = store.delete(UNLOAD_DATA_ID);
+
+          deleteRequest.onsuccess = function () {
+            resolve();
+          };
+
+          deleteRequest.onerror = function (event) {
+            logger.error('Delete request error while updating unload data in metadata database');
+            logger.errorObject(event);
+            reject(new Error('Delete request error while updating unload data in metadata database'));
+          };
+        }
+      } else {
+        const putRequest = store.put({
+          id: UNLOAD_DATA_ID,
+          metadata: newValue
+        });
+
+        putRequest.onsuccess = function () {
+          resolve();
+        };
+
+        putRequest.onerror = function (event) {
+          logger.error('Put request error while updating unload data in metadata database');
+          logger.errorObject(event);
+          reject(new Error('Put request error while updating unload data in metadata database'));
+        };
+      }
     };
 
     request.onerror = function (event) {
-      logger.error(`Error while scheduling abort queue ${queueId} on client unload`);
+      logger.error('Get request error while updating unload data in metadata database');
       logger.errorObject(event);
-      reject(new Error(`Error while scheduling abort queue ${queueId} on client unload`));
+      reject(new Error('Get request error while updating unload data in metadata database'));
     };
   });
 }
-export async function removeAbortQueueOnUnload(queueId) {
-  if (typeof queueId !== 'string') {
-    throw new TypeError(`Unable remove scheduled abort queue on client unload, received invalid "queueId" argument type "${typeof queueId}"`);
-  }
-
-  const store = await getReadWriteAbortOnUnloadObjectStore();
-  const request = store.delete(queueId);
-  return new Promise((resolve, reject) => {
-    request.onsuccess = function () {
-      resolve();
-    };
-
-    request.onerror = function (event) {
-      logger.error(`Error while removing scheduled abort queue ${queueId} on client unload`);
-      logger.errorObject(event);
-      reject(new Error(`Error while removing scheduled abort queue ${queueId} on client unload`));
-    };
-  });
+export function getUnloadDataFromDatabase() {
+  return getMetadataFromDatabase(UNLOAD_DATA_ID);
 }
-export async function getAllAbortOnUnloadQueues() {
-  const store = await getReadOnlyAbortOnUnloadObjectStore(); // $FlowFixMe
-
-  const request = store.getAll();
-  const queueIds = await new Promise((resolve, reject) => {
-    request.onsuccess = function (event) {
-      resolve(event.target.result.map(x => x.queueId));
-    };
-
-    request.onerror = function (event) {
-      logger.error('Error while getting abort queue IDs');
-      logger.errorObject(event);
-      reject(new Error('Error while getting abort queue IDs'));
-    };
-  });
-  return queueIds;
-}
-export async function getScheduledAbortOnUnloadQueues() {
-  const store = await getReadOnlyAbortOnUnloadObjectStore();
-  const index = store.index('startAfterIndex'); // $FlowFixMe
-
-  const request = index.getAll(IDBKeyRange.upperBound(Date.now()));
-  const queueIds = await new Promise((resolve, reject) => {
-    request.onsuccess = function (event) {
-      resolve(event.target.result.map(x => x.queueId));
-    };
-
-    request.onerror = function (event) {
-      logger.error('Error while getting scheduled abort queue IDs');
-      logger.errorObject(event);
-      reject(new Error('Error while getting scheduled abort queue IDs'));
-    };
-  });
-  return queueIds;
+export function clearUnloadDataInDatabase() {
+  return clearMetadataInDatabase(UNLOAD_DATA_ID);
 }
 //# sourceMappingURL=database.js.map

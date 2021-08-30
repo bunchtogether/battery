@@ -292,6 +292,24 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
       return getQueueIds;
     }()
   }, {
+    key: "setUnload",
+    value: function setUnload(handleUnload) {
+      if (typeof this.handleUnload === 'function') {
+        throw new Error('Unload handler already exists');
+      }
+
+      this.handleUnload = handleUnload;
+    }
+  }, {
+    key: "removeUnload",
+    value: function removeUnload() {
+      if (typeof this.handleUnload !== 'function') {
+        throw new Error('Unload handler does not exist');
+      }
+
+      delete this.handleUnload;
+    }
+  }, {
     key: "setRetryJobDelay",
     value: function setRetryJobDelay(type, retryJobDelayFunction) {
       if (this.retryJobDelayMap.has(type)) {
@@ -1950,21 +1968,20 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
       var _unloadClient = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee16() {
         var _this8 = this;
 
-        var heartbeatExpiresTimestamp, delay, queueIds, _iterator6, _step6, _loop2;
-
-        return regeneratorRuntime.wrap(function _callee16$(_context18) {
+        var heartbeatExpiresTimestamp, delay, handleUnload, unloadData;
+        return regeneratorRuntime.wrap(function _callee16$(_context17) {
           while (1) {
-            switch (_context18.prev = _context18.next) {
+            switch (_context17.prev = _context17.next) {
               case 0:
                 this.logger.info('Detected client unload');
                 heartbeatExpiresTimestamp = this.heartbeatExpiresTimestamp;
 
                 if (!(typeof heartbeatExpiresTimestamp !== 'number')) {
-                  _context18.next = 4;
+                  _context17.next = 4;
                   break;
                 }
 
-                return _context18.abrupt("return");
+                return _context17.abrupt("return");
 
               case 4:
                 clearTimeout(this.heartbeatExpiresTimeout);
@@ -1972,11 +1989,11 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 delay = heartbeatExpiresTimestamp - Date.now();
 
                 if (!(delay > 0)) {
-                  _context18.next = 10;
+                  _context17.next = 10;
                   break;
                 }
 
-                _context18.next = 10;
+                _context17.next = 10;
                 return new Promise(function (resolve) {
                   var timeout = setTimeout(function () {
                     clearTimeout(timeout);
@@ -1999,105 +2016,56 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
               case 10:
                 if (!(typeof this.heartbeatExpiresTimestamp === 'number')) {
-                  _context18.next = 13;
+                  _context17.next = 13;
                   break;
                 }
 
                 this.logger.info('Cancelling client unload, heartbeat detected');
-                return _context18.abrupt("return");
+                return _context17.abrupt("return");
 
               case 13:
                 this.logger.info('Unloading');
-                _context18.next = 16;
-                return (0, _database.getAllAbortOnUnloadQueues)();
+                handleUnload = this.handleUnload;
 
-              case 16:
-                queueIds = _context18.sent;
-                _iterator6 = _createForOfIteratorHelper(queueIds);
-                _context18.prev = 18;
-                _loop2 = /*#__PURE__*/regeneratorRuntime.mark(function _loop2() {
-                  var queueId;
-                  return regeneratorRuntime.wrap(function _loop2$(_context17) {
-                    while (1) {
-                      switch (_context17.prev = _context17.next) {
-                        case 0:
-                          queueId = _step6.value;
-                          _context17.prev = 1;
-                          _context17.next = 4;
-                          return _this8.abortQueue(queueId);
-
-                        case 4:
-                          _context17.next = 6;
-                          return (0, _database.removeAbortQueueOnUnload)(queueId);
-
-                        case 6:
-                          _context17.next = 13;
-                          break;
-
-                        case 8:
-                          _context17.prev = 8;
-                          _context17.t0 = _context17["catch"](1);
-
-                          _this8.logger.error("Error in scheduled queue ".concat(queueId, " abort"));
-
-                          _this8.logger.errorStack(_context17.t0);
-
-                          (0, _database.removeAbortQueueOnUnload)(queueId).catch(function (error2) {
-                            _this8.logger.error("Unable to remove scheduled queue ".concat(queueId, " abort"));
-
-                            _this8.logger.errorStack(error2);
-                          });
-
-                        case 13:
-                        case "end":
-                          return _context17.stop();
-                      }
-                    }
-                  }, _loop2, null, [[1, 8]]);
-                });
-
-                _iterator6.s();
-
-              case 21:
-                if ((_step6 = _iterator6.n()).done) {
-                  _context18.next = 25;
+                if (!(typeof handleUnload === 'function')) {
+                  _context17.next = 30;
                   break;
                 }
 
-                return _context18.delegateYield(_loop2(), "t0", 23);
+                _context17.prev = 16;
+                _context17.next = 19;
+                return (0, _database.getUnloadDataFromDatabase)();
 
-              case 23:
-                _context18.next = 21;
+              case 19:
+                unloadData = _context17.sent;
+                _context17.next = 22;
+                return handleUnload(unloadData);
+
+              case 22:
+                _context17.next = 24;
+                return (0, _database.clearUnloadDataInDatabase)();
+
+              case 24:
+                _context17.next = 30;
                 break;
 
-              case 25:
-                _context18.next = 30;
-                break;
-
-              case 27:
-                _context18.prev = 27;
-                _context18.t1 = _context18["catch"](18);
-
-                _iterator6.e(_context18.t1);
+              case 26:
+                _context17.prev = 26;
+                _context17.t0 = _context17["catch"](16);
+                this.logger.error('Error in unload handler');
+                this.logger.errorStack(_context17.t0);
 
               case 30:
-                _context18.prev = 30;
-
-                _iterator6.f();
-
-                return _context18.finish(30);
-
-              case 33:
                 this.emit('unloadClient');
-                _context18.next = 36;
+                _context17.next = 33;
                 return this.onIdle();
 
-              case 36:
+              case 33:
               case "end":
-                return _context18.stop();
+                return _context17.stop();
             }
           }
-        }, _callee16, this, [[18, 27, 30, 33]]);
+        }, _callee16, this, [[16, 26]]);
       }));
 
       function unloadClient() {
@@ -2141,251 +2109,132 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
           _this9.logger.warn("Received unknown SyncManager event tag ".concat(event.tag));
         }
       });
-      self.addEventListener('message', /*#__PURE__*/function () {
-        var _ref7 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee17(event) {
-          var data, type, port, previousPort, emitCallback, queueIds, _iterator7, _step7, _loop3;
+      self.addEventListener('message', function (event) {
+        if (!(event instanceof ExtendableMessageEvent)) {
+          return;
+        }
 
-          return regeneratorRuntime.wrap(function _callee17$(_context20) {
-            while (1) {
-              switch (_context20.prev = _context20.next) {
-                case 0:
-                  if (event instanceof ExtendableMessageEvent) {
-                    _context20.next = 2;
-                    break;
-                  }
+        var data = event.data;
 
-                  return _context20.abrupt("return");
+        if (!data || _typeof(data) !== 'object') {
+          return;
+        }
 
-                case 2:
-                  data = event.data;
+        var type = data.type;
 
-                  if (!(!data || _typeof(data) !== 'object')) {
-                    _context20.next = 5;
-                    break;
-                  }
+        if (type !== 'BATTERY_QUEUE_WORKER_INITIALIZATION') {
+          return;
+        }
 
-                  return _context20.abrupt("return");
+        if (!Array.isArray(event.ports)) {
+          return;
+        }
 
-                case 5:
-                  type = data.type;
+        var port = event.ports[0];
 
-                  if (!(type !== 'BATTERY_QUEUE_WORKER_INITIALIZATION')) {
-                    _context20.next = 8;
-                    break;
-                  }
+        if (!(port instanceof MessagePort)) {
+          return;
+        }
 
-                  return _context20.abrupt("return");
+        _this9.emitCallbacks = _this9.emitCallbacks.filter(function (x) {
+          return x !== activeEmitCallback;
+        });
+        var previousPort = _this9.port;
 
-                case 8:
-                  if (Array.isArray(event.ports)) {
-                    _context20.next = 10;
-                    break;
-                  }
+        if (previousPort instanceof MessagePort) {
+          _this9.logger.info('Closing previous worker interface');
 
-                  return _context20.abrupt("return");
+          previousPort.close();
+        }
 
-                case 10:
-                  port = event.ports[0];
+        if (typeof handleJobAdd === 'function') {
+          _database.localJobEmitter.removeListener('jobAdd', handleJobAdd);
+        }
 
-                  if (port instanceof MessagePort) {
-                    _context20.next = 13;
-                    break;
-                  }
+        if (typeof handleJobDelete === 'function') {
+          _database.localJobEmitter.removeListener('jobDelete', handleJobDelete);
+        }
 
-                  return _context20.abrupt("return");
+        if (typeof handleJobUpdate === 'function') {
+          _database.localJobEmitter.removeListener('jobUpdate', handleJobUpdate);
+        }
 
-                case 13:
-                  _this9.emitCallbacks = _this9.emitCallbacks.filter(function (x) {
-                    return x !== activeEmitCallback;
-                  });
-                  previousPort = _this9.port;
+        if (typeof handleJobsClear === 'function') {
+          _database.localJobEmitter.removeListener('jobsClear', handleJobsClear);
+        }
 
-                  if (previousPort instanceof MessagePort) {
-                    _this9.logger.info('Closing previous worker interface');
+        port.onmessage = _this9.handlePortMessage.bind(_this9);
 
-                    previousPort.close();
-                  }
+        handleJobAdd = function handleJobAdd() {
+          for (var _len2 = arguments.length, args = new Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
+            args[_key2] = arguments[_key2];
+          }
 
-                  if (typeof handleJobAdd === 'function') {
-                    _database.localJobEmitter.removeListener('jobAdd', handleJobAdd);
-                  }
-
-                  if (typeof handleJobDelete === 'function') {
-                    _database.localJobEmitter.removeListener('jobDelete', handleJobDelete);
-                  }
-
-                  if (typeof handleJobUpdate === 'function') {
-                    _database.localJobEmitter.removeListener('jobUpdate', handleJobUpdate);
-                  }
-
-                  if (typeof handleJobsClear === 'function') {
-                    _database.localJobEmitter.removeListener('jobsClear', handleJobsClear);
-                  }
-
-                  port.onmessage = _this9.handlePortMessage.bind(_this9);
-
-                  handleJobAdd = function handleJobAdd() {
-                    for (var _len2 = arguments.length, args = new Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
-                      args[_key2] = arguments[_key2];
-                    }
-
-                    port.postMessage({
-                      type: 'jobAdd',
-                      args: args
-                    });
-                  };
-
-                  handleJobDelete = function handleJobDelete() {
-                    for (var _len3 = arguments.length, args = new Array(_len3), _key3 = 0; _key3 < _len3; _key3++) {
-                      args[_key3] = arguments[_key3];
-                    }
-
-                    port.postMessage({
-                      type: 'jobDelete',
-                      args: args
-                    });
-                  };
-
-                  handleJobUpdate = function handleJobUpdate() {
-                    for (var _len4 = arguments.length, args = new Array(_len4), _key4 = 0; _key4 < _len4; _key4++) {
-                      args[_key4] = arguments[_key4];
-                    }
-
-                    port.postMessage({
-                      type: 'jobUpdate',
-                      args: args
-                    });
-                  };
-
-                  handleJobsClear = function handleJobsClear() {
-                    for (var _len5 = arguments.length, args = new Array(_len5), _key5 = 0; _key5 < _len5; _key5++) {
-                      args[_key5] = arguments[_key5];
-                    }
-
-                    port.postMessage({
-                      type: 'jobsClear',
-                      args: args
-                    });
-                  };
-
-                  _database.localJobEmitter.addListener('jobAdd', handleJobAdd);
-
-                  _database.localJobEmitter.addListener('jobDelete', handleJobDelete);
-
-                  _database.localJobEmitter.addListener('jobUpdate', handleJobUpdate);
-
-                  _database.localJobEmitter.addListener('jobsClear', handleJobsClear);
-
-                  emitCallback = function emitCallback(t, args) {
-                    port.postMessage({
-                      type: t,
-                      args: args
-                    });
-                  };
-
-                  activeEmitCallback = emitCallback;
-
-                  _this9.emitCallbacks.push(emitCallback);
-
-                  _this9.port = port;
-                  _context20.next = 35;
-                  return (0, _database.getScheduledAbortOnUnloadQueues)();
-
-                case 35:
-                  queueIds = _context20.sent;
-                  _iterator7 = _createForOfIteratorHelper(queueIds);
-                  _context20.prev = 37;
-                  _loop3 = /*#__PURE__*/regeneratorRuntime.mark(function _loop3() {
-                    var queueId;
-                    return regeneratorRuntime.wrap(function _loop3$(_context19) {
-                      while (1) {
-                        switch (_context19.prev = _context19.next) {
-                          case 0:
-                            queueId = _step7.value;
-                            _context19.prev = 1;
-                            _context19.next = 4;
-                            return _this9.abortQueue(queueId);
-
-                          case 4:
-                            _context19.next = 6;
-                            return (0, _database.removeAbortQueueOnUnload)(queueId);
-
-                          case 6:
-                            _context19.next = 13;
-                            break;
-
-                          case 8:
-                            _context19.prev = 8;
-                            _context19.t0 = _context19["catch"](1);
-
-                            _this9.logger.error("Error in scheduled queue ".concat(queueId, " abort"));
-
-                            _this9.logger.errorStack(_context19.t0);
-
-                            (0, _database.removeAbortQueueOnUnload)(queueId).catch(function (error2) {
-                              _this9.logger.error("Unable to remove scheduled queue ".concat(queueId, " abort"));
-
-                              _this9.logger.errorStack(error2);
-                            });
-
-                          case 13:
-                          case "end":
-                            return _context19.stop();
-                        }
-                      }
-                    }, _loop3, null, [[1, 8]]);
-                  });
-
-                  _iterator7.s();
-
-                case 40:
-                  if ((_step7 = _iterator7.n()).done) {
-                    _context20.next = 44;
-                    break;
-                  }
-
-                  return _context20.delegateYield(_loop3(), "t0", 42);
-
-                case 42:
-                  _context20.next = 40;
-                  break;
-
-                case 44:
-                  _context20.next = 49;
-                  break;
-
-                case 46:
-                  _context20.prev = 46;
-                  _context20.t1 = _context20["catch"](37);
-
-                  _iterator7.e(_context20.t1);
-
-                case 49:
-                  _context20.prev = 49;
-
-                  _iterator7.f();
-
-                  return _context20.finish(49);
-
-                case 52:
-                  port.postMessage({
-                    type: 'BATTERY_QUEUE_WORKER_CONFIRMATION'
-                  });
-
-                  _this9.logger.info('Linked to worker interface');
-
-                case 54:
-                case "end":
-                  return _context20.stop();
-              }
-            }
-          }, _callee17, null, [[37, 46, 49, 52]]);
-        }));
-
-        return function (_x20) {
-          return _ref7.apply(this, arguments);
+          port.postMessage({
+            type: 'jobAdd',
+            args: args
+          });
         };
-      }());
+
+        handleJobDelete = function handleJobDelete() {
+          for (var _len3 = arguments.length, args = new Array(_len3), _key3 = 0; _key3 < _len3; _key3++) {
+            args[_key3] = arguments[_key3];
+          }
+
+          port.postMessage({
+            type: 'jobDelete',
+            args: args
+          });
+        };
+
+        handleJobUpdate = function handleJobUpdate() {
+          for (var _len4 = arguments.length, args = new Array(_len4), _key4 = 0; _key4 < _len4; _key4++) {
+            args[_key4] = arguments[_key4];
+          }
+
+          port.postMessage({
+            type: 'jobUpdate',
+            args: args
+          });
+        };
+
+        handleJobsClear = function handleJobsClear() {
+          for (var _len5 = arguments.length, args = new Array(_len5), _key5 = 0; _key5 < _len5; _key5++) {
+            args[_key5] = arguments[_key5];
+          }
+
+          port.postMessage({
+            type: 'jobsClear',
+            args: args
+          });
+        };
+
+        _database.localJobEmitter.addListener('jobAdd', handleJobAdd);
+
+        _database.localJobEmitter.addListener('jobDelete', handleJobDelete);
+
+        _database.localJobEmitter.addListener('jobUpdate', handleJobUpdate);
+
+        _database.localJobEmitter.addListener('jobsClear', handleJobsClear);
+
+        var emitCallback = function emitCallback(t, args) {
+          port.postMessage({
+            type: t,
+            args: args
+          });
+        };
+
+        activeEmitCallback = emitCallback;
+
+        _this9.emitCallbacks.push(emitCallback);
+
+        _this9.port = port;
+        port.postMessage({
+          type: 'BATTERY_QUEUE_WORKER_CONFIRMATION'
+        });
+
+        _this9.logger.info('Linked to worker interface');
+      });
       self.addEventListener('messageerror', function (event) {
         _this9.logger.error('Service worker interface message error');
 

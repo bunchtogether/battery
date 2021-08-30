@@ -92,13 +92,19 @@ const register = async (url:string) => {
       return;
     }
 
-    const { type, value } = data;
+    const { type, args } = data;
 
     if (typeof type !== 'string') {
       logger.warn('Unknown message type', event);
       return;
     }
-    serviceWorkerEmitter.emit(type, value);
+
+    if (!Array.isArray(args)) {
+      logger.warn('Unknown message args type', event);
+      return;
+    }
+
+    serviceWorkerEmitter.emit(type, ...args);
   };
 
   return [serviceWorker, registration];
