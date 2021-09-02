@@ -27,6 +27,7 @@ import {
   restoreJobToDatabaseForCleanupAndRemove,
   markCleanupStartAfterInDatabase,
   markQueueForCleanupInDatabase,
+  markQueueForCleanupAndRemoveInDatabase,
   clearDatabase,
   setMetadataInDatabase,
   getMetadataFromDatabase,
@@ -858,6 +859,27 @@ describe('IndexedDB Database', () => {
     });
   });
 
+  it('Removes pending jobs when marking queue for cleanup and removal', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const args = [uuidv4()];
+    const id = await enqueueToDatabase(queueId, type, args, 0);
+
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+    await markQueueForCleanupAndRemoveInDatabase(queueId);
+
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo(undefined);
+  });
+
   it('Marks completed jobs for cleanup when marking queue for cleanup', async () => {
     const queueId = uuidv4();
     const type = uuidv4();
@@ -888,6 +910,38 @@ describe('IndexedDB Database', () => {
       startAfter: jasmine.any(Number),
     });
   });
+
+  it('Marks completed jobs for cleanup and removal when marking queue for cleanup and removal', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const args = [uuidv4()];
+    const id = await enqueueToDatabase(queueId, type, args, 0);
+    await markJobCompleteInDatabase(id);
+
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_COMPLETE_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+    await markQueueForCleanupAndRemoveInDatabase(queueId);
+
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_CLEANUP_AND_REMOVE_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+  });
+
 
   it('Marks job start-after time in database', async () => {
     const queueId = uuidv4();
@@ -937,6 +991,37 @@ describe('IndexedDB Database', () => {
       attempt: 0,
       created: jasmine.any(Number),
       status: JOB_CLEANUP_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+  });
+
+  it('Marks errored jobs for cleanup and removal when marking queue for cleanup and removal', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const args = [uuidv4()];
+    const id = await enqueueToDatabase(queueId, type, args, 0);
+    await markJobErrorInDatabase(id);
+
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_ERROR_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+    await markQueueForCleanupAndRemoveInDatabase(queueId);
+
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_CLEANUP_AND_REMOVE_STATUS,
       startAfter: jasmine.any(Number),
     });
   });

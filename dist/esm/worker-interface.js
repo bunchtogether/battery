@@ -487,6 +487,47 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
     });
   }
 
+  async abortAndRemoveQueue(queueId, maxDuration = 1000) {
+    const port = await this.link();
+    await new Promise((resolve, reject) => {
+      const requestId = Math.random();
+      const timeout = setTimeout(() => {
+        this.removeListener('abortAndRemoveQueueComplete', handleAbortQueueComplete);
+        this.removeListener('abortAndRemoveQueueError', handleAbortQueueError);
+        reject(new Error(`Did not receive abort queue response within ${maxDuration}ms`));
+      }, maxDuration);
+
+      const handleAbortQueueComplete = responseId => {
+        if (responseId !== requestId) {
+          return;
+        }
+
+        clearTimeout(timeout);
+        this.removeListener('abortAndRemoveQueueComplete', handleAbortQueueComplete);
+        this.removeListener('abortAndRemoveQueueError', handleAbortQueueError);
+        resolve();
+      };
+
+      const handleAbortQueueError = (responseId, error) => {
+        if (responseId !== requestId) {
+          return;
+        }
+
+        clearTimeout(timeout);
+        this.removeListener('abortAndRemoveQueueComplete', handleAbortQueueComplete);
+        this.removeListener('abortAndRemoveQueueError', handleAbortQueueError);
+        reject(error);
+      };
+
+      this.addListener('abortAndRemoveQueueComplete', handleAbortQueueComplete);
+      this.addListener('abortAndRemoveQueueError', handleAbortQueueError);
+      port.postMessage({
+        type: 'abortAndRemoveQueue',
+        args: [requestId, queueId]
+      });
+    });
+  }
+
   async dequeue(maxDuration = 1000) {
     const port = await this.link();
     await new Promise((resolve, reject) => {

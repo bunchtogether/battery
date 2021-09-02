@@ -910,9 +910,9 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
       return abortQueue;
     }()
   }, {
-    key: "dequeue",
+    key: "abortAndRemoveQueue",
     value: function () {
-      var _dequeue = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee8() {
+      var _abortAndRemoveQueue = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee8(queueId) {
         var _this7 = this;
 
         var maxDuration,
@@ -922,7 +922,7 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
           while (1) {
             switch (_context9.prev = _context9.next) {
               case 0:
-                maxDuration = _args9.length > 0 && _args9[0] !== undefined ? _args9[0] : 1000;
+                maxDuration = _args9.length > 1 && _args9[1] !== undefined ? _args9[1] : 1000;
                 _context9.next = 3;
                 return this.link();
 
@@ -932,48 +932,48 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                 return new Promise(function (resolve, reject) {
                   var requestId = Math.random();
                   var timeout = setTimeout(function () {
-                    _this7.removeListener('dequeueComplete', handleDequeueComplete);
+                    _this7.removeListener('abortAndRemoveQueueComplete', handleAbortQueueComplete);
 
-                    _this7.removeListener('dequeueError', handleDequeueError);
+                    _this7.removeListener('abortAndRemoveQueueError', handleAbortQueueError);
 
-                    reject(new Error("Did not receive dequeue response within ".concat(maxDuration, "ms")));
+                    reject(new Error("Did not receive abort queue response within ".concat(maxDuration, "ms")));
                   }, maxDuration);
 
-                  var handleDequeueComplete = function handleDequeueComplete(responseId) {
+                  var handleAbortQueueComplete = function handleAbortQueueComplete(responseId) {
                     if (responseId !== requestId) {
                       return;
                     }
 
                     clearTimeout(timeout);
 
-                    _this7.removeListener('dequeueComplete', handleDequeueComplete);
+                    _this7.removeListener('abortAndRemoveQueueComplete', handleAbortQueueComplete);
 
-                    _this7.removeListener('dequeueError', handleDequeueError);
+                    _this7.removeListener('abortAndRemoveQueueError', handleAbortQueueError);
 
                     resolve();
                   };
 
-                  var handleDequeueError = function handleDequeueError(responseId, error) {
+                  var handleAbortQueueError = function handleAbortQueueError(responseId, error) {
                     if (responseId !== requestId) {
                       return;
                     }
 
                     clearTimeout(timeout);
 
-                    _this7.removeListener('dequeueComplete', handleDequeueComplete);
+                    _this7.removeListener('abortAndRemoveQueueComplete', handleAbortQueueComplete);
 
-                    _this7.removeListener('dequeueError', handleDequeueError);
+                    _this7.removeListener('abortAndRemoveQueueError', handleAbortQueueError);
 
                     reject(error);
                   };
 
-                  _this7.addListener('dequeueComplete', handleDequeueComplete);
+                  _this7.addListener('abortAndRemoveQueueComplete', handleAbortQueueComplete);
 
-                  _this7.addListener('dequeueError', handleDequeueError);
+                  _this7.addListener('abortAndRemoveQueueError', handleAbortQueueError);
 
                   port.postMessage({
-                    type: 'dequeue',
-                    args: [requestId]
+                    type: 'abortAndRemoveQueue',
+                    args: [requestId, queueId]
                   });
                 });
 
@@ -985,16 +985,16 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
         }, _callee8, this);
       }));
 
-      function dequeue() {
-        return _dequeue.apply(this, arguments);
+      function abortAndRemoveQueue(_x2) {
+        return _abortAndRemoveQueue.apply(this, arguments);
       }
 
-      return dequeue;
+      return abortAndRemoveQueue;
     }()
   }, {
-    key: "onIdle",
+    key: "dequeue",
     value: function () {
-      var _onIdle = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee9() {
+      var _dequeue = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee9() {
         var _this8 = this;
 
         var maxDuration,
@@ -1014,48 +1014,48 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                 return new Promise(function (resolve, reject) {
                   var requestId = Math.random();
                   var timeout = setTimeout(function () {
-                    _this8.removeListener('idleComplete', handleIdleComplete);
+                    _this8.removeListener('dequeueComplete', handleDequeueComplete);
 
-                    _this8.removeListener('idleError', handleIdleError);
+                    _this8.removeListener('dequeueError', handleDequeueError);
 
-                    reject(new Error("Did not receive idle response within ".concat(maxDuration, "ms")));
+                    reject(new Error("Did not receive dequeue response within ".concat(maxDuration, "ms")));
                   }, maxDuration);
 
-                  var handleIdleComplete = function handleIdleComplete(responseId) {
+                  var handleDequeueComplete = function handleDequeueComplete(responseId) {
                     if (responseId !== requestId) {
                       return;
                     }
 
                     clearTimeout(timeout);
 
-                    _this8.removeListener('idleComplete', handleIdleComplete);
+                    _this8.removeListener('dequeueComplete', handleDequeueComplete);
 
-                    _this8.removeListener('idleError', handleIdleError);
+                    _this8.removeListener('dequeueError', handleDequeueError);
 
                     resolve();
                   };
 
-                  var handleIdleError = function handleIdleError(responseId, error) {
+                  var handleDequeueError = function handleDequeueError(responseId, error) {
                     if (responseId !== requestId) {
                       return;
                     }
 
                     clearTimeout(timeout);
 
-                    _this8.removeListener('idleComplete', handleIdleComplete);
+                    _this8.removeListener('dequeueComplete', handleDequeueComplete);
 
-                    _this8.removeListener('idleError', handleIdleError);
+                    _this8.removeListener('dequeueError', handleDequeueError);
 
                     reject(error);
                   };
 
-                  _this8.addListener('idleComplete', handleIdleComplete);
+                  _this8.addListener('dequeueComplete', handleDequeueComplete);
 
-                  _this8.addListener('idleError', handleIdleError);
+                  _this8.addListener('dequeueError', handleDequeueError);
 
                   port.postMessage({
-                    type: 'idle',
-                    args: [requestId, maxDuration, Date.now()]
+                    type: 'dequeue',
+                    args: [requestId]
                   });
                 });
 
@@ -1067,6 +1067,88 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
         }, _callee9, this);
       }));
 
+      function dequeue() {
+        return _dequeue.apply(this, arguments);
+      }
+
+      return dequeue;
+    }()
+  }, {
+    key: "onIdle",
+    value: function () {
+      var _onIdle = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee10() {
+        var _this9 = this;
+
+        var maxDuration,
+            port,
+            _args11 = arguments;
+        return regeneratorRuntime.wrap(function _callee10$(_context11) {
+          while (1) {
+            switch (_context11.prev = _context11.next) {
+              case 0:
+                maxDuration = _args11.length > 0 && _args11[0] !== undefined ? _args11[0] : 1000;
+                _context11.next = 3;
+                return this.link();
+
+              case 3:
+                port = _context11.sent;
+                _context11.next = 6;
+                return new Promise(function (resolve, reject) {
+                  var requestId = Math.random();
+                  var timeout = setTimeout(function () {
+                    _this9.removeListener('idleComplete', handleIdleComplete);
+
+                    _this9.removeListener('idleError', handleIdleError);
+
+                    reject(new Error("Did not receive idle response within ".concat(maxDuration, "ms")));
+                  }, maxDuration);
+
+                  var handleIdleComplete = function handleIdleComplete(responseId) {
+                    if (responseId !== requestId) {
+                      return;
+                    }
+
+                    clearTimeout(timeout);
+
+                    _this9.removeListener('idleComplete', handleIdleComplete);
+
+                    _this9.removeListener('idleError', handleIdleError);
+
+                    resolve();
+                  };
+
+                  var handleIdleError = function handleIdleError(responseId, error) {
+                    if (responseId !== requestId) {
+                      return;
+                    }
+
+                    clearTimeout(timeout);
+
+                    _this9.removeListener('idleComplete', handleIdleComplete);
+
+                    _this9.removeListener('idleError', handleIdleError);
+
+                    reject(error);
+                  };
+
+                  _this9.addListener('idleComplete', handleIdleComplete);
+
+                  _this9.addListener('idleError', handleIdleError);
+
+                  port.postMessage({
+                    type: 'idle',
+                    args: [requestId, maxDuration, Date.now()]
+                  });
+                });
+
+              case 6:
+              case "end":
+                return _context11.stop();
+            }
+          }
+        }, _callee10, this);
+      }));
+
       function onIdle() {
         return _onIdle.apply(this, arguments);
       }
@@ -1076,39 +1158,39 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
   }, {
     key: "getQueueIds",
     value: function () {
-      var _getQueueIds = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee10() {
-        var _this9 = this;
+      var _getQueueIds = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee11() {
+        var _this10 = this;
 
         var maxDuration,
             port,
             queueIds,
-            _args11 = arguments;
-        return regeneratorRuntime.wrap(function _callee10$(_context11) {
+            _args12 = arguments;
+        return regeneratorRuntime.wrap(function _callee11$(_context12) {
           while (1) {
-            switch (_context11.prev = _context11.next) {
+            switch (_context12.prev = _context12.next) {
               case 0:
-                maxDuration = _args11.length > 0 && _args11[0] !== undefined ? _args11[0] : 1000;
+                maxDuration = _args12.length > 0 && _args12[0] !== undefined ? _args12[0] : 1000;
 
                 if (!(this.queueIds instanceof Set)) {
-                  _context11.next = 3;
+                  _context12.next = 3;
                   break;
                 }
 
-                return _context11.abrupt("return", this.queueIds);
+                return _context12.abrupt("return", this.queueIds);
 
               case 3:
-                _context11.next = 5;
+                _context12.next = 5;
                 return this.link();
 
               case 5:
-                port = _context11.sent;
-                _context11.next = 8;
+                port = _context12.sent;
+                _context12.next = 8;
                 return new Promise(function (resolve, reject) {
                   var requestId = Math.random();
                   var timeout = setTimeout(function () {
-                    _this9.removeListener('getQueuesComplete', handleGetQueuesComplete);
+                    _this10.removeListener('getQueuesComplete', handleGetQueuesComplete);
 
-                    _this9.removeListener('getQueuesError', handleGetQueuesError);
+                    _this10.removeListener('getQueuesError', handleGetQueuesError);
 
                     reject(new Error("Did not receive idle response within ".concat(maxDuration, "ms")));
                   }, maxDuration);
@@ -1120,9 +1202,9 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
 
                     clearTimeout(timeout);
 
-                    _this9.removeListener('getQueuesComplete', handleGetQueuesComplete);
+                    _this10.removeListener('getQueuesComplete', handleGetQueuesComplete);
 
-                    _this9.removeListener('getQueuesError', handleGetQueuesError);
+                    _this10.removeListener('getQueuesError', handleGetQueuesError);
 
                     resolve(new Set(qIds));
                   };
@@ -1134,16 +1216,16 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
 
                     clearTimeout(timeout);
 
-                    _this9.removeListener('getQueuesComplete', handleGetQueuesComplete);
+                    _this10.removeListener('getQueuesComplete', handleGetQueuesComplete);
 
-                    _this9.removeListener('getQueuesError', handleGetQueuesError);
+                    _this10.removeListener('getQueuesError', handleGetQueuesError);
 
                     reject(error);
                   };
 
-                  _this9.addListener('getQueuesComplete', handleGetQueuesComplete);
+                  _this10.addListener('getQueuesComplete', handleGetQueuesComplete);
 
-                  _this9.addListener('getQueuesError', handleGetQueuesError);
+                  _this10.addListener('getQueuesError', handleGetQueuesError);
 
                   port.postMessage({
                     type: 'getQueueIds',
@@ -1152,20 +1234,20 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                 });
 
               case 8:
-                queueIds = _context11.sent;
+                queueIds = _context12.sent;
 
                 if (queueIds.size > 0) {
                   this.queueIds = queueIds;
                 }
 
-                return _context11.abrupt("return", queueIds);
+                return _context12.abrupt("return", queueIds);
 
               case 11:
               case "end":
-                return _context11.stop();
+                return _context12.stop();
             }
           }
-        }, _callee10, this);
+        }, _callee11, this);
       }));
 
       function getQueueIds() {
@@ -1177,30 +1259,30 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
   }, {
     key: "enableStartOnJob",
     value: function () {
-      var _enableStartOnJob = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee11() {
-        var _this10 = this;
+      var _enableStartOnJob = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee12() {
+        var _this11 = this;
 
         var maxDuration,
             port,
             handleJobAdd,
-            _args12 = arguments;
-        return regeneratorRuntime.wrap(function _callee11$(_context12) {
+            _args13 = arguments;
+        return regeneratorRuntime.wrap(function _callee12$(_context13) {
           while (1) {
-            switch (_context12.prev = _context12.next) {
+            switch (_context13.prev = _context13.next) {
               case 0:
-                maxDuration = _args12.length > 0 && _args12[0] !== undefined ? _args12[0] : 1000;
-                _context12.next = 3;
+                maxDuration = _args13.length > 0 && _args13[0] !== undefined ? _args13[0] : 1000;
+                _context13.next = 3;
                 return this.link();
 
               case 3:
-                port = _context12.sent;
-                _context12.next = 6;
+                port = _context13.sent;
+                _context13.next = 6;
                 return new Promise(function (resolve, reject) {
                   var requestId = Math.random();
                   var timeout = setTimeout(function () {
-                    _this10.removeListener('enableStartOnJobComplete', handleEnableStartOnJobComplete);
+                    _this11.removeListener('enableStartOnJobComplete', handleEnableStartOnJobComplete);
 
-                    _this10.removeListener('enableStartOnJobError', handleEnableStartOnJobError);
+                    _this11.removeListener('enableStartOnJobError', handleEnableStartOnJobError);
 
                     reject(new Error("Did not receive enableStartOnJob response within ".concat(maxDuration, "ms")));
                   }, maxDuration);
@@ -1212,9 +1294,9 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
 
                     clearTimeout(timeout);
 
-                    _this10.removeListener('enableStartOnJobComplete', handleEnableStartOnJobComplete);
+                    _this11.removeListener('enableStartOnJobComplete', handleEnableStartOnJobComplete);
 
-                    _this10.removeListener('enableStartOnJobError', handleEnableStartOnJobError);
+                    _this11.removeListener('enableStartOnJobError', handleEnableStartOnJobError);
 
                     resolve();
                   };
@@ -1226,16 +1308,16 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
 
                     clearTimeout(timeout);
 
-                    _this10.removeListener('enableStartOnJobComplete', handleEnableStartOnJobComplete);
+                    _this11.removeListener('enableStartOnJobComplete', handleEnableStartOnJobComplete);
 
-                    _this10.removeListener('enableStartOnJobError', handleEnableStartOnJobError);
+                    _this11.removeListener('enableStartOnJobError', handleEnableStartOnJobError);
 
                     reject(error);
                   };
 
-                  _this10.addListener('enableStartOnJobComplete', handleEnableStartOnJobComplete);
+                  _this11.addListener('enableStartOnJobComplete', handleEnableStartOnJobComplete);
 
-                  _this10.addListener('enableStartOnJobError', handleEnableStartOnJobError);
+                  _this11.addListener('enableStartOnJobError', handleEnableStartOnJobError);
 
                   port.postMessage({
                     type: 'enableStartOnJob',
@@ -1245,7 +1327,7 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
 
               case 6:
                 handleJobAdd = function handleJobAdd() {
-                  _this10.sync();
+                  _this11.sync();
                 };
 
                 _database.jobEmitter.addListener('jobAdd', handleJobAdd);
@@ -1254,10 +1336,10 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
 
               case 9:
               case "end":
-                return _context12.stop();
+                return _context13.stop();
             }
           }
-        }, _callee11, this);
+        }, _callee12, this);
       }));
 
       function enableStartOnJob() {
@@ -1269,36 +1351,36 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
   }, {
     key: "disableStartOnJob",
     value: function () {
-      var _disableStartOnJob = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee12() {
-        var _this11 = this;
+      var _disableStartOnJob = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee13() {
+        var _this12 = this;
 
         var maxDuration,
             handleJobAdd,
             port,
-            _args13 = arguments;
-        return regeneratorRuntime.wrap(function _callee12$(_context13) {
+            _args14 = arguments;
+        return regeneratorRuntime.wrap(function _callee13$(_context14) {
           while (1) {
-            switch (_context13.prev = _context13.next) {
+            switch (_context14.prev = _context14.next) {
               case 0:
-                maxDuration = _args13.length > 0 && _args13[0] !== undefined ? _args13[0] : 1000;
+                maxDuration = _args14.length > 0 && _args14[0] !== undefined ? _args14[0] : 1000;
                 handleJobAdd = this.handleJobAdd;
 
                 if (typeof handleJobAdd === 'function') {
                   _database.jobEmitter.removeListener('jobAdd', handleJobAdd);
                 }
 
-                _context13.next = 5;
+                _context14.next = 5;
                 return this.link();
 
               case 5:
-                port = _context13.sent;
-                _context13.next = 8;
+                port = _context14.sent;
+                _context14.next = 8;
                 return new Promise(function (resolve, reject) {
                   var requestId = Math.random();
                   var timeout = setTimeout(function () {
-                    _this11.removeListener('disableStartOnJobComplete', handledisableStartOnJobComplete);
+                    _this12.removeListener('disableStartOnJobComplete', handledisableStartOnJobComplete);
 
-                    _this11.removeListener('disableStartOnJobError', handledisableStartOnJobError);
+                    _this12.removeListener('disableStartOnJobError', handledisableStartOnJobError);
 
                     reject(new Error("Did not receive disableStartOnJob response within ".concat(maxDuration, "ms")));
                   }, maxDuration);
@@ -1310,9 +1392,9 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
 
                     clearTimeout(timeout);
 
-                    _this11.removeListener('disableStartOnJobComplete', handledisableStartOnJobComplete);
+                    _this12.removeListener('disableStartOnJobComplete', handledisableStartOnJobComplete);
 
-                    _this11.removeListener('disableStartOnJobError', handledisableStartOnJobError);
+                    _this12.removeListener('disableStartOnJobError', handledisableStartOnJobError);
 
                     resolve();
                   };
@@ -1324,16 +1406,16 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
 
                     clearTimeout(timeout);
 
-                    _this11.removeListener('disableStartOnJobComplete', handledisableStartOnJobComplete);
+                    _this12.removeListener('disableStartOnJobComplete', handledisableStartOnJobComplete);
 
-                    _this11.removeListener('disableStartOnJobError', handledisableStartOnJobError);
+                    _this12.removeListener('disableStartOnJobError', handledisableStartOnJobError);
 
                     reject(error);
                   };
 
-                  _this11.addListener('disableStartOnJobComplete', handledisableStartOnJobComplete);
+                  _this12.addListener('disableStartOnJobComplete', handledisableStartOnJobComplete);
 
-                  _this11.addListener('disableStartOnJobError', handledisableStartOnJobError);
+                  _this12.addListener('disableStartOnJobError', handledisableStartOnJobError);
 
                   port.postMessage({
                     type: 'disableStartOnJob',
@@ -1343,10 +1425,10 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
 
               case 8:
               case "end":
-                return _context13.stop();
+                return _context14.stop();
             }
           }
-        }, _callee12, this);
+        }, _callee13, this);
       }));
 
       function disableStartOnJob() {
@@ -1358,34 +1440,34 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
   }, {
     key: "sync",
     value: function () {
-      var _sync = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee13() {
-        var _this12 = this;
+      var _sync = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee14() {
+        var _this13 = this;
 
         var serviceWorker, _registration;
 
-        return regeneratorRuntime.wrap(function _callee13$(_context14) {
+        return regeneratorRuntime.wrap(function _callee14$(_context15) {
           while (1) {
-            switch (_context14.prev = _context14.next) {
+            switch (_context15.prev = _context15.next) {
               case 0:
                 if (canUseSyncManager) {
-                  _context14.next = 2;
+                  _context15.next = 2;
                   break;
                 }
 
-                return _context14.abrupt("return");
+                return _context15.abrupt("return");
 
               case 2:
                 if (!this.isSyncing) {
-                  _context14.next = 4;
+                  _context15.next = 4;
                   break;
                 }
 
-                return _context14.abrupt("return");
+                return _context15.abrupt("return");
 
               case 4:
                 this.isSyncing = true;
-                _context14.prev = 5;
-                _context14.next = 8;
+                _context15.prev = 5;
+                _context15.next = 8;
                 return this.link();
 
               case 8:
@@ -1393,26 +1475,26 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                 serviceWorker = navigator && navigator.serviceWorker;
 
                 if (serviceWorker) {
-                  _context14.next = 12;
+                  _context15.next = 12;
                   break;
                 }
 
                 throw new Error('Service worker not available');
 
               case 12:
-                _context14.next = 14;
+                _context15.next = 14;
                 return serviceWorker.ready;
 
               case 14:
-                _registration = _context14.sent;
+                _registration = _context15.sent;
 
                 // $FlowFixMe
                 _registration.sync.register('syncManagerOnIdle');
 
-                _context14.next = 18;
+                _context15.next = 18;
                 return new Promise(function (resolve, reject) {
                   var timeout = setTimeout(function () {
-                    _this12.removeListener('syncManagerOnIdle', handleOnIdleSync);
+                    _this13.removeListener('syncManagerOnIdle', handleOnIdleSync);
 
                     reject(new Error('Unable to sync, did not receive syncManagerOnIdle acknowledgement'));
                   }, 5000);
@@ -1420,58 +1502,58 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                   var handleOnIdleSync = function handleOnIdleSync() {
                     clearTimeout(timeout);
 
-                    _this12.removeListener('syncManagerOnIdle', handleOnIdleSync);
+                    _this13.removeListener('syncManagerOnIdle', handleOnIdleSync);
 
                     resolve();
                   };
 
-                  _this12.addListener('syncManagerOnIdle', handleOnIdleSync);
+                  _this13.addListener('syncManagerOnIdle', handleOnIdleSync);
                 });
 
               case 18:
-                _context14.next = 20;
+                _context15.next = 20;
                 return new Promise(function (resolve) {
                   var handleIdle = function handleIdle() {
-                    _this12.removeListener('idle', handleIdle);
+                    _this13.removeListener('idle', handleIdle);
 
-                    _this12.removeListener('unlink', handleUnlink);
+                    _this13.removeListener('unlink', handleUnlink);
 
                     resolve();
                   };
 
                   var handleUnlink = function handleUnlink() {
-                    _this12.removeListener('idle', handleIdle);
+                    _this13.removeListener('idle', handleIdle);
 
-                    _this12.removeListener('unlink', handleUnlink);
+                    _this13.removeListener('unlink', handleUnlink);
 
                     resolve();
                   };
 
-                  _this12.addListener('idle', handleIdle);
+                  _this13.addListener('idle', handleIdle);
 
-                  _this12.addListener('unlink', handleUnlink);
+                  _this13.addListener('unlink', handleUnlink);
                 });
 
               case 20:
-                _context14.next = 27;
+                _context15.next = 27;
                 break;
 
               case 22:
-                _context14.prev = 22;
-                _context14.t0 = _context14["catch"](5);
+                _context15.prev = 22;
+                _context15.t0 = _context15["catch"](5);
                 this.logger.error('Unable to sync');
-                this.emit('error', _context14.t0);
-                this.logger.errorStack(_context14.t0);
+                this.emit('error', _context15.t0);
+                this.logger.errorStack(_context15.t0);
 
               case 27:
                 this.isSyncing = false;
 
               case 28:
               case "end":
-                return _context14.stop();
+                return _context15.stop();
             }
           }
-        }, _callee13, this, [[5, 22]]);
+        }, _callee14, this, [[5, 22]]);
       }));
 
       function sync() {

@@ -1,7 +1,7 @@
 import PQueue from 'p-queue';
 import EventEmitter from 'events';
 import makeLogger from './logger';
-import { jobEmitter, localJobEmitter, clearDatabase, dequeueFromDatabase, dequeueFromDatabaseNotIn, incrementJobAttemptInDatabase, incrementCleanupAttemptInDatabase, markJobCompleteInDatabase, markJobPendingInDatabase, markJobErrorInDatabase, markJobStartAfterInDatabase, markJobAsAbortedOrRemoveFromDatabase, markCleanupStartAfterInDatabase, updateCleanupValuesInDatabase, getCleanupFromDatabase, removePathFromCleanupDataInDatabase, getJobFromDatabase, markQueueForCleanupInDatabase, removeCleanupFromDatabase, restoreJobToDatabaseForCleanupAndRemove, getUnloadDataFromDatabase, clearUnloadDataInDatabase, JOB_PENDING_STATUS, JOB_ERROR_STATUS, JOB_CLEANUP_STATUS, JOB_CLEANUP_AND_REMOVE_STATUS } from './database';
+import { jobEmitter, localJobEmitter, clearDatabase, dequeueFromDatabase, dequeueFromDatabaseNotIn, incrementJobAttemptInDatabase, incrementCleanupAttemptInDatabase, markJobCompleteInDatabase, markJobPendingInDatabase, markJobErrorInDatabase, markJobStartAfterInDatabase, markJobAsAbortedOrRemoveFromDatabase, markCleanupStartAfterInDatabase, updateCleanupValuesInDatabase, getCleanupFromDatabase, removePathFromCleanupDataInDatabase, getJobFromDatabase, markQueueForCleanupInDatabase, markQueueForCleanupAndRemoveInDatabase, removeCleanupFromDatabase, restoreJobToDatabaseForCleanupAndRemove, getUnloadDataFromDatabase, clearUnloadDataInDatabase, JOB_PENDING_STATUS, JOB_ERROR_STATUS, JOB_CLEANUP_STATUS, JOB_CLEANUP_AND_REMOVE_STATUS } from './database';
 import { AbortError } from './errors';
 const PRIORITY_OFFSET = Math.floor(Number.MAX_SAFE_INTEGER / 2);
 export default class BatteryQueue extends EventEmitter {
@@ -363,6 +363,26 @@ export default class BatteryQueue extends EventEmitter {
 
 
     const jobs = await markQueueForCleanupInDatabase(queueId);
+    await this.startJobs(jobs);
+  }
+
+  async abortAndRemoveQueue(queueId) {
+    this.logger.info(`Aborting and removing queue ${queueId}`); // Abort active jobs
+
+    const queueAbortControllerMap = this.abortControllerMap.get(queueId);
+
+    if (typeof queueAbortControllerMap !== 'undefined') {
+      for (const abortController of queueAbortControllerMap.values()) {
+        abortController.abort();
+      }
+    } // Changes:
+    // * JOB_ERROR_STATUS -> JOB_CLEANUP_AND_REMOVE_STATUS
+    // * JOB_COMPLETE_STATUS -> JOB_CLEANUP_AND_REMOVE_STATUS
+    // * JOB_PENDING_STATUS -> JOB_CLEANUP_AND_REMOVE_STATUS
+    // * Removes other statuses
+
+
+    const jobs = await markQueueForCleanupAndRemoveInDatabase(queueId);
     await this.startJobs(jobs);
   }
 
@@ -919,6 +939,24 @@ export default class BatteryQueue extends EventEmitter {
         } catch (error) {
           this.emit('clearError', requestId, error);
           this.logger.error('Unable to handle clear message');
+          this.emit('error', error);
+        }
+
+        break;
+
+      case 'abortAndRemoveQueue':
+        try {
+          const [queueId] = requestArgs;
+
+          if (typeof queueId !== 'string') {
+            throw new Error(`Invalid "queueId" argument with type ${typeof queueId}, should be type string`);
+          }
+
+          await this.abortAndRemoveQueue(queueId);
+          this.emit('abortAndRemoveQueueComplete', requestId);
+        } catch (error) {
+          this.emit('abortAndRemoveQueueError', requestId, error);
+          this.logger.error('Unable to handle abort and remove queue message');
           this.emit('error', error);
         }
 

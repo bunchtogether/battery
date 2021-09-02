@@ -907,12 +907,16 @@ export async function markQueueForCleanupInDatabase(queueId) {
             cursor.continue();
             return;
 
+          case JOB_CLEANUP_AND_REMOVE_STATUS:
+            cursor.continue();
+            return;
+
           case JOB_ABORTED_STATUS:
             cursor.continue();
             return;
 
           default:
-            logger.warn(`Unhandled job status ${value.status}`);
+            logger.warn(`Unhandled job status ${value.status} while marking queue ${queueId} for cleanup`);
             cursor.continue();
             return;
         }
@@ -926,7 +930,7 @@ export async function markQueueForCleanupInDatabase(queueId) {
         };
 
         updateRequest.onerror = function (event2) {
-          logger.error(`Update request error while marking queue ${queueId} error`);
+          logger.error(`Update request error while marking queue ${queueId} for cleanup`);
           logger.errorObject(event2);
           cursor.continue();
         };
@@ -936,9 +940,106 @@ export async function markQueueForCleanupInDatabase(queueId) {
     };
 
     request.onerror = function (event) {
-      logger.error(`Request error while marking queue ${queueId} error`);
+      logger.error(`Request error while marking queue ${queueId} for cleanup`);
       logger.errorObject(event);
-      reject(new Error(`Request error while marking queue ${queueId} error`));
+      reject(new Error(`Request error while marking queue ${queueId} for cleanup`));
+    };
+  });
+  return jobs;
+}
+export async function markQueueForCleanupAndRemoveInDatabase(queueId) {
+  const store = await getReadWriteJobsObjectStore();
+  const index = store.index('queueIdIndex'); // $FlowFixMe
+
+  const request = index.openCursor(IDBKeyRange.only(queueId));
+  const jobs = [];
+  await new Promise((resolve, reject) => {
+    request.onsuccess = function (event) {
+      const cursor = event.target.result;
+
+      if (cursor) {
+        const value = Object.assign({}, cursor.value);
+        let shouldRemove = false;
+
+        switch (value.status) {
+          case JOB_ERROR_STATUS:
+            value.status = JOB_CLEANUP_AND_REMOVE_STATUS;
+            jobs.push(value);
+            break;
+
+          case JOB_COMPLETE_STATUS:
+            value.status = JOB_CLEANUP_AND_REMOVE_STATUS;
+            jobs.push(value);
+            break;
+
+          case JOB_PENDING_STATUS:
+            shouldRemove = true;
+            break;
+
+          case JOB_CLEANUP_STATUS:
+            value.status = JOB_CLEANUP_AND_REMOVE_STATUS;
+            jobs.push(value);
+            return;
+
+          case JOB_CLEANUP_AND_REMOVE_STATUS:
+            cursor.continue();
+            return;
+
+          case JOB_ABORTED_STATUS:
+            shouldRemove = true;
+            jobs.push(value);
+            return;
+
+          default:
+            logger.warn(`Unhandled job status ${value.status} while marking queue ${queueId} for cleanup and removal`);
+            cursor.continue();
+            return;
+        }
+
+        const {
+          id,
+          type,
+          status
+        } = value;
+
+        if (shouldRemove) {
+          const deleteRequest = cursor.delete(id);
+
+          deleteRequest.onsuccess = function () {
+            localJobEmitter.emit('jobDelete', id, queueId);
+            jobEmitter.emit('jobDelete', id, queueId);
+            cursor.continue();
+          };
+
+          deleteRequest.onerror = function (event2) {
+            logger.error(`Update request error while marking queue ${queueId} for cleanup and removal`);
+            logger.errorObject(event2);
+            cursor.continue();
+          };
+        } else {
+          const updateRequest = cursor.update(value);
+
+          updateRequest.onsuccess = function () {
+            localJobEmitter.emit('jobUpdate', id, queueId, type, status);
+            jobEmitter.emit('jobUpdate', id, queueId, type, status);
+            cursor.continue();
+          };
+
+          updateRequest.onerror = function (event2) {
+            logger.error(`Update request error while marking queue ${queueId} for cleanup and removal`);
+            logger.errorObject(event2);
+            cursor.continue();
+          };
+        }
+      } else {
+        resolve();
+      }
+    };
+
+    request.onerror = function (event) {
+      logger.error(`Request error while marking queue ${queueId} for cleanup and removal`);
+      logger.errorObject(event);
+      reject(new Error(`Request error while marking queue ${queueId} for cleanup and removal`));
     };
   });
   return jobs;

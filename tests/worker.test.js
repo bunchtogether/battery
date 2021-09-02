@@ -8,7 +8,7 @@ import {
   jobEmitter,
   JOB_COMPLETE_STATUS,
   JOB_ERROR_STATUS,
-
+  JOB_CLEANUP_AND_REMOVE_STATUS,
 } from '../src/database';
 import { asyncEmitMatchers, getNextEmit } from './lib/emit';
 import {
@@ -110,5 +110,17 @@ describe('Worker', () => {
     await expectAsync(jobEmitter).toEmit('jobUpdate', id, queueId, 'echo', JOB_COMPLETE_STATUS);
     queueInterface.onIdle(5000);
     await expectAsync(queueInterface).toEmit('idle');
+  });
+
+  it('Aborts and removes a queue from the database', async () => {
+    const queueId = uuidv4();
+    const value = uuidv4();
+    const args = [TRIGGER_NO_ERROR, value];
+    const id = await enqueueToDatabase(queueId, 'echo', args, 0);
+    await expectAsync(jobEmitter).toEmit('jobUpdate', id, queueId, 'echo', JOB_COMPLETE_STATUS);
+    await queueInterface.onIdle(5000);
+    queueInterface.abortAndRemoveQueue(queueId);
+    await expectAsync(jobEmitter).toEmit('jobUpdate', id, queueId, 'echo', JOB_CLEANUP_AND_REMOVE_STATUS);
+    await expectAsync(jobEmitter).toEmit('jobDelete', id, queueId);
   });
 });
