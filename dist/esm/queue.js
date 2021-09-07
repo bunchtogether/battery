@@ -573,7 +573,7 @@ export default class BatteryQueue extends EventEmitter {
     } catch (error) {
       const attempt = await incrementCleanupAttemptInDatabase(id, queueId);
 
-      if (error.name === 'FatalCleanupError') {
+      if (error.name === 'FatalError') {
         this.logger.error(`Fatal error in ${type} job #${id} cleanup in queue ${queueId} attempt ${attempt}`);
         this.emit('error', error);
         await removeCleanupFromDatabase(id);

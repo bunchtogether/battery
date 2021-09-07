@@ -1,7 +1,7 @@
 // @flow
 
 import { v4 as uuidv4 } from 'uuid';
-import { AbortError, FatalQueueError } from '../src/errors';
+import { AbortError, FatalError } from '../src/errors';
 import {
   jobEmitter,
   getJobsInQueueFromDatabase,
@@ -449,7 +449,7 @@ describe('Queue', () => {
     expect(echoCleanupReceivedTime).toBeGreaterThan(start + 250);
   });
 
-  it('Enqueues to the database and stops cleanup after FatalCleanupError', async () => {
+  it('Enqueues to the database and stops cleanup after FatalError', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
     const args = [TRIGGER_FATAL_ERROR_IN_CLEANUP, value];
@@ -1004,7 +1004,7 @@ describe('Queue', () => {
     let id;
     let didRunCleanup = false;
     const handler = async () => {
-      throw new FatalQueueError('Test fatal error');
+      throw new FatalError('Test fatal error');
     };
     const cleanup = async () => {
       await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{

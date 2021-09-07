@@ -2,8 +2,7 @@
 
 import EventEmitter from 'events';
 import {
-  FatalQueueError,
-  FatalCleanupError,
+  FatalError,
   AbortError,
 } from '../../src/errors';
 import makeLogger from '../../src/logger';
@@ -51,7 +50,7 @@ export async function handler(args:Array<any>, abortSignal: AbortSignal, updateC
   }
   if (instruction === TRIGGER_FATAL_ERROR) {
     logger.info('Throwing fatal error');
-    throw new FatalQueueError('Fatal echo error');
+    throw new FatalError('Fatal echo error');
   }
   logger.info('Success');
   emitter.emit('echo', { value });
@@ -76,7 +75,7 @@ export async function cleanup(cleanupData: Object | void, args:Array<any>, remov
   }
   if (instruction === TRIGGER_FATAL_ERROR_IN_CLEANUP) {
     logger.info('Throwing fatal error in cleanup');
-    throw new FatalCleanupError('Echo fatal error in cleanup');
+    throw new FatalError('Echo fatal error in cleanup');
   }
   await removePathFromCleanupData(['value']);
   emitter.emit('echoCleanupComplete', { value, cleanupData });

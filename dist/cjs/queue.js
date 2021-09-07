@@ -1178,7 +1178,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
               case 26:
                 attempt = _context12.sent;
 
-                if (!(_context12.t0.name === 'FatalCleanupError')) {
+                if (!(_context12.t0.name === 'FatalError')) {
                   _context12.next = 34;
                   break;
                 }

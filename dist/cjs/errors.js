@@ -5,7 +5,7 @@ function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "functi
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.FatalCleanupError = exports.FatalQueueError = exports.TimeoutError = exports.AbortError = void 0;
+exports.FatalError = exports.TimeoutError = exports.AbortError = void 0;
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -63,47 +63,26 @@ var _TimeoutError = /*#__PURE__*/function (_DOMException2) {
 
 exports.TimeoutError = _TimeoutError;
 
-var _FatalQueueError = /*#__PURE__*/function (_Error) {
-  _inherits(FatalQueueError, _Error);
+var _FatalError = /*#__PURE__*/function (_Error) {
+  _inherits(FatalError, _Error);
 
-  var _super3 = _createSuper(FatalQueueError);
+  var _super3 = _createSuper(FatalError);
 
-  function FatalQueueError(message) {
+  function FatalError(message) {
     var _this;
 
-    _classCallCheck(this, FatalQueueError);
+    _classCallCheck(this, FatalError);
 
     _this = _super3.call(this, message);
-    _this.name = 'FatalQueueError';
+    _this.name = 'FatalError';
     return _this;
   }
 
-  return FatalQueueError;
+  return FatalError;
 }( /*#__PURE__*/_wrapNativeSuper(Error));
 
-exports.FatalQueueError = _FatalQueueError;
-
-var _FatalCleanupError = /*#__PURE__*/function (_Error2) {
-  _inherits(FatalCleanupError, _Error2);
-
-  var _super4 = _createSuper(FatalCleanupError);
-
-  function FatalCleanupError(message) {
-    var _this2;
-
-    _classCallCheck(this, FatalCleanupError);
-
-    _this2 = _super4.call(this, message);
-    _this2.name = 'FatalCleanupError';
-    return _this2;
-  }
-
-  return FatalCleanupError;
-}( /*#__PURE__*/_wrapNativeSuper(Error));
-
-exports.FatalCleanupError = _FatalCleanupError;
+exports.FatalError = _FatalError;
 export var AbortError = exports.AbortError;
 export var TimeoutError = exports.TimeoutError;
-export var FatalQueueError = exports.FatalQueueError;
-export var FatalCleanupError = exports.FatalCleanupError;
+export var FatalError = exports.FatalError;
 //# sourceMappingURL=errors.js.map

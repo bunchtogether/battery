@@ -14,16 +14,9 @@ export class TimeoutError extends DOMException {
   }
 }
 
-export class FatalQueueError extends Error {
+export class FatalError extends Error {
   constructor(message:string) {
     super(message);
-    this.name = 'FatalQueueError';
-  }
-}
-
-export class FatalCleanupError extends Error {
-  constructor(message:string) {
-    super(message);
-    this.name = 'FatalCleanupError';
+    this.name = 'FatalError';
   }
 }
