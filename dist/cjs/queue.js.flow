@@ -52,6 +52,7 @@ type Options = {
 export default class BatteryQueue extends EventEmitter {
   declare logger: Logger;
   declare dequeueQueue: PQueue;
+  declare unloadQueue: PQueue;
   declare handlerMap: Map<string, HandlerFunction>;
   declare retryJobDelayMap: Map<string, RetryDelayFunction>;
   declare retryCleanupDelayMap: Map<string, RetryDelayFunction>;
@@ -73,6 +74,7 @@ export default class BatteryQueue extends EventEmitter {
   constructor(options?: Options = {}) {
     super();
     this.dequeueQueue = new PQueue({ concurrency: 1 });
+    this.unloadQueue = new PQueue({ concurrency: 1 });
     this.handlerMap = new Map();
     this.cleanupMap = new Map();
     this.retryJobDelayMap = new Map();
@@ -853,6 +855,16 @@ export default class BatteryQueue extends EventEmitter {
           this.emit('error', error);
         }
         break;
+      case 'runUnloadHandlers':
+        try {
+          await this.runUnloadHandlers();
+          this.emit('runUnloadHandlersComplete', requestId);
+        } catch (error) {
+          this.emit('runUnloadHandlersError', requestId, error);
+          this.logger.error('Unable to run unload handlers message');
+          this.emit('error', error);
+        }
+        break;
       case 'idle':
         try {
           const [maxDuration, start] = requestArgs;
@@ -904,19 +916,25 @@ export default class BatteryQueue extends EventEmitter {
       return;
     }
     this.logger.info('Unloading');
-    const handleUnload = this.handleUnload;
-    if (typeof handleUnload === 'function') {
-      try {
-        const unloadData = await getUnloadDataFromDatabase();
-        await handleUnload(unloadData);
-        await clearUnloadDataInDatabase();
-      } catch (error) {
-        this.logger.error('Error in unload handler');
-        this.logger.errorStack(error);
-      }
-    }
+    await this.runUnloadHandlers();
     this.emit('unloadClient');
     await this.onIdle();
+  }
+
+  runUnloadHandlers() {
+    return this.unloadQueue.add(async () => {
+      const handleUnload = this.handleUnload;
+      if (typeof handleUnload === 'function') {
+        try {
+          const unloadData = await getUnloadDataFromDatabase();
+          await handleUnload(unloadData);
+          await clearUnloadDataInDatabase();
+        } catch (error) {
+          this.logger.error('Error in unload handler');
+          this.logger.errorStack(error);
+        }
+      }
+    });
   }
 
   listenForServiceWorkerInterface() {

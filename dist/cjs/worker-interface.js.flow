@@ -467,6 +467,39 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
     });
   }
 
+  async runUnloadHandlers(maxDuration?: number = 10000) {
+    const port = await this.link();
+    await new Promise((resolve, reject) => {
+      const requestId = Math.random();
+      const timeout = setTimeout(() => {
+        this.removeListener('runUnloadHandlersComplete', handleRunUnloadHandlersComplete);
+        this.removeListener('runUnloadHandlersError', handleRunUnloadHandlersError);
+        reject(new Error(`Did not receive run unload handlers response within ${maxDuration}ms`));
+      }, maxDuration);
+      const handleRunUnloadHandlersComplete = (responseId:number) => {
+        if (responseId !== requestId) {
+          return;
+        }
+        clearTimeout(timeout);
+        this.removeListener('runUnloadHandlersComplete', handleRunUnloadHandlersComplete);
+        this.removeListener('runUnloadHandlersError', handleRunUnloadHandlersError);
+        resolve();
+      };
+      const handleRunUnloadHandlersError = (responseId:number, error:Error) => {
+        if (responseId !== requestId) {
+          return;
+        }
+        clearTimeout(timeout);
+        this.removeListener('runUnloadHandlersComplete', handleRunUnloadHandlersComplete);
+        this.removeListener('runUnloadHandlersError', handleRunUnloadHandlersError);
+        reject(error);
+      };
+      this.addListener('runUnloadHandlersComplete', handleRunUnloadHandlersComplete);
+      this.addListener('runUnloadHandlersError', handleRunUnloadHandlersError);
+      port.postMessage({ type: 'runUnloadHandlers', args: [requestId] });
+    });
+  }
+
   async onIdle(maxDuration?: number = 1000) {
     const port = await this.link();
     await new Promise((resolve, reject) => {

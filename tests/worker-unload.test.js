@@ -48,6 +48,20 @@ describe('Worker (Unload)', () => {
     ]);
   });
 
+  it('Queue should send an unload event if a unload event is requested by the service worker interface', async () => {
+    const data = {
+      [uuidv4()]: uuidv4(),
+    };
+    await updateUnloadDataInDatabase(() => data);
+    const port = queueInterface.port;
+    if (!(port instanceof MessagePort)) {
+      throw new Error('Message port does not exist');
+    }
+    port.postMessage({ type: 'heartbeat', args: [10000] });
+    queueInterface.runUnloadHandlers(1000);
+    await expectAsync(serviceWorkerEmitter).toEmit('unloadHandler', data);
+  });
+
   it('Queue should send an unload event after heartbeat timeout', async () => {
     const data = {
       [uuidv4()]: uuidv4(),

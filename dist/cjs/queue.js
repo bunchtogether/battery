@@ -89,6 +89,9 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
     _this.dequeueQueue = new _pQueue.default({
       concurrency: 1
     });
+    _this.unloadQueue = new _pQueue.default({
+      concurrency: 1
+    });
     _this.handlerMap = new Map();
     _this.cleanupMap = new Map();
     _this.retryJobDelayMap = new Map();
@@ -1845,7 +1848,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
               case 37:
                 _context17.t1 = type;
-                _context17.next = _context17.t1 === 'clear' ? 40 : _context17.t1 === 'abortAndRemoveQueue' ? 52 : _context17.t1 === 'abortQueue' ? 67 : _context17.t1 === 'dequeue' ? 82 : _context17.t1 === 'enableStartOnJob' ? 94 : _context17.t1 === 'disableStartOnJob' ? 96 : _context17.t1 === 'getQueueIds' ? 98 : _context17.t1 === 'idle' ? 111 : 128;
+                _context17.next = _context17.t1 === 'clear' ? 40 : _context17.t1 === 'abortAndRemoveQueue' ? 52 : _context17.t1 === 'abortQueue' ? 67 : _context17.t1 === 'dequeue' ? 82 : _context17.t1 === 'enableStartOnJob' ? 94 : _context17.t1 === 'disableStartOnJob' ? 96 : _context17.t1 === 'getQueueIds' ? 98 : _context17.t1 === 'runUnloadHandlers' ? 111 : _context17.t1 === 'idle' ? 123 : 140;
                 break;
 
               case 40:
@@ -1866,7 +1869,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 this.emit('error', _context17.t2);
 
               case 51:
-                return _context17.abrupt("break", 129);
+                return _context17.abrupt("break", 141);
 
               case 52:
                 _context17.prev = 52;
@@ -1896,7 +1899,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 this.emit('error', _context17.t3);
 
               case 66:
-                return _context17.abrupt("break", 129);
+                return _context17.abrupt("break", 141);
 
               case 67:
                 _context17.prev = 67;
@@ -1926,7 +1929,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 this.emit('error', _context17.t4);
 
               case 81:
-                return _context17.abrupt("break", 129);
+                return _context17.abrupt("break", 141);
 
               case 82:
                 _context17.prev = 82;
@@ -1946,7 +1949,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 this.emit('error', _context17.t5);
 
               case 93:
-                return _context17.abrupt("break", 129);
+                return _context17.abrupt("break", 141);
 
               case 94:
                 try {
@@ -1958,7 +1961,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   this.emit('error', error);
                 }
 
-                return _context17.abrupt("break", 129);
+                return _context17.abrupt("break", 141);
 
               case 96:
                 try {
@@ -1970,7 +1973,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   this.emit('error', error);
                 }
 
-                return _context17.abrupt("break", 129);
+                return _context17.abrupt("break", 141);
 
               case 98:
                 _context17.prev = 98;
@@ -1991,55 +1994,75 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 this.emit('error', _context17.t6);
 
               case 110:
-                return _context17.abrupt("break", 129);
+                return _context17.abrupt("break", 141);
 
               case 111:
                 _context17.prev = 111;
+                _context17.next = 114;
+                return this.runUnloadHandlers();
+
+              case 114:
+                this.emit('runUnloadHandlersComplete', requestId);
+                _context17.next = 122;
+                break;
+
+              case 117:
+                _context17.prev = 117;
+                _context17.t7 = _context17["catch"](111);
+                this.emit('runUnloadHandlersError', requestId, _context17.t7);
+                this.logger.error('Unable to run unload handlers message');
+                this.emit('error', _context17.t7);
+
+              case 122:
+                return _context17.abrupt("break", 141);
+
+              case 123:
+                _context17.prev = 123;
                 _requestArgs3 = _slicedToArray(requestArgs, 2), maxDuration = _requestArgs3[0], start = _requestArgs3[1];
 
                 if (!(typeof maxDuration !== 'number')) {
-                  _context17.next = 115;
+                  _context17.next = 127;
                   break;
                 }
 
                 throw new Error("Invalid \"queueId\" argument with type ".concat(_typeof(maxDuration), ", should be type number"));
 
-              case 115:
+              case 127:
                 if (!(typeof start !== 'number')) {
-                  _context17.next = 117;
+                  _context17.next = 129;
                   break;
                 }
 
                 throw new Error("Invalid \"queueId\" argument with type ".concat(_typeof(start), ", should be type number"));
 
-              case 117:
-                _context17.next = 119;
+              case 129:
+                _context17.next = 131;
                 return this.onIdle(maxDuration - (Date.now() - start));
 
-              case 119:
+              case 131:
                 this.emit('idleComplete', requestId);
-                _context17.next = 127;
+                _context17.next = 139;
                 break;
 
-              case 122:
-                _context17.prev = 122;
-                _context17.t7 = _context17["catch"](111);
-                this.emit('idleError', requestId, _context17.t7);
+              case 134:
+                _context17.prev = 134;
+                _context17.t8 = _context17["catch"](123);
+                this.emit('idleError', requestId, _context17.t8);
                 this.logger.error('Unable to handle idle message');
-                this.emit('error', _context17.t7);
+                this.emit('error', _context17.t8);
 
-              case 127:
-                return _context17.abrupt("break", 129);
+              case 139:
+                return _context17.abrupt("break", 141);
 
-              case 128:
+              case 140:
                 this.logger.warn("Unknown worker interface message type ".concat(type));
 
-              case 129:
+              case 141:
               case "end":
                 return _context17.stop();
             }
           }
-        }, _callee16, this, [[40, 46], [52, 61], [67, 76], [82, 88], [98, 105], [111, 122]]);
+        }, _callee16, this, [[40, 46], [52, 61], [67, 76], [82, 88], [98, 105], [111, 117], [123, 134]]);
       }));
 
       function handlePortMessage(_x20) {
@@ -2054,7 +2077,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
       var _unloadClient = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee17() {
         var _this8 = this;
 
-        var heartbeatExpiresTimestamp, delay, handleUnload, unloadData;
+        var heartbeatExpiresTimestamp, delay;
         return regeneratorRuntime.wrap(function _callee17$(_context18) {
           while (1) {
             switch (_context18.prev = _context18.next) {
@@ -2111,47 +2134,20 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
               case 13:
                 this.logger.info('Unloading');
-                handleUnload = this.handleUnload;
+                _context18.next = 16;
+                return this.runUnloadHandlers();
 
-                if (!(typeof handleUnload === 'function')) {
-                  _context18.next = 30;
-                  break;
-                }
-
-                _context18.prev = 16;
-                _context18.next = 19;
-                return (0, _database.getUnloadDataFromDatabase)();
-
-              case 19:
-                unloadData = _context18.sent;
-                _context18.next = 22;
-                return handleUnload(unloadData);
-
-              case 22:
-                _context18.next = 24;
-                return (0, _database.clearUnloadDataInDatabase)();
-
-              case 24:
-                _context18.next = 30;
-                break;
-
-              case 26:
-                _context18.prev = 26;
-                _context18.t0 = _context18["catch"](16);
-                this.logger.error('Error in unload handler');
-                this.logger.errorStack(_context18.t0);
-
-              case 30:
+              case 16:
                 this.emit('unloadClient');
-                _context18.next = 33;
+                _context18.next = 19;
                 return this.onIdle();
 
-              case 33:
+              case 19:
               case "end":
                 return _context18.stop();
             }
           }
-        }, _callee17, this, [[16, 26]]);
+        }, _callee17, this);
       }));
 
       function unloadClient() {
@@ -2161,9 +2157,60 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
       return unloadClient;
     }()
   }, {
+    key: "runUnloadHandlers",
+    value: function runUnloadHandlers() {
+      var _this9 = this;
+
+      return this.unloadQueue.add( /*#__PURE__*/_asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee18() {
+        var handleUnload, unloadData;
+        return regeneratorRuntime.wrap(function _callee18$(_context19) {
+          while (1) {
+            switch (_context19.prev = _context19.next) {
+              case 0:
+                handleUnload = _this9.handleUnload;
+
+                if (!(typeof handleUnload === 'function')) {
+                  _context19.next = 16;
+                  break;
+                }
+
+                _context19.prev = 2;
+                _context19.next = 5;
+                return (0, _database.getUnloadDataFromDatabase)();
+
+              case 5:
+                unloadData = _context19.sent;
+                _context19.next = 8;
+                return handleUnload(unloadData);
+
+              case 8:
+                _context19.next = 10;
+                return (0, _database.clearUnloadDataInDatabase)();
+
+              case 10:
+                _context19.next = 16;
+                break;
+
+              case 12:
+                _context19.prev = 12;
+                _context19.t0 = _context19["catch"](2);
+
+                _this9.logger.error('Error in unload handler');
+
+                _this9.logger.errorStack(_context19.t0);
+
+              case 16:
+              case "end":
+                return _context19.stop();
+            }
+          }
+        }, _callee18, null, [[2, 12]]);
+      })));
+    }
+  }, {
     key: "listenForServiceWorkerInterface",
     value: function listenForServiceWorkerInterface() {
-      var _this9 = this;
+      var _this10 = this;
 
       var activeEmitCallback;
       var handleJobAdd;
@@ -2171,28 +2218,28 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
       var handleJobUpdate;
       var handleJobsClear;
       self.addEventListener('sync', function (event) {
-        _this9.logger.info("SyncManager event ".concat(event.tag).concat(event.lastChance ? ', last chance' : ''));
+        _this10.logger.info("SyncManager event ".concat(event.tag).concat(event.lastChance ? ', last chance' : ''));
 
         if (event.tag === 'syncManagerOnIdle') {
-          _this9.logger.info('Starting SyncManager idle handler');
+          _this10.logger.info('Starting SyncManager idle handler');
 
-          _this9.emit('syncManagerOnIdle');
+          _this10.emit('syncManagerOnIdle');
 
-          event.waitUntil(_this9.onIdle().catch(function (error) {
-            _this9.logger.error("SyncManager event handler failed".concat(event.lastChance ? ' on last chance' : ''));
+          event.waitUntil(_this10.onIdle().catch(function (error) {
+            _this10.logger.error("SyncManager event handler failed".concat(event.lastChance ? ' on last chance' : ''));
 
-            _this9.logger.errorStack(error);
+            _this10.logger.errorStack(error);
           }));
         } else if (event.tag === 'unload') {
-          _this9.logger.info('Starting SyncManager unload client handler');
+          _this10.logger.info('Starting SyncManager unload client handler');
 
-          event.waitUntil(_this9.unloadClient().catch(function (error) {
-            _this9.logger.error("SyncManager event handler failed".concat(event.lastChance ? ' on last chance' : ''));
+          event.waitUntil(_this10.unloadClient().catch(function (error) {
+            _this10.logger.error("SyncManager event handler failed".concat(event.lastChance ? ' on last chance' : ''));
 
-            _this9.logger.errorStack(error);
+            _this10.logger.errorStack(error);
           }));
         } else {
-          _this9.logger.warn("Received unknown SyncManager event tag ".concat(event.tag));
+          _this10.logger.warn("Received unknown SyncManager event tag ".concat(event.tag));
         }
       });
       self.addEventListener('message', function (event) {
@@ -2222,13 +2269,13 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
           return;
         }
 
-        _this9.emitCallbacks = _this9.emitCallbacks.filter(function (x) {
+        _this10.emitCallbacks = _this10.emitCallbacks.filter(function (x) {
           return x !== activeEmitCallback;
         });
-        var previousPort = _this9.port;
+        var previousPort = _this10.port;
 
         if (previousPort instanceof MessagePort) {
-          _this9.logger.info('Closing previous worker interface');
+          _this10.logger.info('Closing previous worker interface');
 
           previousPort.close();
         }
@@ -2249,7 +2296,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
           _database.localJobEmitter.removeListener('jobsClear', handleJobsClear);
         }
 
-        port.onmessage = _this9.handlePortMessage.bind(_this9);
+        port.onmessage = _this10.handlePortMessage.bind(_this10);
 
         handleJobAdd = function handleJobAdd() {
           for (var _len2 = arguments.length, args = new Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
@@ -2312,19 +2359,19 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
         activeEmitCallback = emitCallback;
 
-        _this9.emitCallbacks.push(emitCallback);
+        _this10.emitCallbacks.push(emitCallback);
 
-        _this9.port = port;
+        _this10.port = port;
         port.postMessage({
           type: 'BATTERY_QUEUE_WORKER_CONFIRMATION'
         });
 
-        _this9.logger.info('Linked to worker interface');
+        _this10.logger.info('Linked to worker interface');
       });
       self.addEventListener('messageerror', function (event) {
-        _this9.logger.error('Service worker interface message error');
+        _this10.logger.error('Service worker interface message error');
 
-        _this9.logger.errorObject(event);
+        _this10.logger.errorObject(event);
       });
     }
   }]);

@@ -38,6 +38,7 @@ import {
   removeAuthDataFromDatabase,
   getContiguousIds,
   jobEmitter,
+  getJobsWithQueueIdAndTypeFromDatabase,
   removeJobsWithQueueIdAndTypeFromDatabase,
   removeQueueIdFromJobsDatabase,
   removeCompletedExpiredItemsFromDatabase,
@@ -68,6 +69,11 @@ describe('IndexedDB Database', () => {
     const idA = await enqueueToDatabase(queueId, type, [], 0);
 
     await expectAsync(jobAddPromiseA).toBeResolvedTo([idA, queueId, type]);
+
+    await expectAsync(getJobsWithQueueIdAndTypeFromDatabase(queueId, type)).toBeResolvedTo([idA]);
+    await expectAsync(getJobsWithQueueIdAndTypeFromDatabase(queueId, uuidv4())).toBeResolvedTo([]);
+    await expectAsync(getJobsWithQueueIdAndTypeFromDatabase(uuidv4(), type)).toBeResolvedTo([]);
+
     const jobDeletePromiseA = getNextEmit(jobEmitter, 'jobDelete');
     await removeJobsWithQueueIdAndTypeFromDatabase(queueId, type);
 
