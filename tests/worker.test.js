@@ -5,6 +5,7 @@ import { getServiceWorkerAndRegistration, unregister } from './lib/worker-interf
 import BatteryQueueServiceWorkerInterface from '../src/worker-interface';
 import {
   enqueueToDatabase,
+  getJobsInQueueFromDatabase,
   jobEmitter,
   JOB_COMPLETE_STATUS,
   JOB_ERROR_STATUS,
@@ -122,5 +123,40 @@ describe('Worker', () => {
     queueInterface.abortAndRemoveQueue(queueId);
     await expectAsync(jobEmitter).toEmit('jobUpdate', id, queueId, 'echo', JOB_CLEANUP_AND_REMOVE_STATUS);
     await expectAsync(jobEmitter).toEmit('jobDelete', id, queueId);
+  });
+
+  it('Aborts and removes a queue with a job greater than a specified number from the database', async () => {
+    const queueId = uuidv4();
+    const value = uuidv4();
+    const args = [TRIGGER_NO_ERROR, value];
+    const id = await enqueueToDatabase(queueId, 'echo', args, 0);
+    await expectAsync(jobEmitter).toEmit('jobUpdate', id, queueId, 'echo', JOB_COMPLETE_STATUS);
+    await queueInterface.onIdle(5000);
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
+      id,
+      queueId,
+      type: 'echo',
+      args: [TRIGGER_NO_ERROR, value],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_COMPLETE_STATUS,
+      startAfter: jasmine.any(Number),
+    }]);
+    queueInterface.abortAndRemoveQueueJobsGreaterThanId(queueId, id);
+    await queueInterface.onIdle(5000);
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
+      id,
+      queueId,
+      type: 'echo',
+      args: [TRIGGER_NO_ERROR, value],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_COMPLETE_STATUS,
+      startAfter: jasmine.any(Number),
+    }]);
+    queueInterface.abortAndRemoveQueueJobsGreaterThanId(queueId, 0);
+    await expectAsync(jobEmitter).toEmit('jobUpdate', id, queueId, 'echo', JOB_CLEANUP_AND_REMOVE_STATUS);
+    await expectAsync(jobEmitter).toEmit('jobDelete', id, queueId);
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([]);
   });
 });

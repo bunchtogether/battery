@@ -964,7 +964,7 @@ export async function markQueueForCleanupInDatabase(queueId) {
   });
   return jobs;
 }
-export async function markQueueForCleanupAndRemoveInDatabase(queueId) {
+export async function markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase(queueId, jobId) {
   const store = await getReadWriteJobsObjectStore();
   const index = store.index('queueIdIndex'); // $FlowFixMe
 
@@ -976,6 +976,12 @@ export async function markQueueForCleanupAndRemoveInDatabase(queueId) {
 
       if (cursor) {
         const value = Object.assign({}, cursor.value);
+
+        if (value.id <= jobId) {
+          cursor.continue();
+          return;
+        }
+
         let shouldRemove = false;
 
         switch (value.status) {
@@ -1060,6 +1066,32 @@ export async function markQueueForCleanupAndRemoveInDatabase(queueId) {
     };
   });
   return jobs;
+}
+export function markQueueForCleanupAndRemoveInDatabase(queueId) {
+  return markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase(queueId, -1);
+}
+export async function getGreatestJobIdFromQueueInDatabase(queueId) {
+  const store = await getReadOnlyJobsObjectStore();
+  const index = store.index('queueIdIndex'); // $FlowFixMe
+
+  const request = index.openCursor(IDBKeyRange.only(queueId), 'prev');
+  return new Promise((resolve, reject) => {
+    request.onsuccess = function (event) {
+      const cursor = event.target.result;
+
+      if (cursor) {
+        resolve(cursor.value.id || 0);
+      } else {
+        resolve(0);
+      }
+    };
+
+    request.onerror = function (event) {
+      logger.error(`Request error while getting the greatest job ID in queue ${queueId}`);
+      logger.errorObject(event);
+      reject(new Error(`Request error while getting the greatest job ID in queue ${queueId}`));
+    };
+  });
 }
 export async function incrementJobAttemptInDatabase(id) {
   await updateJobInDatabase(id, value => {

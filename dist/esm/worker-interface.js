@@ -528,6 +528,47 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
     });
   }
 
+  async abortAndRemoveQueueJobsGreaterThanId(queueId, id, maxDuration = 1000) {
+    const port = await this.link();
+    await new Promise((resolve, reject) => {
+      const requestId = Math.random();
+      const timeout = setTimeout(() => {
+        this.removeListener('abortAndRemoveQueueJobsGreaterThanIdComplete', handleAbortAndRemoveQueueJobsGreaterThanIdComplete);
+        this.removeListener('abortAndRemoveQueueJobsGreaterThanIdError', handleAbortAndRemoveQueueJobsGreaterThanIdError);
+        reject(new Error(`Did not receive abort queue response within ${maxDuration}ms`));
+      }, maxDuration);
+
+      const handleAbortAndRemoveQueueJobsGreaterThanIdComplete = responseId => {
+        if (responseId !== requestId) {
+          return;
+        }
+
+        clearTimeout(timeout);
+        this.removeListener('abortAndRemoveQueueJobsGreaterThanIdComplete', handleAbortAndRemoveQueueJobsGreaterThanIdComplete);
+        this.removeListener('abortAndRemoveQueueJobsGreaterThanIdError', handleAbortAndRemoveQueueJobsGreaterThanIdError);
+        resolve();
+      };
+
+      const handleAbortAndRemoveQueueJobsGreaterThanIdError = (responseId, error) => {
+        if (responseId !== requestId) {
+          return;
+        }
+
+        clearTimeout(timeout);
+        this.removeListener('abortAndRemoveQueueJobsGreaterThanIdComplete', handleAbortAndRemoveQueueJobsGreaterThanIdComplete);
+        this.removeListener('abortAndRemoveQueueJobsGreaterThanIdError', handleAbortAndRemoveQueueJobsGreaterThanIdError);
+        reject(error);
+      };
+
+      this.addListener('abortAndRemoveQueueJobsGreaterThanIdComplete', handleAbortAndRemoveQueueJobsGreaterThanIdComplete);
+      this.addListener('abortAndRemoveQueueJobsGreaterThanIdError', handleAbortAndRemoveQueueJobsGreaterThanIdError);
+      port.postMessage({
+        type: 'abortAndRemoveQueueJobsGreaterThanId',
+        args: [requestId, queueId, id]
+      });
+    });
+  }
+
   async dequeue(maxDuration = 1000) {
     const port = await this.link();
     await new Promise((resolve, reject) => {

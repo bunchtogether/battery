@@ -28,6 +28,7 @@ import {
   markCleanupStartAfterInDatabase,
   markQueueForCleanupInDatabase,
   markQueueForCleanupAndRemoveInDatabase,
+  markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase,
   clearDatabase,
   setMetadataInDatabase,
   getMetadataFromDatabase,
@@ -46,6 +47,7 @@ import {
   getUnloadDataFromDatabase,
   clearUnloadDataInDatabase,
   updateJobInDatabase,
+  getGreatestJobIdFromQueueInDatabase,
   JOB_PENDING_STATUS,
   JOB_COMPLETE_STATUS,
   JOB_ERROR_STATUS,
@@ -166,9 +168,11 @@ describe('IndexedDB Database', () => {
   it('Gets jobs by ID from database', async () => {
     const queueId = uuidv4();
     const type = uuidv4();
+    await expectAsync(getGreatestJobIdFromQueueInDatabase(queueId)).toBeResolvedTo(0);
     const idA = await enqueueToDatabase(queueId, type, [], 0);
+    await expectAsync(getGreatestJobIdFromQueueInDatabase(queueId)).toBeResolvedTo(idA);
     const idB = await enqueueToDatabase(queueId, type, [], 0);
-
+    await expectAsync(getGreatestJobIdFromQueueInDatabase(queueId)).toBeResolvedTo(idB);
     await expectAsync(getJobsInDatabase([idA, idB])).toBeResolvedTo([{
       id: idA,
       queueId,
@@ -865,6 +869,46 @@ describe('IndexedDB Database', () => {
     });
   });
 
+
+  it('Removes pending jobs with job IDs greater than a specified number for cleanup and removal', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const args = [uuidv4()];
+    const id = await enqueueToDatabase(queueId, type, args, 0);
+
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+
+    const greatestJobId = await getGreatestJobIdFromQueueInDatabase(queueId);
+
+    expect(greatestJobId).toEqual(id);
+
+    await markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase(queueId, greatestJobId);
+
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+
+    await markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase(queueId, 0);
+
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo(undefined);
+  });
+
   it('Removes pending jobs when marking queue for cleanup and removal', async () => {
     const queueId = uuidv4();
     const type = uuidv4();
@@ -948,6 +992,54 @@ describe('IndexedDB Database', () => {
     });
   });
 
+  it('Marks completed jobs with job IDs greater than a specified number for cleanup and removal when marking queue for cleanup and removal', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const args = [uuidv4()];
+    const id = await enqueueToDatabase(queueId, type, args, 0);
+    await markJobCompleteInDatabase(id);
+
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_COMPLETE_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+
+    const greatestJobId = await getGreatestJobIdFromQueueInDatabase(queueId);
+
+    expect(greatestJobId).toEqual(id);
+
+    await markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase(queueId, greatestJobId);
+
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_COMPLETE_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+
+    await markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase(queueId, 0);
+
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_CLEANUP_AND_REMOVE_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+  });
 
   it('Marks job start-after time in database', async () => {
     const queueId = uuidv4();
