@@ -1847,10 +1847,12 @@ function _markQueueForCleanupInDatabase() {
                       break;
 
                     case _JOB_CLEANUP_STATUS:
+                      jobs.push(value);
                       cursor.continue();
                       return;
 
                     case _JOB_CLEANUP_AND_REMOVE_STATUS:
+                      jobs.push(value);
                       cursor.continue();
                       return;
 
@@ -1957,9 +1959,10 @@ function _markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase() {
                     case _JOB_CLEANUP_STATUS:
                       value.status = _JOB_CLEANUP_AND_REMOVE_STATUS;
                       jobs.push(value);
-                      return;
+                      break;
 
                     case _JOB_CLEANUP_AND_REMOVE_STATUS:
+                      jobs.push(value);
                       cursor.continue();
                       return;
 

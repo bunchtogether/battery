@@ -834,9 +834,11 @@ export async function markQueueForCleanupInDatabase(queueId:string) {
             value.status = JOB_ABORTED_STATUS;
             break;
           case JOB_CLEANUP_STATUS:
+            jobs.push(value);
             cursor.continue();
             return;
           case JOB_CLEANUP_AND_REMOVE_STATUS:
+            jobs.push(value);
             cursor.continue();
             return;
           case JOB_ABORTED_STATUS:
@@ -902,8 +904,9 @@ export async function markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase(queue
           case JOB_CLEANUP_STATUS:
             value.status = JOB_CLEANUP_AND_REMOVE_STATUS;
             jobs.push(value);
-            return;
+            break;
           case JOB_CLEANUP_AND_REMOVE_STATUS:
+            jobs.push(value);
             cursor.continue();
             return;
           case JOB_ABORTED_STATUS:

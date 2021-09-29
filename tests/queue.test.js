@@ -885,13 +885,22 @@ describe('Queue', () => {
   });
 
   it('Cleans up and removes jobs from the queue with job IDs larger than a specified number if abortAndRemoveQueueJobsGreaterThanId is called', async () => {
+    await queue.disableStartOnJob();
     const queueId = uuidv4();
     const valueA = uuidv4();
     const valueB = uuidv4();
+    const valueC = uuidv4();
     const idA = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueA], 0);
     const idB = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueB], 0);
+    const idC = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueC], 0);
+
+    await queue.dequeue();
+
     await expectAsync(echoEmitter).toEmit('echo', { value: valueA });
     await expectAsync(echoEmitter).toEmit('echo', { value: valueB });
+    await expectAsync(echoEmitter).toEmit('echo', { value: valueC });
+
+    await queue.onIdle();
 
     await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
       id: idA,
@@ -911,9 +920,24 @@ describe('Queue', () => {
       created: jasmine.any(Number),
       status: JOB_COMPLETE_STATUS,
       startAfter: jasmine.any(Number),
+    }, {
+      id: idC,
+      queueId,
+      type: 'echo',
+      args: [TRIGGER_NO_ERROR, valueC],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_COMPLETE_STATUS,
+      startAfter: jasmine.any(Number),
     }]);
+
     await queue.abortAndRemoveQueueJobsGreaterThanId(queueId, idA);
+
+    await queue.dequeue();
+
+    await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value: valueC, cleanupData: { value: valueC } });
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value: valueB, cleanupData: { value: valueB } });
+
     await queue.onIdle();
     await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
       id: idA,
