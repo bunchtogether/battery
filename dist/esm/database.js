@@ -1010,8 +1010,7 @@ export async function markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase(queue
 
           case JOB_ABORTED_STATUS:
             shouldRemove = true;
-            jobs.push(value);
-            return;
+            break;
 
           default:
             logger.warn(`Unhandled job status ${value.status} while marking queue ${queueId} for cleanup and removal`);

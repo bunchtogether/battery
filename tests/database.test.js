@@ -930,6 +930,29 @@ describe('IndexedDB Database', () => {
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo(undefined);
   });
 
+  it('Removes aborted jobs when marking queue for cleanup and removal', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const args = [uuidv4()];
+    const id = await enqueueToDatabase(queueId, type, args, 0);
+
+    await markJobAbortedInDatabase(id);
+
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_ABORTED_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+    await markQueueForCleanupAndRemoveInDatabase(queueId);
+
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo(undefined);
+  });
+
   it('Marks completed jobs for cleanup when marking queue for cleanup', async () => {
     const queueId = uuidv4();
     const type = uuidv4();

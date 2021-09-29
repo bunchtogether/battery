@@ -1965,8 +1965,7 @@ function _markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase() {
 
                     case _JOB_ABORTED_STATUS:
                       shouldRemove = true;
-                      jobs.push(value);
-                      return;
+                      break;
 
                     default:
                       logger.warn("Unhandled job status ".concat(value.status, " while marking queue ").concat(queueId, " for cleanup and removal"));
