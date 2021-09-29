@@ -1118,6 +1118,10 @@ describe('Queue', () => {
     let didRunCleanup = false;
     const type = uuidv4();
     const retryJobDelay = (attempt, error) => {
+      if (didRunCleanup) {
+        return false;
+      }
+
       expect(handlerCount).toEqual(1);
       expect(error).toBeInstanceOf(Error);
       return 0;
