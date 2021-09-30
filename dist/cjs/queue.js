@@ -771,7 +771,8 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 } // Changes:
                 // * JOB_ERROR_STATUS -> JOB_CLEANUP_AND_REMOVE_STATUS
                 // * JOB_COMPLETE_STATUS -> JOB_CLEANUP_AND_REMOVE_STATUS
-                // * JOB_PENDING_STATUS -> JOB_CLEANUP_AND_REMOVE_STATUS
+                // * JOB_CLEANUP_STATUS -> JOB_CLEANUP_AND_REMOVE_STATUS
+                // * JOB_CLEANUP_AND_REMOVE_STATUS -> JOB_CLEANUP_AND_REMOVE_STATUS
                 // * Removes other statuses
 
 
