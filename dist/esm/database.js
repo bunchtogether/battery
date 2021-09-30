@@ -269,10 +269,6 @@ function getReadWriteArgLookupObjectStoreAndTransactionPromise() {
   return getReadWriteObjectStoreAndTransactionPromise('arg-lookup');
 }
 
-function getReadWriteMetadataObjectStoreAndTransactionPromise() {
-  return getReadWriteObjectStoreAndTransactionPromise('metadata');
-}
-
 function removeJobFromObjectStore(store, id, queueId) {
   const deleteRequest = store.delete(id);
 
@@ -755,42 +751,62 @@ export async function setMetadataInDatabase(id, metadata) {
     };
   });
 }
-export async function updateMetadataInDatabase(id, metadata) {
-  const [store, promise] = await getReadWriteMetadataObjectStoreAndTransactionPromise();
+export async function updateMetadataInDatabase(id, transform) {
+  const store = await getReadWriteMetadataObjectStore();
   const request = store.get(id);
+  await new Promise((resolve, reject) => {
+    request.onsuccess = function () {
+      let newValue;
+      const response = request.result;
+      const value = typeof response !== 'undefined' ? response.metadata : undefined;
 
-  request.onsuccess = function () {
-    const response = request.result;
+      try {
+        newValue = transform(value);
+      } catch (error) {
+        reject(error);
+        return;
+      }
 
-    if (typeof response === 'undefined') {
-      const putRequest = store.put({
-        id,
-        metadata
-      });
+      if (typeof newValue === 'undefined') {
+        resolve();
+      } else if (newValue === false) {
+        if (typeof value !== 'undefined') {
+          const deleteRequest = store.delete(id);
 
-      putRequest.onerror = function (event) {
-        logger.error(`Error in put request while updating ${id} metadata`);
-        logger.errorObject(event);
-      };
-    } else {
-      const putRequest = store.put({
-        id,
-        metadata: merge({}, response.metadata, metadata)
-      });
+          deleteRequest.onsuccess = function () {
+            resolve();
+          };
 
-      putRequest.onerror = function (event) {
-        logger.error(`Error in put request while updating ${id} metadata`);
-        logger.errorObject(event);
-      };
-    }
-  };
+          deleteRequest.onerror = function (event) {
+            logger.error(`Delete request error while updating ${id} in metadata database`);
+            logger.errorObject(event);
+            reject(new Error(`Delete request error while updating ${id} in metadata database`));
+          };
+        }
+      } else {
+        const putRequest = store.put({
+          id,
+          metadata: newValue
+        });
 
-  request.onerror = function (event) {
-    logger.error(`Error while updating ${id} metadata`);
-    logger.errorObject(event);
-  };
+        putRequest.onsuccess = function () {
+          resolve();
+        };
 
-  await promise;
+        putRequest.onerror = function (event) {
+          logger.error(`Put request error while updating ${id} in metadata database`);
+          logger.errorObject(event);
+          reject(new Error(`Put request error while updating ${id} in metadata database`));
+        };
+      }
+    };
+
+    request.onerror = function (event) {
+      logger.error(`Get request error while updating ${id} in metadata database`);
+      logger.errorObject(event);
+      reject(new Error(`Get request error while updating ${id} in metadata database`));
+    };
+  });
 }
 export function markJobStatusInDatabase(id, status) {
   return updateJobInDatabase(id, value => {
@@ -1762,62 +1778,8 @@ export async function removeArgLookupsForJob(jobId) {
   await promise;
 }
 const UNLOAD_DATA_ID = '_UNLOAD_DATA';
-export async function updateUnloadDataInDatabase(transform) {
-  const store = await getReadWriteMetadataObjectStore();
-  const request = store.get(UNLOAD_DATA_ID);
-  await new Promise((resolve, reject) => {
-    request.onsuccess = function () {
-      let newValue;
-      const response = request.result;
-      const value = typeof response !== 'undefined' ? response.metadata : undefined;
-
-      try {
-        newValue = transform(value);
-      } catch (error) {
-        reject(error);
-        return;
-      }
-
-      if (typeof newValue === 'undefined') {
-        resolve();
-      } else if (newValue === false) {
-        if (typeof value !== 'undefined') {
-          const deleteRequest = store.delete(UNLOAD_DATA_ID);
-
-          deleteRequest.onsuccess = function () {
-            resolve();
-          };
-
-          deleteRequest.onerror = function (event) {
-            logger.error('Delete request error while updating unload data in metadata database');
-            logger.errorObject(event);
-            reject(new Error('Delete request error while updating unload data in metadata database'));
-          };
-        }
-      } else {
-        const putRequest = store.put({
-          id: UNLOAD_DATA_ID,
-          metadata: newValue
-        });
-
-        putRequest.onsuccess = function () {
-          resolve();
-        };
-
-        putRequest.onerror = function (event) {
-          logger.error('Put request error while updating unload data in metadata database');
-          logger.errorObject(event);
-          reject(new Error('Put request error while updating unload data in metadata database'));
-        };
-      }
-    };
-
-    request.onerror = function (event) {
-      logger.error('Get request error while updating unload data in metadata database');
-      logger.errorObject(event);
-      reject(new Error('Get request error while updating unload data in metadata database'));
-    };
-  });
+export function updateUnloadDataInDatabase(transform) {
+  return updateMetadataInDatabase(UNLOAD_DATA_ID, transform);
 }
 export function getUnloadDataFromDatabase() {
   return getMetadataFromDatabase(UNLOAD_DATA_ID);

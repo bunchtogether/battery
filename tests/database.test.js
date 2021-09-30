@@ -1203,11 +1203,38 @@ describe('IndexedDB Database', () => {
     expect(await getMetadataFromDatabase(id)).toBeUndefined();
     await setMetadataInDatabase(id, { [keyA]: valueA });
     await expectAsync(getMetadataFromDatabase(id)).toBeResolvedTo({ [keyA]: valueA });
-    await updateMetadataInDatabase(id, { [keyB]: valueB });
+    await updateMetadataInDatabase(id, (data:any) => {
+      if (typeof data === 'object' || typeof data === 'undefined') {
+        const newData = Object.assign({}, data, { [keyB]: valueB });
+        return newData;
+      }
+      throw new Error(`Invalid data type ${typeof data}`);
+    });
     await expectAsync(getMetadataFromDatabase(id)).toBeResolvedTo({ [keyA]: valueA, [keyB]: valueB });
     await clearMetadataInDatabase(id);
 
     expect(await getMetadataFromDatabase(id)).toBeUndefined();
+  });
+
+  it('Clears arbitrary metadata if the update transform function returns false', async () => {
+    const id = uuidv4();
+    const key = uuidv4();
+    const value = uuidv4();
+    await setMetadataInDatabase(id, { [key]: value });
+    await expectAsync(getMetadataFromDatabase(id)).toBeResolvedTo({ [key]: value });
+    await updateMetadataInDatabase(id, () => false);
+
+    expect(await getMetadataFromDatabase(id)).toBeUndefined();
+  });
+
+  it('Does not update arbitrary metadata if the update transform function returns undefined', async () => {
+    const id = uuidv4();
+    const key = uuidv4();
+    const value = uuidv4();
+    await setMetadataInDatabase(id, { [key]: value });
+    await expectAsync(getMetadataFromDatabase(id)).toBeResolvedTo({ [key]: value });
+    await updateMetadataInDatabase(id, () => undefined);
+    await expectAsync(getMetadataFromDatabase(id)).toBeResolvedTo({ [key]: value });
   });
 
   it('Gets and sets auth data in database', async () => {

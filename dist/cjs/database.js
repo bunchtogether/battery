@@ -59,7 +59,7 @@ exports.markJobsWithArgLookupKeyCleanupAndRemoveInDatabase = _markJobsWithArgLoo
 exports.lookupArgs = _lookupArgs2;
 exports.lookupArg = _lookupArg2;
 exports.removeArgLookupsForJob = _removeArgLookupsForJob2;
-exports.updateUnloadDataInDatabase = _updateUnloadDataInDatabase2;
+exports.updateUnloadDataInDatabase = _updateUnloadDataInDatabase;
 exports.getUnloadDataFromDatabase = _getUnloadDataFromDatabase;
 exports.clearUnloadDataInDatabase = _clearUnloadDataInDatabase;
 exports.databasePromise = exports.JOB_CLEANUP_AND_REMOVE_STATUS = exports.JOB_CLEANUP_STATUS = exports.JOB_ERROR_STATUS = exports.JOB_PENDING_STATUS = exports.JOB_COMPLETE_STATUS = exports.JOB_ABORTED_STATUS = exports.QUEUE_EMPTY_STATUS = exports.QUEUE_COMPLETE_STATUS = exports.QUEUE_PENDING_STATUS = exports.QUEUE_ERROR_STATUS = exports.CleanupDoesNotExistError = exports.JobDoesNotExistError = exports.jobEmitter = exports.localJobEmitter = void 0;
@@ -551,10 +551,6 @@ function getReadOnlyJobsObjectStoreAndTransactionPromise() {
 
 function getReadWriteArgLookupObjectStoreAndTransactionPromise() {
   return getReadWriteObjectStoreAndTransactionPromise('arg-lookup');
-}
-
-function getReadWriteMetadataObjectStoreAndTransactionPromise() {
-  return getReadWriteObjectStoreAndTransactionPromise('metadata');
 }
 
 function removeJobFromObjectStore(store, id, queueId) {
@@ -1633,58 +1629,74 @@ function _updateMetadataInDatabase2(_x31, _x32) {
 }
 
 function _updateMetadataInDatabase() {
-  _updateMetadataInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee28(id, metadata) {
-    var _yield$getReadWriteMe, _yield$getReadWriteMe2, store, promise, request;
-
+  _updateMetadataInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee28(id, transform) {
+    var store, request;
     return regeneratorRuntime.wrap(function _callee28$(_context28) {
       while (1) {
         switch (_context28.prev = _context28.next) {
           case 0:
             _context28.next = 2;
-            return getReadWriteMetadataObjectStoreAndTransactionPromise();
+            return getReadWriteMetadataObjectStore();
 
           case 2:
-            _yield$getReadWriteMe = _context28.sent;
-            _yield$getReadWriteMe2 = _slicedToArray(_yield$getReadWriteMe, 2);
-            store = _yield$getReadWriteMe2[0];
-            promise = _yield$getReadWriteMe2[1];
+            store = _context28.sent;
             request = store.get(id);
+            _context28.next = 6;
+            return new Promise(function (resolve, reject) {
+              request.onsuccess = function () {
+                var newValue;
+                var response = request.result;
+                var value = typeof response !== 'undefined' ? response.metadata : undefined;
 
-            request.onsuccess = function () {
-              var response = request.result;
+                try {
+                  newValue = transform(value);
+                } catch (error) {
+                  reject(error);
+                  return;
+                }
 
-              if (typeof response === 'undefined') {
-                var putRequest = store.put({
-                  id: id,
-                  metadata: metadata
-                });
+                if (typeof newValue === 'undefined') {
+                  resolve();
+                } else if (newValue === false) {
+                  if (typeof value !== 'undefined') {
+                    var deleteRequest = store.delete(id);
 
-                putRequest.onerror = function (event) {
-                  logger.error("Error in put request while updating ".concat(id, " metadata"));
-                  logger.errorObject(event);
-                };
-              } else {
-                var _putRequest = store.put({
-                  id: id,
-                  metadata: (0, _merge.default)({}, response.metadata, metadata)
-                });
+                    deleteRequest.onsuccess = function () {
+                      resolve();
+                    };
 
-                _putRequest.onerror = function (event) {
-                  logger.error("Error in put request while updating ".concat(id, " metadata"));
-                  logger.errorObject(event);
-                };
-              }
-            };
+                    deleteRequest.onerror = function (event) {
+                      logger.error("Delete request error while updating ".concat(id, " in metadata database"));
+                      logger.errorObject(event);
+                      reject(new Error("Delete request error while updating ".concat(id, " in metadata database")));
+                    };
+                  }
+                } else {
+                  var putRequest = store.put({
+                    id: id,
+                    metadata: newValue
+                  });
 
-            request.onerror = function (event) {
-              logger.error("Error while updating ".concat(id, " metadata"));
-              logger.errorObject(event);
-            };
+                  putRequest.onsuccess = function () {
+                    resolve();
+                  };
 
-            _context28.next = 11;
-            return promise;
+                  putRequest.onerror = function (event) {
+                    logger.error("Put request error while updating ".concat(id, " in metadata database"));
+                    logger.errorObject(event);
+                    reject(new Error("Put request error while updating ".concat(id, " in metadata database")));
+                  };
+                }
+              };
 
-          case 11:
+              request.onerror = function (event) {
+                logger.error("Get request error while updating ".concat(id, " in metadata database"));
+                logger.errorObject(event);
+                reject(new Error("Get request error while updating ".concat(id, " in metadata database")));
+              };
+            });
+
+          case 6:
           case "end":
             return _context28.stop();
         }
@@ -3600,86 +3612,8 @@ function _removeArgLookupsForJob() {
 
 var UNLOAD_DATA_ID = '_UNLOAD_DATA';
 
-function _updateUnloadDataInDatabase2(_x70) {
-  return _updateUnloadDataInDatabase.apply(this, arguments);
-}
-
-function _updateUnloadDataInDatabase() {
-  _updateUnloadDataInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee54(transform) {
-    var store, request;
-    return regeneratorRuntime.wrap(function _callee54$(_context54) {
-      while (1) {
-        switch (_context54.prev = _context54.next) {
-          case 0:
-            _context54.next = 2;
-            return getReadWriteMetadataObjectStore();
-
-          case 2:
-            store = _context54.sent;
-            request = store.get(UNLOAD_DATA_ID);
-            _context54.next = 6;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function () {
-                var newValue;
-                var response = request.result;
-                var value = typeof response !== 'undefined' ? response.metadata : undefined;
-
-                try {
-                  newValue = transform(value);
-                } catch (error) {
-                  reject(error);
-                  return;
-                }
-
-                if (typeof newValue === 'undefined') {
-                  resolve();
-                } else if (newValue === false) {
-                  if (typeof value !== 'undefined') {
-                    var deleteRequest = store.delete(UNLOAD_DATA_ID);
-
-                    deleteRequest.onsuccess = function () {
-                      resolve();
-                    };
-
-                    deleteRequest.onerror = function (event) {
-                      logger.error('Delete request error while updating unload data in metadata database');
-                      logger.errorObject(event);
-                      reject(new Error('Delete request error while updating unload data in metadata database'));
-                    };
-                  }
-                } else {
-                  var putRequest = store.put({
-                    id: UNLOAD_DATA_ID,
-                    metadata: newValue
-                  });
-
-                  putRequest.onsuccess = function () {
-                    resolve();
-                  };
-
-                  putRequest.onerror = function (event) {
-                    logger.error('Put request error while updating unload data in metadata database');
-                    logger.errorObject(event);
-                    reject(new Error('Put request error while updating unload data in metadata database'));
-                  };
-                }
-              };
-
-              request.onerror = function (event) {
-                logger.error('Get request error while updating unload data in metadata database');
-                logger.errorObject(event);
-                reject(new Error('Get request error while updating unload data in metadata database'));
-              };
-            });
-
-          case 6:
-          case "end":
-            return _context54.stop();
-        }
-      }
-    }, _callee54);
-  }));
-  return _updateUnloadDataInDatabase.apply(this, arguments);
+function _updateUnloadDataInDatabase(transform) {
+  return _updateMetadataInDatabase2(UNLOAD_DATA_ID, transform);
 }
 
 function _getUnloadDataFromDatabase() {
