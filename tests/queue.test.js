@@ -45,6 +45,7 @@ describe('Queue', () => {
 
   afterEach(async () => {
     await queue.clear();
+    queue.enableStartOnJob();
   });
 
   it('Enqueues to the database and is handled', async () => {
@@ -933,7 +934,7 @@ describe('Queue', () => {
 
     await queue.abortAndRemoveQueueJobsGreaterThanId(queueId, idA);
 
-    await queue.dequeue();
+    queue.dequeue();
 
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value: valueC, cleanupData: { value: valueC } });
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value: valueB, cleanupData: { value: valueB } });
