@@ -17,10 +17,11 @@ export const TRIGGER_ERROR_IN_HANDLER_AND_IN_CLEANUP = 5;
 export const TRIGGER_FATAL_ERROR_IN_CLEANUP = 6;
 export const TRIGGER_100MS_DELAY = 7;
 export const TRIGGER_ABORT_ERROR = 8;
+export const TRIGGER_HANDLER_RETURN_FALSE = 9;
 
 export const emitter = new EventEmitter();
 
-export async function handler(args:Array<any>, abortSignal: AbortSignal, updateCleanupData: (Object) => Promise<void>) {
+export async function handler(args:Array<any>, abortSignal: AbortSignal, updateCleanupData: (Object) => Promise<void>) { // eslint-disable-line consistent-return
   const [instruction, value] = args;
   if (typeof instruction !== 'number') {
     throw new Error(`Invalid "instruction" argument of type ${typeof instruction}, should be number`);
@@ -54,6 +55,9 @@ export async function handler(args:Array<any>, abortSignal: AbortSignal, updateC
   }
   logger.info('Success');
   emitter.emit('echo', { value });
+  if (instruction === TRIGGER_HANDLER_RETURN_FALSE) {
+    return false;
+  }
 }
 
 export async function cleanup(cleanupData: Object | void, args:Array<any>, removePathFromCleanupData: Array<string> => Promise<void>) {

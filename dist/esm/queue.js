@@ -1,7 +1,7 @@
 import PQueue from 'p-queue';
 import EventEmitter from 'events';
 import makeLogger from './logger';
-import { jobEmitter, localJobEmitter, clearDatabase, dequeueFromDatabase, dequeueFromDatabaseNotIn, incrementJobAttemptInDatabase, incrementCleanupAttemptInDatabase, markJobCompleteInDatabase, markJobPendingInDatabase, markJobErrorInDatabase, markJobStartAfterInDatabase, markJobAsAbortedOrRemoveFromDatabase, markCleanupStartAfterInDatabase, updateCleanupValuesInDatabase, getCleanupFromDatabase, removePathFromCleanupDataInDatabase, getJobFromDatabase, markQueueForCleanupInDatabase, markQueueForCleanupAndRemoveInDatabase, markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase, removeCleanupFromDatabase, restoreJobToDatabaseForCleanupAndRemove, getUnloadDataFromDatabase, clearUnloadDataInDatabase, JOB_PENDING_STATUS, JOB_ERROR_STATUS, JOB_CLEANUP_STATUS, JOB_CLEANUP_AND_REMOVE_STATUS } from './database';
+import { jobEmitter, localJobEmitter, clearDatabase, dequeueFromDatabase, dequeueFromDatabaseNotIn, incrementJobAttemptInDatabase, incrementCleanupAttemptInDatabase, markJobCompleteInDatabase, markJobCompleteThenRemoveFromDatabase, markJobPendingInDatabase, markJobErrorInDatabase, markJobStartAfterInDatabase, markJobAsAbortedOrRemoveFromDatabase, markCleanupStartAfterInDatabase, updateCleanupValuesInDatabase, getCleanupFromDatabase, removePathFromCleanupDataInDatabase, getJobFromDatabase, markQueueForCleanupInDatabase, markQueueForCleanupAndRemoveInDatabase, markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase, removeCleanupFromDatabase, restoreJobToDatabaseForCleanupAndRemove, getUnloadDataFromDatabase, clearUnloadDataInDatabase, JOB_PENDING_STATUS, JOB_ERROR_STATUS, JOB_CLEANUP_STATUS, JOB_CLEANUP_AND_REMOVE_STATUS } from './database';
 import { AbortError } from './errors';
 const PRIORITY_OFFSET = Math.floor(Number.MAX_SAFE_INTEGER / 2);
 export default class BatteryQueue extends EventEmitter {
@@ -362,6 +362,7 @@ export default class BatteryQueue extends EventEmitter {
     } // Changes:
     // * JOB_ERROR_STATUS -> JOB_CLEANUP_STATUS
     // * JOB_COMPLETE_STATUS -> JOB_CLEANUP_STATUS
+    // * JOB_CLEANUP_AND_REMOVE_STATUS -> JOB_CLEANUP_AND_REMOVE_STATUS
     // * JOB_PENDING_STATUS -> JOB_ABORTED_STATUS
 
 
@@ -381,7 +382,8 @@ export default class BatteryQueue extends EventEmitter {
     } // Changes:
     // * JOB_ERROR_STATUS -> JOB_CLEANUP_AND_REMOVE_STATUS
     // * JOB_COMPLETE_STATUS -> JOB_CLEANUP_AND_REMOVE_STATUS
-    // * JOB_PENDING_STATUS -> JOB_CLEANUP_AND_REMOVE_STATUS
+    // * JOB_CLEANUP_STATUS -> JOB_CLEANUP_AND_REMOVE_STATUS
+    // * JOB_CLEANUP_AND_REMOVE_STATUS -> JOB_CLEANUP_AND_REMOVE_STATUS
     // * Removes other statuses
 
 
@@ -756,13 +758,18 @@ export default class BatteryQueue extends EventEmitter {
         await markJobErrorInDatabase(id);
         await this.delayJobStart(id, queueId, type, abortController.signal, startAfter);
         handlerDidRun = true;
-        await handler(args, abortController.signal, updateCleanupData);
+        const shouldKeepJobInDatabase = await handler(args, abortController.signal, updateCleanupData);
 
         if (abortController.signal.aborted) {
           throw new AbortError(`Queue ${queueId} was aborted`);
         }
 
-        await markJobCompleteInDatabase(id);
+        if (shouldKeepJobInDatabase === false) {
+          await markJobCompleteThenRemoveFromDatabase(id);
+        } else {
+          await markJobCompleteInDatabase(id);
+        }
+
         this.removeAbortController(id, queueId);
         this.jobIds.delete(id);
         return;

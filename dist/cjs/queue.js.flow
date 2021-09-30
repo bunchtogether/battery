@@ -14,6 +14,7 @@ import {
   incrementJobAttemptInDatabase,
   incrementCleanupAttemptInDatabase,
   markJobCompleteInDatabase,
+  markJobCompleteThenRemoveFromDatabase,
   markJobPendingInDatabase,
   markJobErrorInDatabase,
   markJobStartAfterInDatabase,
@@ -39,7 +40,7 @@ import { AbortError } from './errors';
 
 const PRIORITY_OFFSET = Math.floor(Number.MAX_SAFE_INTEGER / 2);
 
-type HandlerFunction = (Array<any>, AbortSignal, (Object) => Promise<void>) => Promise<void>;
+type HandlerFunction = (Array<any>, AbortSignal, (Object) => Promise<void>) => Promise<void | false>;
 type CleanupFunction = (Object | void, Array<any>, Array<string> => Promise<void>) => Promise<void>;
 type RetryDelayFunction = (number, Error) => number | false | Promise<number | false>;
 type EmitCallback = (string, Array<any>) => void;
@@ -366,6 +367,7 @@ export default class BatteryQueue extends EventEmitter {
     // Changes:
     // * JOB_ERROR_STATUS -> JOB_CLEANUP_STATUS
     // * JOB_COMPLETE_STATUS -> JOB_CLEANUP_STATUS
+    // * JOB_CLEANUP_AND_REMOVE_STATUS -> JOB_CLEANUP_AND_REMOVE_STATUS
     // * JOB_PENDING_STATUS -> JOB_ABORTED_STATUS
     const jobs = await markQueueForCleanupInDatabase(queueId);
     await this.startJobs(jobs);
@@ -383,7 +385,8 @@ export default class BatteryQueue extends EventEmitter {
     // Changes:
     // * JOB_ERROR_STATUS -> JOB_CLEANUP_AND_REMOVE_STATUS
     // * JOB_COMPLETE_STATUS -> JOB_CLEANUP_AND_REMOVE_STATUS
-    // * JOB_PENDING_STATUS -> JOB_CLEANUP_AND_REMOVE_STATUS
+    // * JOB_CLEANUP_STATUS -> JOB_CLEANUP_AND_REMOVE_STATUS
+    // * JOB_CLEANUP_AND_REMOVE_STATUS -> JOB_CLEANUP_AND_REMOVE_STATUS
     // * Removes other statuses
     const jobs = await markQueueForCleanupAndRemoveInDatabase(queueId);
     await this.startJobs(jobs);
@@ -664,11 +667,15 @@ export default class BatteryQueue extends EventEmitter {
         await markJobErrorInDatabase(id);
         await this.delayJobStart(id, queueId, type, abortController.signal, startAfter);
         handlerDidRun = true;
-        await handler(args, abortController.signal, updateCleanupData);
+        const shouldKeepJobInDatabase = await handler(args, abortController.signal, updateCleanupData);
         if (abortController.signal.aborted) {
           throw new AbortError(`Queue ${queueId} was aborted`);
         }
-        await markJobCompleteInDatabase(id);
+        if (shouldKeepJobInDatabase === false) {
+          await markJobCompleteThenRemoveFromDatabase(id);
+        } else {
+          await markJobCompleteInDatabase(id);
+        }
         this.removeAbortController(id, queueId);
         this.jobIds.delete(id);
         return;

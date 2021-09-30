@@ -818,6 +818,44 @@ export function markJobCleanupInDatabase(id) {
 export function markJobAbortedInDatabase(id) {
   return markJobStatusInDatabase(id, JOB_ABORTED_STATUS);
 }
+export async function markJobCompleteThenRemoveFromDatabase(id) {
+  const store = await getReadWriteJobsObjectStore();
+  const request = store.get(id);
+  await new Promise((resolve, reject) => {
+    request.onsuccess = function () {
+      const value = request.result;
+
+      if (typeof value !== 'undefined') {
+        const {
+          queueId,
+          type
+        } = value;
+        localJobEmitter.emit('jobUpdate', id, queueId, type, JOB_COMPLETE_STATUS);
+        jobEmitter.emit('jobUpdate', id, queueId, type, JOB_COMPLETE_STATUS);
+        const deleteRequest = store.delete(id);
+
+        deleteRequest.onsuccess = function () {
+          localJobEmitter.emit('jobDelete', id, queueId);
+          jobEmitter.emit('jobDelete', id, queueId);
+          removeArgLookupsForJobAsMicrotask(id);
+          resolve();
+        };
+
+        deleteRequest.onerror = function (event) {
+          logger.error(`Delete request error while marking job ${id} in queue ${queueId} with type ${type} complete then removing from jobs database`);
+          logger.errorObject(event);
+          reject(new Error(`Delete request error while marking job ${id} in queue ${queueId} with type ${type} complete then removing from jobs database`));
+        };
+      }
+    };
+
+    request.onerror = function (event) {
+      logger.error(`Get request error while marking job ${id} complete then removing from jobs database`);
+      logger.errorObject(event);
+      reject(new Error(`Get request error while marking job ${id} complete then removing from jobs database`));
+    };
+  });
+}
 export function markJobCleanupAndRemoveInDatabase(id) {
   return updateJobInDatabase(id, value => {
     if (typeof value === 'undefined') {

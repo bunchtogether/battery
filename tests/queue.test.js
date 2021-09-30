@@ -25,6 +25,7 @@ import {
   TRIGGER_FATAL_ERROR_IN_CLEANUP,
   TRIGGER_100MS_DELAY,
   TRIGGER_ABORT_ERROR,
+  TRIGGER_HANDLER_RETURN_FALSE,
   emitter as echoEmitter,
 } from './lib/echo-handler';
 import { asyncEmitMatchers } from './lib/emit';
@@ -100,6 +101,16 @@ describe('Queue', () => {
     await expectAsync(queue).toEmit('fatalError', { queueId, id: idB, error: jasmine.any(AbortError) });
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value: valueB, cleanupData: { value: valueB } });
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value: valueA, cleanupData: { value: valueA } });
+  });
+
+
+  it('Emits jobUpdate and jobDelete events, then removes a job from the database if the handler returns false', async () => {
+    const queueId = uuidv4();
+    const value = uuidv4();
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_HANDLER_RETURN_FALSE, value], 100);
+    await expectAsync(jobEmitter).toEmit('jobUpdate', id, queueId, 'echo', JOB_COMPLETE_STATUS);
+    await expectAsync(jobEmitter).toEmit('jobDelete', id, queueId);
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([]);
   });
 
   it('Emits fatalError if the queue is aborted before starting', async () => {

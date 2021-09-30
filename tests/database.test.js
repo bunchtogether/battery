@@ -1,7 +1,7 @@
 // @flow
 
 import { v4 as uuidv4 } from 'uuid';
-import { getNextEmit } from './lib/emit';
+import { asyncEmitMatchers, getNextEmit } from './lib/emit';
 import {
   enqueueToDatabase,
   bulkEnqueueToDatabase,
@@ -10,6 +10,7 @@ import {
   dequeueFromDatabase,
   dequeueFromDatabaseNotIn,
   markJobCompleteInDatabase,
+  markJobCompleteThenRemoveFromDatabase,
   markJobErrorInDatabase,
   markJobAbortedInDatabase,
   markJobCleanupInDatabase,
@@ -61,6 +62,10 @@ jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
 describe('IndexedDB Database', () => {
   afterEach(async () => {
     await clearDatabase();
+  });
+
+  beforeAll(() => {
+    jasmine.addAsyncMatchers(asyncEmitMatchers);
   });
 
   it('Job emitter emits job updates', async () => {
@@ -122,6 +127,15 @@ describe('IndexedDB Database', () => {
     await clearDatabase();
 
     await expectAsync(jobsClearPromise).toBeResolvedTo([]);
+  });
+
+  it('Emits a jobUpdate and followed by a jobDelete and removes from the database', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const id = await enqueueToDatabase(queueId, type, [], 0);
+    markJobCompleteThenRemoveFromDatabase(id);
+    await expectAsync(jobEmitter).toEmit('jobUpdate', id, queueId, type, JOB_COMPLETE_STATUS);
+    await expectAsync(jobEmitter).toEmit('jobDelete', id, queueId);
   });
 
   it('Increments cleanup attempts', async () => {
