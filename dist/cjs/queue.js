@@ -169,7 +169,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
       this.handleJobDelete = handleJobDelete;
 
       var handleJobUpdate = function handleJobUpdate(id, queueId, type, status) {
-        if (status !== _database.JOB_CLEANUP_AND_REMOVE_STATUS) {
+        if (status !== _database.JOB_CLEANUP_AND_REMOVE_STATUS && status !== _database.JOB_CLEANUP_STATUS) {
           return;
         }
 
@@ -201,6 +201,12 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
           var args = job.args;
 
           _this2.startCleanup(id, queueId, args, type);
+
+          var queue = _this2.queueMap.get(queueId);
+
+          if (typeof queue !== 'undefined') {
+            queue.start();
+          }
         }).catch(function (error) {
           _this2.logger.error("Error while cleaning up and removing ".concat(type, " job #").concat(id, " in queue ").concat(queueId));
 

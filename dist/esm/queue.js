@@ -78,7 +78,7 @@ export default class BatteryQueue extends EventEmitter {
     this.handleJobDelete = handleJobDelete;
 
     const handleJobUpdate = (id, queueId, type, status) => {
-      if (status !== JOB_CLEANUP_AND_REMOVE_STATUS) {
+      if (status !== JOB_CLEANUP_AND_REMOVE_STATUS && status !== JOB_CLEANUP_STATUS) {
         return;
       }
 
@@ -110,6 +110,11 @@ export default class BatteryQueue extends EventEmitter {
           args
         } = job;
         this.startCleanup(id, queueId, args, type);
+        const queue = this.queueMap.get(queueId);
+
+        if (typeof queue !== 'undefined') {
+          queue.start();
+        }
       }).catch(error => {
         this.logger.error(`Error while cleaning up and removing ${type} job #${id} in queue ${queueId}`);
         this.logger.errorStack(error);
