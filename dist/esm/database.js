@@ -297,6 +297,8 @@ async function clearAllMetadataInDatabase() {
       logger.errorObject(event);
       reject(new Error('Error while clearing queue data database'));
     };
+
+    store.transaction.commit();
   });
 }
 
@@ -315,6 +317,8 @@ async function clearJobsDatabase() {
       logger.errorObject(event);
       reject(new Error('Error while clearing jobs database'));
     };
+
+    store.transaction.commit();
   });
 }
 
@@ -331,6 +335,8 @@ async function clearCleanupsDatabase() {
       logger.errorObject(event);
       reject(new Error('Error while clearing cleanups database'));
     };
+
+    store.transaction.commit();
   });
 }
 
@@ -354,6 +360,8 @@ export async function getJobsWithQueueIdAndTypeFromDatabase(queueId, type) {
       logger.errorObject(event);
       reject(new Error(`Error while getting jobs with queue ${queueId} and type ${type}`));
     };
+
+    store.transaction.commit();
   });
 }
 export async function removeJobsWithQueueIdAndTypeFromDatabase(queueId, type) {
@@ -410,6 +418,8 @@ async function removeQueueIdFromCleanupsDatabase(queueId) {
       logger.errorObject(event);
       reject(new Error(`Request error while removing queue ${queueId} from jobs database`));
     };
+
+    store.transaction.commit();
   });
 }
 
@@ -502,6 +512,8 @@ export async function updateJobInDatabase(id, transform) {
           reject(new Error(`Put request error while updating job ${id} in queue ${queueId} and type ${type} from jobs database`));
         };
       }
+
+      store.transaction.commit();
     };
 
     request.onerror = function (event) {
@@ -524,6 +536,8 @@ export async function getJobFromDatabase(id) {
       logger.errorObject(event);
       reject(new Error(`Request error while getting ${id}`));
     };
+
+    store.transaction.commit();
   });
 }
 export async function updateCleanupInDatabase(id, transform) {
@@ -555,6 +569,8 @@ export async function updateCleanupInDatabase(id, transform) {
           reject(new Error(`Put request error while updating ${id} cleanup`));
         };
       }
+
+      store.transaction.commit();
     };
 
     request.onerror = function (event) {
@@ -624,6 +640,8 @@ export async function silentlyRemoveJobFromDatabase(id) {
       logger.errorObject(event);
       reject(new Error(`Delete request error while removing job ${id} from database`));
     };
+
+    store.transaction.commit();
   });
 }
 export async function removeJobFromDatabase(id) {
@@ -656,6 +674,8 @@ export async function removeJobFromDatabase(id) {
         logger.errorObject(event);
         reject(new Error(`Delete request error while removing job ${id} in queue ${queueId} with type ${type} from database`));
       };
+
+      store.transaction.commit();
     };
 
     request.onerror = function (event) {
@@ -678,6 +698,8 @@ export async function removeCleanupFromDatabase(id) {
       logger.errorObject(event);
       reject(new Error(`Error while removing cleanup data for ${id}`));
     };
+
+    store.transaction.commit();
   });
 }
 export async function getCleanupFromDatabase(id) {
@@ -693,6 +715,8 @@ export async function getCleanupFromDatabase(id) {
       logger.errorObject(event);
       reject(new Error(`Request error while getting ${id}`));
     };
+
+    store.transaction.commit();
   });
 }
 export async function getMetadataFromDatabase(id) {
@@ -708,6 +732,8 @@ export async function getMetadataFromDatabase(id) {
       logger.errorObject(event);
       reject(new Error(`Request error while getting ${id} metadata`));
     };
+
+    store.transaction.commit();
   });
   return typeof response !== 'undefined' ? response.metadata : undefined;
 }
@@ -724,6 +750,8 @@ export async function clearMetadataInDatabase(id) {
       logger.errorObject(event);
       reject(new Error(`Error while clearing ${id} metadata`));
     };
+
+    store.transaction.commit();
   });
 }
 export async function setMetadataInDatabase(id, metadata) {
@@ -742,6 +770,8 @@ export async function setMetadataInDatabase(id, metadata) {
       logger.errorObject(event);
       reject(new Error(`Error while setting ${id} metadata`));
     };
+
+    store.transaction.commit();
   });
 }
 export async function updateMetadataInDatabase(id, transform) {
@@ -792,6 +822,8 @@ export async function updateMetadataInDatabase(id, transform) {
           reject(new Error(`Put request error while updating ${id} in metadata database`));
         };
       }
+
+      store.transaction.commit();
     };
 
     request.onerror = function (event) {
@@ -856,6 +888,8 @@ export async function markJobCompleteThenRemoveFromDatabase(id) {
           reject(new Error(`Delete request error while marking job ${id} in queue ${queueId} with type ${type} complete then removing from jobs database`));
         };
       }
+
+      store.transaction.commit();
     };
 
     request.onerror = function (event) {
@@ -1133,6 +1167,8 @@ export async function getGreatestJobIdFromQueueInDatabase(queueId) {
       } else {
         resolve(0);
       }
+
+      store.transaction.commit();
     };
 
     request.onerror = function (event) {
@@ -1229,6 +1265,8 @@ export async function bulkEnqueueToDatabase(queueId, items, delay) {
         reject(new Error(`Request error while bulk enqueueing ${items.length} ${items.length === 1 ? 'job' : 'jobs'} in queue ${queueId}`));
       };
     }
+
+    store.transaction.commit();
   });
   return ids;
 }
@@ -1271,6 +1309,8 @@ export async function enqueueToDatabase(queueId, type, args, delay) {
       logger.errorObject(event);
       reject(new Error(`Request error while enqueueing ${type} job`));
     };
+
+    store.transaction.commit();
   });
   localJobEmitter.emit('jobAdd', id, queueId, type);
   jobEmitter.emit('jobAdd', id, queueId, type);
@@ -1316,6 +1356,8 @@ export async function restoreJobToDatabaseForCleanupAndRemove(id, queueId, type,
       logger.errorObject(event);
       reject(new Error(`Request error while enqueueing ${type} job`));
     };
+
+    store.transaction.commit();
   });
   localJobEmitter.emit('jobAdd', id, queueId, type);
   jobEmitter.emit('jobAdd', id, queueId, type);
@@ -1337,6 +1379,8 @@ export async function dequeueFromDatabase() {
       logger.errorObject(event);
       reject(new Error('Request error while dequeing'));
     };
+
+    store.transaction.commit();
   });
   return jobs;
 }
@@ -1385,6 +1429,8 @@ export async function dequeueFromDatabaseNotIn(ids) {
         logger.errorObject(event2);
       };
     }
+
+    store.transaction.commit();
   };
 
   request.onerror = function (event) {
@@ -1415,6 +1461,8 @@ export async function getJobsInQueueFromDatabase(queueId) {
       logger.errorObject(event);
       reject(new Error('Request error while dequeing'));
     };
+
+    store.transaction.commit();
   });
   return jobs;
 }
@@ -1442,6 +1490,7 @@ export async function getJobsInDatabase(jobIds) {
     };
   }
 
+  store.transaction.commit();
   await promise;
   return jobs;
 }
@@ -1506,6 +1555,8 @@ export async function storeAuthDataInDatabase(id, data) {
       logger.errorObject(event);
       reject(new Error(`Request error while storing auth data for ${id}`));
     };
+
+    store.transaction.commit();
   });
 }
 export async function getAuthDataFromDatabase(id) {
@@ -1525,6 +1576,8 @@ export async function getAuthDataFromDatabase(id) {
       logger.errorObject(event);
       reject(new Error(`Request error while getting auth data for ${id}`));
     };
+
+    store.transaction.commit();
   });
   return typeof authData !== 'undefined' ? authData.data : undefined;
 }
@@ -1545,6 +1598,8 @@ export async function removeAuthDataFromDatabase(id) {
       logger.errorObject(event);
       reject(new Error(`Error while removing auth data for ${id}`));
     };
+
+    store.transaction.commit();
   });
 }
 export async function getQueueStatus(queueId) {
@@ -1628,6 +1683,7 @@ export async function getQueueStatus(queueId) {
       reject(new Error(`Request error while getting status of queue ${queueId}`));
     };
   });
+  store.transaction.commit();
   const [abortedCount, completeCount, pendingCount, errorCount, cleanupCount, cleanupAndRemoveCount] = await Promise.all([abortedCountPromise, completeCountPromise, pendingCountPromise, errorCountPromise, cleanupCountPromise, cleanupAndRemoveCountPromise]);
 
   if (abortedCount > 0 || cleanupCount > 0) {
@@ -1673,6 +1729,8 @@ export async function addArgLookup(jobId, key, jsonPath) {
       logger.errorObject(event);
       reject(new Error(`Error while adding argument lookup for job ${jobId} with key "${key}" and JSON path "${jsonPath}"`));
     };
+
+    store.transaction.commit();
   });
 }
 export async function getArgLookupJobPathMap(key) {
@@ -1695,6 +1753,8 @@ export async function getArgLookupJobPathMap(key) {
       logger.errorObject(event);
       reject(new Error(`Request error looking up arguments for key ${key}`));
     };
+
+    store.transaction.commit();
   });
 }
 export async function markJobsWithArgLookupKeyCleanupAndRemoveInDatabase(key) {
@@ -1761,6 +1821,8 @@ export async function removeArgLookupsForJob(jobId) {
         logger.errorObject(deleteEvent);
       };
     }
+
+    store.transaction.commit();
   };
 
   request.onerror = function (event) {

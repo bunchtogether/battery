@@ -598,6 +598,8 @@ function _clearAllMetadataInDatabase() {
                 logger.errorObject(event);
                 reject(new Error('Error while clearing queue data database'));
               };
+
+              store.transaction.commit();
             });
 
           case 6:
@@ -643,6 +645,8 @@ function _clearJobsDatabase() {
                 logger.errorObject(event);
                 reject(new Error('Error while clearing jobs database'));
               };
+
+              store.transaction.commit();
             });
 
           case 8:
@@ -683,6 +687,8 @@ function _clearCleanupsDatabase() {
                 logger.errorObject(event);
                 reject(new Error('Error while clearing cleanups database'));
               };
+
+              store.transaction.commit();
             });
 
           case 6:
@@ -755,6 +761,8 @@ function _getJobsWithQueueIdAndTypeFromDatabase() {
                 logger.errorObject(event);
                 reject(new Error("Error while getting jobs with queue ".concat(queueId, " and type ").concat(type)));
               };
+
+              store.transaction.commit();
             }));
 
           case 6:
@@ -913,6 +921,8 @@ function _removeQueueIdFromCleanupsDatabase() {
                 logger.errorObject(event);
                 reject(new Error("Request error while removing queue ".concat(queueId, " from jobs database")));
               };
+
+              store.transaction.commit();
             });
 
           case 7:
@@ -1092,6 +1102,8 @@ function _updateJobInDatabase() {
                     reject(new Error("Put request error while updating job ".concat(id, " in queue ").concat(_queueId, " and type ").concat(_type, " from jobs database")));
                   };
                 }
+
+                store.transaction.commit();
               };
 
               request.onerror = function (event) {
@@ -1138,6 +1150,8 @@ function _getJobFromDatabase() {
                 logger.errorObject(event);
                 reject(new Error("Request error while getting ".concat(id)));
               };
+
+              store.transaction.commit();
             }));
 
           case 5:
@@ -1194,6 +1208,8 @@ function _updateCleanupInDatabase() {
                     reject(new Error("Put request error while updating ".concat(id, " cleanup")));
                   };
                 }
+
+                store.transaction.commit();
               };
 
               request.onerror = function (event) {
@@ -1338,6 +1354,8 @@ function _silentlyRemoveJobFromDatabase() {
                 logger.errorObject(event);
                 reject(new Error("Delete request error while removing job ".concat(id, " from database")));
               };
+
+              store.transaction.commit();
             });
 
           case 6:
@@ -1395,6 +1413,8 @@ function _removeJobFromDatabase() {
                   logger.errorObject(event);
                   reject(new Error("Delete request error while removing job ".concat(id, " in queue ").concat(queueId, " with type ").concat(type, " from database")));
                 };
+
+                store.transaction.commit();
               };
 
               request.onerror = function (event) {
@@ -1441,6 +1461,8 @@ function _removeCleanupFromDatabase() {
                 logger.errorObject(event);
                 reject(new Error("Error while removing cleanup data for ".concat(id)));
               };
+
+              store.transaction.commit();
             }));
 
           case 5:
@@ -1480,6 +1502,8 @@ function _getCleanupFromDatabase() {
                 logger.errorObject(event);
                 reject(new Error("Request error while getting ".concat(id)));
               };
+
+              store.transaction.commit();
             }));
 
           case 5:
@@ -1520,6 +1544,8 @@ function _getMetadataFromDatabase() {
                 logger.errorObject(event);
                 reject(new Error("Request error while getting ".concat(id, " metadata")));
               };
+
+              store.transaction.commit();
             });
 
           case 6:
@@ -1563,6 +1589,8 @@ function _clearMetadataInDatabase() {
                 logger.errorObject(event);
                 reject(new Error("Error while clearing ".concat(id, " metadata")));
               };
+
+              store.transaction.commit();
             }));
 
           case 5:
@@ -1605,6 +1633,8 @@ function _setMetadataInDatabase() {
                 logger.errorObject(event);
                 reject(new Error("Error while setting ".concat(id, " metadata")));
               };
+
+              store.transaction.commit();
             }));
 
           case 5:
@@ -1680,6 +1710,8 @@ function _updateMetadataInDatabase() {
                     reject(new Error("Put request error while updating ".concat(id, " in metadata database")));
                   };
                 }
+
+                store.transaction.commit();
               };
 
               request.onerror = function (event) {
@@ -1778,6 +1810,8 @@ function _markJobCompleteThenRemoveFromDatabase() {
                     reject(new Error("Delete request error while marking job ".concat(id, " in queue ").concat(queueId, " with type ").concat(type, " complete then removing from jobs database")));
                   };
                 }
+
+                store.transaction.commit();
               };
 
               request.onerror = function (event) {
@@ -2142,6 +2176,8 @@ function _getGreatestJobIdFromQueueInDatabase() {
                 } else {
                   resolve(0);
                 }
+
+                store.transaction.commit();
               };
 
               request.onerror = function (event) {
@@ -2349,6 +2385,8 @@ function _bulkEnqueueToDatabase() {
               for (var _i2 = 0; _i2 < items.length; _i2 += 1) {
                 _loop(_i2);
               }
+
+              store.transaction.commit();
             });
 
           case 22:
@@ -2433,6 +2471,8 @@ function _enqueueToDatabase() {
                 logger.errorObject(event);
                 reject(new Error("Request error while enqueueing ".concat(type, " job")));
               };
+
+              store.transaction.commit();
             });
 
           case 15:
@@ -2524,6 +2564,8 @@ function _restoreJobToDatabaseForCleanupAndRemove() {
                 logger.errorObject(event);
                 reject(new Error("Request error while enqueueing ".concat(type, " job")));
               };
+
+              store.transaction.commit();
             });
 
           case 15:
@@ -2573,6 +2615,8 @@ function _dequeueFromDatabase() {
                 logger.errorObject(event);
                 reject(new Error('Request error while dequeing'));
               };
+
+              store.transaction.commit();
             });
 
           case 7:
@@ -2675,6 +2719,8 @@ function _dequeueFromDatabaseNotIn() {
               } finally {
                 _iterator4.f();
               }
+
+              store.transaction.commit();
             };
 
             request.onerror = function (event) {
@@ -2736,6 +2782,8 @@ function _getJobsInQueueFromDatabase() {
                 logger.errorObject(event);
                 reject(new Error('Request error while dequeing'));
               };
+
+              store.transaction.commit();
             });
 
           case 9:
@@ -2809,13 +2857,14 @@ function _getJobsInDatabase() {
               _iterator5.f();
             }
 
-            _context41.next = 13;
+            store.transaction.commit();
+            _context41.next = 14;
             return promise;
 
-          case 13:
+          case 14:
             return _context41.abrupt("return", jobs);
 
-          case 14:
+          case 15:
           case "end":
             return _context41.stop();
         }
@@ -2961,6 +3010,8 @@ function _storeAuthDataInDatabase() {
                 logger.errorObject(event);
                 reject(new Error("Request error while storing auth data for ".concat(id)));
               };
+
+              store.transaction.commit();
             });
 
           case 10:
@@ -3009,6 +3060,8 @@ function _getAuthDataFromDatabase() {
                 logger.errorObject(event);
                 reject(new Error("Request error while getting auth data for ".concat(id)));
               };
+
+              store.transaction.commit();
             });
 
           case 8:
@@ -3060,6 +3113,8 @@ function _removeAuthDataFromDatabase() {
                 logger.errorObject(event);
                 reject(new Error("Error while removing auth data for ".concat(id)));
               };
+
+              store.transaction.commit();
             }));
 
           case 7:
@@ -3168,10 +3223,11 @@ function _getQueueStatus() {
                 reject(new Error("Request error while getting status of queue ".concat(queueId)));
               };
             });
-            _context47.next = 18;
+            store.transaction.commit();
+            _context47.next = 19;
             return Promise.all([abortedCountPromise, completeCountPromise, pendingCountPromise, errorCountPromise, cleanupCountPromise, cleanupAndRemoveCountPromise]);
 
-          case 18:
+          case 19:
             _yield$Promise$all = _context47.sent;
             _yield$Promise$all2 = _slicedToArray(_yield$Promise$all, 6);
             abortedCount = _yield$Promise$all2[0];
@@ -3182,32 +3238,32 @@ function _getQueueStatus() {
             cleanupAndRemoveCount = _yield$Promise$all2[5];
 
             if (!(abortedCount > 0 || cleanupCount > 0)) {
-              _context47.next = 28;
+              _context47.next = 29;
               break;
             }
 
             return _context47.abrupt("return", _QUEUE_ERROR_STATUS);
 
-          case 28:
+          case 29:
             if (!(errorCount > 0 || pendingCount > 0 || cleanupAndRemoveCount > 0)) {
-              _context47.next = 30;
+              _context47.next = 31;
               break;
             }
 
             return _context47.abrupt("return", _QUEUE_PENDING_STATUS);
 
-          case 30:
+          case 31:
             if (!(completeCount > 0)) {
-              _context47.next = 32;
+              _context47.next = 33;
               break;
             }
 
             return _context47.abrupt("return", _QUEUE_COMPLETE_STATUS);
 
-          case 32:
+          case 33:
             return _context47.abrupt("return", _QUEUE_EMPTY_STATUS);
 
-          case 33:
+          case 34:
           case "end":
             return _context47.stop();
         }
@@ -3272,6 +3328,8 @@ function _addArgLookup() {
                 logger.errorObject(event);
                 reject(new Error("Error while adding argument lookup for job ".concat(jobId, " with key \"").concat(key, "\" and JSON path \"").concat(jsonPath, "\"")));
               };
+
+              store.transaction.commit();
             }));
 
           case 11:
@@ -3324,6 +3382,8 @@ function _getArgLookupJobPathMap() {
                 logger.errorObject(event);
                 reject(new Error("Request error looking up arguments for key ".concat(key)));
               };
+
+              store.transaction.commit();
             }));
 
           case 8:
@@ -3583,6 +3643,8 @@ function _removeArgLookupsForJob() {
               } finally {
                 _iterator9.f();
               }
+
+              store.transaction.commit();
             };
 
             request.onerror = function (event) {
