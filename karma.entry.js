@@ -8,4 +8,5 @@ import './tests/queue.test.js';
 import './tests/queue-stop.test.js';
 import './tests/fuzz.test.js';
 import './tests/queue-watcher.test.js';
+import './tests/queue-watcher-in-worker.test.js';
 import './tests/argument-lookup.test.js';
