@@ -1,6 +1,6 @@
 {
   "name": "@bunchtogether/battery",
-  "version": "1.2.37",
+  "version": "1.2.38",
   "main": "dist/cjs/queue.js",
   "module": "dist/esm/queue.js",
   "exports": {

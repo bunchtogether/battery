@@ -872,13 +872,14 @@ export async function markQueueForCleanupInDatabase(queueId:string) {
   const store = await getReadWriteJobsObjectStore();
   const index = store.index('queueIdIndex');
   // $FlowFixMe
-  const request = index.openCursor(IDBKeyRange.only(queueId));
+  const request = index.getAll(IDBKeyRange.only(queueId));
   const jobs = [];
   await new Promise((resolve, reject) => {
     request.onsuccess = function (event) {
-      const cursor = event.target.result;
-      if (cursor) {
-        const value = Object.assign({}, cursor.value);
+      const length = event.target.result.length;
+      let lastRequest;
+      for (let i = 0; i < length; i += 1) {
+        const value = Object.assign({}, event.target.result[i]);
         switch (value.status) {
           case JOB_ERROR_STATUS:
             value.status = JOB_CLEANUP_STATUS;
@@ -893,34 +894,34 @@ export async function markQueueForCleanupInDatabase(queueId:string) {
             break;
           case JOB_CLEANUP_STATUS:
             jobs.push(value);
-            cursor.continue();
-            return;
+            continue;
           case JOB_CLEANUP_AND_REMOVE_STATUS:
             jobs.push(value);
-            cursor.continue();
-            return;
+            continue;
           case JOB_ABORTED_STATUS:
-            cursor.continue();
-            return;
+            continue;
           default:
             logger.warn(`Unhandled job status ${value.status} while marking queue ${queueId} for cleanup`);
-            cursor.continue();
-            return;
+            continue;
         }
-        const updateRequest = cursor.update(value);
+        const putRequest = store.put(value);
         localJobEmitter.emit('jobUpdate', value.id, value.queueId, value.type, value.status);
         jobEmitter.emit('jobUpdate', value.id, value.queueId, value.type, value.status);
-        updateRequest.onsuccess = function () {
-          cursor.continue();
-        };
-        updateRequest.onerror = function (event2) {
-          logger.error(`Update request error while marking queue ${queueId} for cleanup`);
+        lastRequest = putRequest;
+        putRequest.onerror = function (event2) {
+          logger.error(`Put request error while marking queue ${queueId} for cleanup`);
           logger.errorObject(event2);
-          cursor.continue();
+          reject(new Error(`Put request error while marking queue ${queueId} for cleanup`));
+        };
+      }
+      if (typeof lastRequest !== 'undefined') {
+        lastRequest.onsuccess = function () {
+          resolve();
         };
       } else {
         resolve();
       }
+      store.transaction.commit();
     };
     request.onerror = function (event) {
       logger.error(`Request error while marking queue ${queueId} for cleanup`);
@@ -935,16 +936,16 @@ export async function markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase(queue
   const store = await getReadWriteJobsObjectStore();
   const index = store.index('queueIdIndex');
   // $FlowFixMe
-  const request = index.openCursor(IDBKeyRange.only(queueId));
+  const request = index.getAll(IDBKeyRange.only(queueId));
   const jobs = [];
   await new Promise((resolve, reject) => {
     request.onsuccess = function (event) {
-      const cursor = event.target.result;
-      if (cursor) {
-        const value = Object.assign({}, cursor.value);
+      const length = event.target.result.length;
+      let lastRequest;
+      for (let i = 0; i < length; i += 1) {
+        const value = Object.assign({}, event.target.result[i]);
         if (value.id <= jobId) {
-          cursor.continue();
-          return;
+          continue;
         }
         let shouldRemove = false;
         switch (value.status) {
@@ -965,45 +966,45 @@ export async function markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase(queue
             break;
           case JOB_CLEANUP_AND_REMOVE_STATUS:
             jobs.push(value);
-            cursor.continue();
-            return;
+            continue;
           case JOB_ABORTED_STATUS:
             shouldRemove = true;
             break;
           default:
             logger.warn(`Unhandled job status ${value.status} while marking queue ${queueId} for cleanup and removal`);
-            cursor.continue();
-            return;
+            continue;
         }
         const { id, type, status } = value;
         if (shouldRemove) {
-          const deleteRequest = cursor.delete(id);
+          const deleteRequest = store.delete(id);
           localJobEmitter.emit('jobDelete', id, queueId);
           jobEmitter.emit('jobDelete', id, queueId);
-          deleteRequest.onsuccess = function () {
-            cursor.continue();
-          };
+          lastRequest = deleteRequest;
           deleteRequest.onerror = function (event2) {
-            logger.error(`Update request error while marking queue ${queueId} for cleanup and removal`);
+            logger.error(`Delete request error while marking queue ${queueId} for cleanup and removal`);
             logger.errorObject(event2);
-            cursor.continue();
+            reject(new Error(`Delete request error while marking queue ${queueId} for cleanup and removal`));
           };
         } else {
-          const updateRequest = cursor.update(value);
+          const putRequest = store.put(value);
           localJobEmitter.emit('jobUpdate', id, queueId, type, status);
           jobEmitter.emit('jobUpdate', id, queueId, type, status);
-          updateRequest.onsuccess = function () {
-            cursor.continue();
-          };
-          updateRequest.onerror = function (event2) {
-            logger.error(`Update request error while marking queue ${queueId} for cleanup and removal`);
+          lastRequest = putRequest;
+          putRequest.onerror = function (event2) {
+            logger.error(`Put request error while marking queue ${queueId} for cleanup and removal`);
             logger.errorObject(event2);
-            cursor.continue();
+            reject(new Error(`Put request error while marking queue ${queueId} for cleanup and removal`));
           };
         }
+      }
+      if (typeof lastRequest !== 'undefined') {
+        lastRequest.onsuccess = function () {
+          resolve();
+        };
       } else {
         resolve();
       }
+      store.transaction.commit();
     };
     request.onerror = function (event) {
       logger.error(`Request error while marking queue ${queueId} for cleanup and removal`);
@@ -1032,13 +1033,13 @@ export async function getGreatestJobIdFromQueueInDatabase(queueId:string) {
       } else {
         resolve(0);
       }
-      store.transaction.commit();
     };
     request.onerror = function (event) {
       logger.error(`Request error while getting the greatest job ID in queue ${queueId}`);
       logger.errorObject(event);
       reject(new Error(`Request error while getting the greatest job ID in queue ${queueId}`));
     };
+    store.transaction.commit();
   });
 }
 
@@ -1322,6 +1323,7 @@ export async function getCompletedJobsCountFromDatabase(queueId: string) { // es
   return jobs.length;
 }
 
+
 export async function getCompletedJobsFromDatabase(queueId: string):Promise<Array<Job>> { // eslint-disable-line no-underscore-dangle
   if (typeof queueId !== 'string') {
     throw new TypeError(`Unable to get completed jobs database, received invalid "queueId" argument type "${typeof queueId}"`);
@@ -1329,26 +1331,21 @@ export async function getCompletedJobsFromDatabase(queueId: string):Promise<Arra
   const store = await getReadOnlyJobsObjectStore();
   const index = store.index('statusQueueIdIndex');
   // $FlowFixMe
-  const request = index.openCursor(IDBKeyRange.only([queueId, JOB_COMPLETE_STATUS]));
-  const jobs = [];
-  await new Promise((resolve, reject) => {
+  const request = index.getAll(IDBKeyRange.only([queueId, JOB_COMPLETE_STATUS]));
+  const jobs = await new Promise((resolve, reject) => {
     request.onsuccess = function (event) {
-      const cursor = event.target.result;
-      if (cursor) {
-        jobs.push(cursor.value);
-        cursor.continue();
-      } else {
-        resolve();
-      }
+      resolve(event.target.result);
     };
     request.onerror = function (event) {
       logger.error(`Request error while getting completed jobs for queue ${queueId}`);
       logger.errorObject(event);
       reject(new Error(`Request error while getting completed jobs for queue ${queueId}`));
     };
+    store.transaction.commit();
   });
   return jobs;
 }
+
 
 export async function storeAuthDataInDatabase(id:string, data: Object) { // eslint-disable-line no-underscore-dangle
   if (typeof id !== 'string') {

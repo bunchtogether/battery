@@ -1927,15 +1927,16 @@ function _markQueueForCleanupInDatabase() {
             store = _context30.sent;
             index = store.index('queueIdIndex'); // $FlowFixMe
 
-            request = index.openCursor(IDBKeyRange.only(queueId));
+            request = index.getAll(IDBKeyRange.only(queueId));
             jobs = [];
             _context30.next = 8;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function (event) {
-                var cursor = event.target.result;
+                var length = event.target.result.length;
+                var lastRequest;
 
-                if (cursor) {
-                  var value = Object.assign({}, cursor.value);
+                for (var i = 0; i < length; i += 1) {
+                  var value = Object.assign({}, event.target.result[i]);
 
                   switch (value.status) {
                     case _JOB_ERROR_STATUS:
@@ -1954,42 +1955,44 @@ function _markQueueForCleanupInDatabase() {
 
                     case _JOB_CLEANUP_STATUS:
                       jobs.push(value);
-                      cursor.continue();
-                      return;
+                      continue;
 
                     case _JOB_CLEANUP_AND_REMOVE_STATUS:
                       jobs.push(value);
-                      cursor.continue();
-                      return;
+                      continue;
 
                     case _JOB_ABORTED_STATUS:
-                      cursor.continue();
-                      return;
+                      continue;
 
                     default:
                       logger.warn("Unhandled job status ".concat(value.status, " while marking queue ").concat(queueId, " for cleanup"));
-                      cursor.continue();
-                      return;
+                      continue;
                   }
 
-                  var updateRequest = cursor.update(value);
+                  var putRequest = store.put(value);
 
                   _localJobEmitter.emit('jobUpdate', value.id, value.queueId, value.type, value.status);
 
                   _jobEmitter.emit('jobUpdate', value.id, value.queueId, value.type, value.status);
 
-                  updateRequest.onsuccess = function () {
-                    cursor.continue();
-                  };
+                  lastRequest = putRequest;
 
-                  updateRequest.onerror = function (event2) {
-                    logger.error("Update request error while marking queue ".concat(queueId, " for cleanup"));
+                  putRequest.onerror = function (event2) {
+                    logger.error("Put request error while marking queue ".concat(queueId, " for cleanup"));
                     logger.errorObject(event2);
-                    cursor.continue();
+                    reject(new Error("Put request error while marking queue ".concat(queueId, " for cleanup")));
+                  };
+                }
+
+                if (typeof lastRequest !== 'undefined') {
+                  lastRequest.onsuccess = function () {
+                    resolve();
                   };
                 } else {
                   resolve();
                 }
+
+                store.transaction.commit();
               };
 
               request.onerror = function (event) {
@@ -2030,19 +2033,19 @@ function _markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase() {
             store = _context31.sent;
             index = store.index('queueIdIndex'); // $FlowFixMe
 
-            request = index.openCursor(IDBKeyRange.only(queueId));
+            request = index.getAll(IDBKeyRange.only(queueId));
             jobs = [];
             _context31.next = 8;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function (event) {
-                var cursor = event.target.result;
+                var length = event.target.result.length;
+                var lastRequest;
 
-                if (cursor) {
-                  var value = Object.assign({}, cursor.value);
+                for (var i = 0; i < length; i += 1) {
+                  var value = Object.assign({}, event.target.result[i]);
 
                   if (value.id <= jobId) {
-                    cursor.continue();
-                    return;
+                    continue;
                   }
 
                   var shouldRemove = false;
@@ -2069,8 +2072,7 @@ function _markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase() {
 
                     case _JOB_CLEANUP_AND_REMOVE_STATUS:
                       jobs.push(value);
-                      cursor.continue();
-                      return;
+                      continue;
 
                     case _JOB_ABORTED_STATUS:
                       shouldRemove = true;
@@ -2078,8 +2080,7 @@ function _markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase() {
 
                     default:
                       logger.warn("Unhandled job status ".concat(value.status, " while marking queue ").concat(queueId, " for cleanup and removal"));
-                      cursor.continue();
-                      return;
+                      continue;
                   }
 
                   var id = value.id,
@@ -2087,41 +2088,45 @@ function _markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase() {
                       status = value.status;
 
                   if (shouldRemove) {
-                    var deleteRequest = cursor.delete(id);
+                    var deleteRequest = store.delete(id);
 
                     _localJobEmitter.emit('jobDelete', id, queueId);
 
                     _jobEmitter.emit('jobDelete', id, queueId);
 
-                    deleteRequest.onsuccess = function () {
-                      cursor.continue();
-                    };
+                    lastRequest = deleteRequest;
 
                     deleteRequest.onerror = function (event2) {
-                      logger.error("Update request error while marking queue ".concat(queueId, " for cleanup and removal"));
+                      logger.error("Delete request error while marking queue ".concat(queueId, " for cleanup and removal"));
                       logger.errorObject(event2);
-                      cursor.continue();
+                      reject(new Error("Delete request error while marking queue ".concat(queueId, " for cleanup and removal")));
                     };
                   } else {
-                    var updateRequest = cursor.update(value);
+                    var putRequest = store.put(value);
 
                     _localJobEmitter.emit('jobUpdate', id, queueId, type, status);
 
                     _jobEmitter.emit('jobUpdate', id, queueId, type, status);
 
-                    updateRequest.onsuccess = function () {
-                      cursor.continue();
-                    };
+                    lastRequest = putRequest;
 
-                    updateRequest.onerror = function (event2) {
-                      logger.error("Update request error while marking queue ".concat(queueId, " for cleanup and removal"));
+                    putRequest.onerror = function (event2) {
+                      logger.error("Put request error while marking queue ".concat(queueId, " for cleanup and removal"));
                       logger.errorObject(event2);
-                      cursor.continue();
+                      reject(new Error("Put request error while marking queue ".concat(queueId, " for cleanup and removal")));
                     };
                   }
+                }
+
+                if (typeof lastRequest !== 'undefined') {
+                  lastRequest.onsuccess = function () {
+                    resolve();
+                  };
                 } else {
                   resolve();
                 }
+
+                store.transaction.commit();
               };
 
               request.onerror = function (event) {
@@ -2176,8 +2181,6 @@ function _getGreatestJobIdFromQueueInDatabase() {
                 } else {
                   resolve(0);
                 }
-
-                store.transaction.commit();
               };
 
               request.onerror = function (event) {
@@ -2185,6 +2188,8 @@ function _getGreatestJobIdFromQueueInDatabase() {
                 logger.errorObject(event);
                 reject(new Error("Request error while getting the greatest job ID in queue ".concat(queueId)));
               };
+
+              store.transaction.commit();
             }));
 
           case 6:
@@ -2928,19 +2933,11 @@ function _getCompletedJobsFromDatabase() {
             store = _context43.sent;
             index = store.index('statusQueueIdIndex'); // $FlowFixMe
 
-            request = index.openCursor(IDBKeyRange.only([queueId, _JOB_COMPLETE_STATUS]));
-            jobs = [];
-            _context43.next = 10;
+            request = index.getAll(IDBKeyRange.only([queueId, _JOB_COMPLETE_STATUS]));
+            _context43.next = 9;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function (event) {
-                var cursor = event.target.result;
-
-                if (cursor) {
-                  jobs.push(cursor.value);
-                  cursor.continue();
-                } else {
-                  resolve();
-                }
+                resolve(event.target.result);
               };
 
               request.onerror = function (event) {
@@ -2948,9 +2945,12 @@ function _getCompletedJobsFromDatabase() {
                 logger.errorObject(event);
                 reject(new Error("Request error while getting completed jobs for queue ".concat(queueId)));
               };
+
+              store.transaction.commit();
             });
 
-          case 10:
+          case 9:
+            jobs = _context43.sent;
             return _context43.abrupt("return", jobs);
 
           case 11:
