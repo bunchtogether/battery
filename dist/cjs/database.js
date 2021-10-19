@@ -556,11 +556,11 @@ function getReadWriteArgLookupObjectStoreAndTransactionPromise() {
 function removeJobFromObjectStore(store, id, queueId) {
   var deleteRequest = store.delete(id);
 
+  _localJobEmitter.emit('jobDelete', id, queueId);
+
+  _jobEmitter.emit('jobDelete', id, queueId);
+
   deleteRequest.onsuccess = function () {
-    _localJobEmitter.emit('jobDelete', id, queueId);
-
-    _jobEmitter.emit('jobDelete', id, queueId);
-
     removeArgLookupsForJobAsMicrotask(id);
   };
 
@@ -627,7 +627,12 @@ function _clearJobsDatabase() {
           case 2:
             store = _context7.sent;
             request = store.clear();
-            _context7.next = 6;
+
+            _localJobEmitter.emit('jobsClear');
+
+            _jobEmitter.emit('jobsClear');
+
+            _context7.next = 8;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve();
@@ -639,11 +644,6 @@ function _clearJobsDatabase() {
                 reject(new Error('Error while clearing jobs database'));
               };
             });
-
-          case 6:
-            _localJobEmitter.emit('jobsClear');
-
-            _jobEmitter.emit('jobsClear');
 
           case 8:
           case "end":
@@ -1063,11 +1063,11 @@ function _updateJobInDatabase() {
                         type = value.type;
                     var deleteRequest = store.delete(id);
 
+                    _localJobEmitter.emit('jobDelete', id, queueId);
+
+                    _jobEmitter.emit('jobDelete', id, queueId);
+
                     deleteRequest.onsuccess = function () {
-                      _localJobEmitter.emit('jobDelete', id, queueId);
-
-                      _jobEmitter.emit('jobDelete', id, queueId);
-
                       removeArgLookupsForJobAsMicrotask(id);
                       resolve();
                     };
@@ -1079,17 +1079,17 @@ function _updateJobInDatabase() {
                     };
                   }
                 } else {
-                  var putRequest = store.put(newValue);
                   var _newValue = newValue,
                       _queueId = _newValue.queueId,
                       _type = _newValue.type,
                       status = _newValue.status;
+                  var putRequest = store.put(newValue);
+
+                  _localJobEmitter.emit('jobUpdate', id, _queueId, _type, status);
+
+                  _jobEmitter.emit('jobUpdate', id, _queueId, _type, status);
 
                   putRequest.onsuccess = function () {
-                    _localJobEmitter.emit('jobUpdate', id, _queueId, _type, status);
-
-                    _jobEmitter.emit('jobUpdate', id, _queueId, _type, status);
-
                     resolve();
                   };
 
@@ -1388,11 +1388,11 @@ function _removeJobFromDatabase() {
                     type = job.type;
                 var deleteRequest = store.delete(id);
 
+                _localJobEmitter.emit('jobDelete', id, queueId);
+
+                _jobEmitter.emit('jobDelete', id, queueId);
+
                 deleteRequest.onsuccess = function () {
-                  _localJobEmitter.emit('jobDelete', id, queueId);
-
-                  _jobEmitter.emit('jobDelete', id, queueId);
-
                   removeArgLookupsForJobAsMicrotask(id);
                   resolve();
                 };
@@ -1947,11 +1947,11 @@ function _markQueueForCleanupInDatabase() {
 
                   var updateRequest = cursor.update(value);
 
+                  _localJobEmitter.emit('jobUpdate', value.id, value.queueId, value.type, value.status);
+
+                  _jobEmitter.emit('jobUpdate', value.id, value.queueId, value.type, value.status);
+
                   updateRequest.onsuccess = function () {
-                    _localJobEmitter.emit('jobUpdate', value.id, value.queueId, value.type, value.status);
-
-                    _jobEmitter.emit('jobUpdate', value.id, value.queueId, value.type, value.status);
-
                     cursor.continue();
                   };
 
@@ -2062,11 +2062,11 @@ function _markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase() {
                   if (shouldRemove) {
                     var deleteRequest = cursor.delete(id);
 
+                    _localJobEmitter.emit('jobDelete', id, queueId);
+
+                    _jobEmitter.emit('jobDelete', id, queueId);
+
                     deleteRequest.onsuccess = function () {
-                      _localJobEmitter.emit('jobDelete', id, queueId);
-
-                      _jobEmitter.emit('jobDelete', id, queueId);
-
                       cursor.continue();
                     };
 
@@ -2078,11 +2078,11 @@ function _markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase() {
                   } else {
                     var updateRequest = cursor.update(value);
 
+                    _localJobEmitter.emit('jobUpdate', id, queueId, type, status);
+
+                    _jobEmitter.emit('jobUpdate', id, queueId, type, status);
+
                     updateRequest.onsuccess = function () {
-                      _localJobEmitter.emit('jobUpdate', id, queueId, type, status);
-
-                      _jobEmitter.emit('jobUpdate', id, queueId, type, status);
-
                       cursor.continue();
                     };
 

@@ -103,6 +103,18 @@ export default class BatteryQueue extends EventEmitter {
     });
   }
 
+  abortJob(queueId:string, jobId:number) {
+    const queueAbortControllerMap = this.abortControllerMap.get(queueId);
+    if (typeof queueAbortControllerMap !== 'undefined') {
+      const abortController = queueAbortControllerMap.get(jobId);
+      if (typeof abortController !== 'undefined') {
+        abortController.abort();
+        return true;
+      }
+    }
+    return false;
+  }
+
   enableStartOnJob() {
     this.disableStartOnJob(); // Prevent handlers from being added multiple times
     let didRequestJobAddDequeue = false;
@@ -119,15 +131,7 @@ export default class BatteryQueue extends EventEmitter {
     jobEmitter.addListener('jobAdd', handleJobAdd);
     this.handleJobAdd = handleJobAdd;
     const handleJobDelete = (id:number, queueId:string) => {
-      if (this.jobIds.has(id)) {
-        const queueAbortControllerMap = this.abortControllerMap.get(queueId);
-        if (typeof queueAbortControllerMap !== 'undefined') {
-          const abortController = queueAbortControllerMap.get(id);
-          if (typeof abortController !== 'undefined') {
-            abortController.abort();
-          }
-        }
-      }
+      this.abortJob(queueId, id);
     };
     jobEmitter.addListener('jobDelete', handleJobDelete);
     this.handleJobDelete = handleJobDelete;
@@ -136,14 +140,8 @@ export default class BatteryQueue extends EventEmitter {
       if (status !== JOB_CLEANUP_AND_REMOVE_STATUS && status !== JOB_CLEANUP_STATUS) {
         return;
       }
-      if (this.jobIds.has(id)) {
-        const queueAbortControllerMap = this.abortControllerMap.get(queueId);
-        if (typeof queueAbortControllerMap !== 'undefined') {
-          const abortController = queueAbortControllerMap.get(id);
-          if (typeof abortController !== 'undefined') {
-            abortController.abort();
-          }
-        }
+      const didAbort = this.abortJob(queueId, id);
+      if (didAbort) {
         return;
       }
       getJobFromDatabase(id).then((job:Job | void) => {
@@ -569,7 +567,7 @@ export default class BatteryQueue extends EventEmitter {
         this.emit('fatalCleanupError', { id, queueId });
         return;
       }
-      this.logger.error(`Error in ${type} job #${id} cleanup in queue ${queueId} attempt ${attempt}, retrying ${retryCleanupDelay > 0 ? `in ${retryCleanupDelay}ms'}` : 'immediately'}`);
+      this.logger.error(`Error in ${type} job #${id} cleanup in queue ${queueId} attempt ${attempt}, retrying ${retryCleanupDelay > 0 ? `in ${retryCleanupDelay}ms` : 'immediately'}`);
       this.emit('error', error);
       if (retryCleanupDelay > 0) {
         this.emit('retryCleanupDelay', { id, queueId, retryCleanupDelay });
@@ -616,6 +614,7 @@ export default class BatteryQueue extends EventEmitter {
         this.emit('retry', { id });
         this.startJob(id, queueId, args, type, attempt + 1, startAfter);
       }
+      this.logger.info(`Completed ${type} error handler #${id} in queue ${queueId}`);
     };
     this.addToQueue(queueId, priority, run);
   }
@@ -655,7 +654,6 @@ export default class BatteryQueue extends EventEmitter {
         this.jobIds.delete(id);
         return;
       }
-      this.logger.info(`Starting ${type} job #${id} in queue ${queueId} attempt ${attempt}`);
       const handler = this.handlerMap.get(type);
       if (typeof handler !== 'function') {
         this.logger.warn(`No handler for job type ${type}`);
@@ -670,6 +668,7 @@ export default class BatteryQueue extends EventEmitter {
         // stops before job completion or error.
         await markJobErrorInDatabase(id);
         await this.delayJobStart(id, queueId, type, abortController.signal, startAfter);
+        this.logger.info(`Starting ${type} job #${id} in queue ${queueId} attempt ${attempt}`);
         handlerDidRun = true;
         const shouldKeepJobInDatabase = await handler(args, abortController.signal, updateCleanupData);
         if (abortController.signal.aborted) {
@@ -739,7 +738,7 @@ export default class BatteryQueue extends EventEmitter {
           await this.abortQueue(queueId);
           return;
         }
-        this.logger.error(`Error in ${type} job #${id} in queue ${queueId} attempt ${attempt}, retrying ${retryDelay > 0 ? `in ${retryDelay}ms'}` : 'immediately'}`);
+        this.logger.error(`Error in ${type} job #${id} in queue ${queueId} attempt ${attempt}, retrying ${retryDelay > 0 ? `in ${retryDelay}ms` : 'immediately'}`);
         this.emit('error', error);
         if (retryDelay > 0) {
           this.emit('retryDelay', { id, queueId, retryDelay });

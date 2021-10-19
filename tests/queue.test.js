@@ -129,7 +129,7 @@ describe('Queue', () => {
     // Jobs are put into error status in case the process stops during execution
     // to trigger subsequent cleanup
     await expectAsync(jobEmitter).toEmit('jobUpdate', id, queueId, 'echo', JOB_ERROR_STATUS);
-    await queue.abortQueue(queueId);
+    queue.abortQueue(queueId);
     await expectAsync(queue).toEmit('fatalError', { queueId, id, error: jasmine.any(AbortError) });
   });
 
@@ -1325,5 +1325,37 @@ describe('Queue', () => {
     await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([]);
     queue.removeHandler(type);
     queue.removeCleanup(type);
+  });
+
+  it('Removes a job marked as "cleanup and remove" if the job encounters an error', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    let handlerCount = 0;
+    let cleanupCount = 0;
+    let id;
+    const handler = async () => {
+      handlerCount += 1;
+      throw new Error('Test error');
+    };
+    const cleanup = async () => {
+      cleanupCount += 1;
+    };
+    const retryJobDelay = () => {
+      setTimeout(() => {
+        markJobCleanupAndRemoveInDatabase(id);
+      }, 100);
+      return 1000;
+    };
+    queue.setHandler(type, handler);
+    queue.setCleanup(type, cleanup);
+    queue.setRetryJobDelay(type, retryJobDelay);
+    id = await enqueueToDatabase(queueId, type, [], 0);
+    await queue.onIdle();
+    queue.removeHandler(type);
+    queue.removeCleanup(type);
+    queue.removeRetryJobDelay(type);
+
+    expect(handlerCount).toEqual(1);
+    expect(cleanupCount).toEqual(1);
   });
 });

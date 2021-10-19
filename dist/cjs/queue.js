@@ -125,6 +125,22 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
   }
 
   _createClass(BatteryQueue, [{
+    key: "abortJob",
+    value: function abortJob(queueId, jobId) {
+      var queueAbortControllerMap = this.abortControllerMap.get(queueId);
+
+      if (typeof queueAbortControllerMap !== 'undefined') {
+        var abortController = queueAbortControllerMap.get(jobId);
+
+        if (typeof abortController !== 'undefined') {
+          abortController.abort();
+          return true;
+        }
+      }
+
+      return false;
+    }
+  }, {
     key: "enableStartOnJob",
     value: function enableStartOnJob() {
       var _this2 = this;
@@ -151,17 +167,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
       this.handleJobAdd = handleJobAdd;
 
       var handleJobDelete = function handleJobDelete(id, queueId) {
-        if (_this2.jobIds.has(id)) {
-          var queueAbortControllerMap = _this2.abortControllerMap.get(queueId);
-
-          if (typeof queueAbortControllerMap !== 'undefined') {
-            var abortController = queueAbortControllerMap.get(id);
-
-            if (typeof abortController !== 'undefined') {
-              abortController.abort();
-            }
-          }
-        }
+        _this2.abortJob(queueId, id);
       };
 
       _database.jobEmitter.addListener('jobDelete', handleJobDelete);
@@ -173,17 +179,9 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
           return;
         }
 
-        if (_this2.jobIds.has(id)) {
-          var queueAbortControllerMap = _this2.abortControllerMap.get(queueId);
+        var didAbort = _this2.abortJob(queueId, id);
 
-          if (typeof queueAbortControllerMap !== 'undefined') {
-            var abortController = queueAbortControllerMap.get(id);
-
-            if (typeof abortController !== 'undefined') {
-              abortController.abort();
-            }
-          }
-
+        if (didAbort) {
           return;
         }
 
@@ -1291,7 +1289,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 return _context13.abrupt("return");
 
               case 44:
-                this.logger.error("Error in ".concat(type, " job #").concat(id, " cleanup in queue ").concat(queueId, " attempt ").concat(attempt, ", retrying ").concat(retryCleanupDelay > 0 ? "in ".concat(retryCleanupDelay, "ms'}") : 'immediately'));
+                this.logger.error("Error in ".concat(type, " job #").concat(id, " cleanup in queue ").concat(queueId, " attempt ").concat(attempt, ", retrying ").concat(retryCleanupDelay > 0 ? "in ".concat(retryCleanupDelay, "ms") : 'immediately'));
                 this.emit('error', _context13.t0);
 
                 if (!(retryCleanupDelay > 0)) {
@@ -1432,6 +1430,9 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   _this6.startJob(id, queueId, args, type, attempt + 1, startAfter);
 
                 case 15:
+                  _this6.logger.info("Completed ".concat(type, " error handler #").concat(id, " in queue ").concat(queueId));
+
+                case 16:
                 case "end":
                   return _context15.stop();
               }
@@ -1541,38 +1542,38 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   return _context17.abrupt("return");
 
                 case 5:
-                  _this7.logger.info("Starting ".concat(type, " job #").concat(id, " in queue ").concat(queueId, " attempt ").concat(attempt));
-
                   handler = _this7.handlerMap.get(type);
 
                   if (!(typeof handler !== 'function')) {
-                    _context17.next = 14;
+                    _context17.next = 13;
                     break;
                   }
 
                   _this7.logger.warn("No handler for job type ".concat(type));
 
-                  _context17.next = 11;
+                  _context17.next = 10;
                   return (0, _database.markJobCompleteInDatabase)(id);
 
-                case 11:
+                case 10:
                   _this7.removeAbortController(id, queueId);
 
                   _this7.jobIds.delete(id);
 
                   return _context17.abrupt("return");
 
-                case 14:
+                case 13:
                   handlerDidRun = false;
-                  _context17.prev = 15;
-                  _context17.next = 18;
+                  _context17.prev = 14;
+                  _context17.next = 17;
                   return (0, _database.markJobErrorInDatabase)(id);
 
-                case 18:
-                  _context17.next = 20;
+                case 17:
+                  _context17.next = 19;
                   return _this7.delayJobStart(id, queueId, type, abortController.signal, startAfter);
 
-                case 20:
+                case 19:
+                  _this7.logger.info("Starting ".concat(type, " job #").concat(id, " in queue ").concat(queueId, " attempt ").concat(attempt));
+
                   handlerDidRun = true;
                   _context17.next = 23;
                   return handler(args, abortController.signal, updateCleanupData);
@@ -1613,7 +1614,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
                 case 38:
                   _context17.prev = 38;
-                  _context17.t0 = _context17["catch"](15);
+                  _context17.t0 = _context17["catch"](14);
 
                   if (!(_context17.t0.name === 'JobDoesNotExistError')) {
                     _context17.next = 55;
@@ -1775,7 +1776,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   return _context17.abrupt("return");
 
                 case 93:
-                  _this7.logger.error("Error in ".concat(type, " job #").concat(id, " in queue ").concat(queueId, " attempt ").concat(attempt, ", retrying ").concat(retryDelay > 0 ? "in ".concat(retryDelay, "ms'}") : 'immediately'));
+                  _this7.logger.error("Error in ".concat(type, " job #").concat(id, " in queue ").concat(queueId, " attempt ").concat(attempt, ", retrying ").concat(retryDelay > 0 ? "in ".concat(retryDelay, "ms") : 'immediately'));
 
                   _this7.emit('error', _context17.t0);
 
@@ -1812,7 +1813,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   return _context17.stop();
               }
             }
-          }, _callee16, null, [[15, 38]]);
+          }, _callee16, null, [[14, 38]]);
         }));
 
         return function run() {

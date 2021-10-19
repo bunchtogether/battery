@@ -249,9 +249,9 @@ function getReadWriteArgLookupObjectStoreAndTransactionPromise() {
 
 function removeJobFromObjectStore(store:IDBObjectStore, id:number, queueId:string) {
   const deleteRequest = store.delete(id);
+  localJobEmitter.emit('jobDelete', id, queueId);
+  jobEmitter.emit('jobDelete', id, queueId);
   deleteRequest.onsuccess = function () {
-    localJobEmitter.emit('jobDelete', id, queueId);
-    jobEmitter.emit('jobDelete', id, queueId);
     removeArgLookupsForJobAsMicrotask(id);
   };
   deleteRequest.onerror = function (event) {
@@ -278,6 +278,8 @@ async function clearAllMetadataInDatabase() {
 async function clearJobsDatabase() {
   const store = await getReadWriteJobsObjectStore();
   const request = store.clear();
+  localJobEmitter.emit('jobsClear');
+  jobEmitter.emit('jobsClear');
   await new Promise((resolve, reject) => {
     request.onsuccess = function () {
       resolve();
@@ -288,8 +290,6 @@ async function clearJobsDatabase() {
       reject(new Error('Error while clearing jobs database'));
     };
   });
-  localJobEmitter.emit('jobsClear');
-  jobEmitter.emit('jobsClear');
 }
 
 async function clearCleanupsDatabase() {
@@ -431,9 +431,9 @@ export async function updateJobInDatabase(id:number, transform:(Job | void) => J
         if (typeof value !== 'undefined') {
           const { queueId, type } = value;
           const deleteRequest = store.delete(id);
+          localJobEmitter.emit('jobDelete', id, queueId);
+          jobEmitter.emit('jobDelete', id, queueId);
           deleteRequest.onsuccess = function () {
-            localJobEmitter.emit('jobDelete', id, queueId);
-            jobEmitter.emit('jobDelete', id, queueId);
             removeArgLookupsForJobAsMicrotask(id);
             resolve();
           };
@@ -444,11 +444,11 @@ export async function updateJobInDatabase(id:number, transform:(Job | void) => J
           };
         }
       } else {
-        const putRequest = store.put(newValue);
         const { queueId, type, status } = newValue;
+        const putRequest = store.put(newValue);
+        localJobEmitter.emit('jobUpdate', id, queueId, type, status);
+        jobEmitter.emit('jobUpdate', id, queueId, type, status);
         putRequest.onsuccess = function () {
-          localJobEmitter.emit('jobUpdate', id, queueId, type, status);
-          jobEmitter.emit('jobUpdate', id, queueId, type, status);
           resolve();
         };
         putRequest.onerror = function (event) {
@@ -583,9 +583,9 @@ export async function removeJobFromDatabase(id:number) {
       }
       const { queueId, type } = job;
       const deleteRequest = store.delete(id);
+      localJobEmitter.emit('jobDelete', id, queueId);
+      jobEmitter.emit('jobDelete', id, queueId);
       deleteRequest.onsuccess = function () {
-        localJobEmitter.emit('jobDelete', id, queueId);
-        jobEmitter.emit('jobDelete', id, queueId);
         removeArgLookupsForJobAsMicrotask(id);
         resolve();
       };
@@ -897,9 +897,9 @@ export async function markQueueForCleanupInDatabase(queueId:string) {
             return;
         }
         const updateRequest = cursor.update(value);
+        localJobEmitter.emit('jobUpdate', value.id, value.queueId, value.type, value.status);
+        jobEmitter.emit('jobUpdate', value.id, value.queueId, value.type, value.status);
         updateRequest.onsuccess = function () {
-          localJobEmitter.emit('jobUpdate', value.id, value.queueId, value.type, value.status);
-          jobEmitter.emit('jobUpdate', value.id, value.queueId, value.type, value.status);
           cursor.continue();
         };
         updateRequest.onerror = function (event2) {
@@ -967,9 +967,9 @@ export async function markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase(queue
         const { id, type, status } = value;
         if (shouldRemove) {
           const deleteRequest = cursor.delete(id);
+          localJobEmitter.emit('jobDelete', id, queueId);
+          jobEmitter.emit('jobDelete', id, queueId);
           deleteRequest.onsuccess = function () {
-            localJobEmitter.emit('jobDelete', id, queueId);
-            jobEmitter.emit('jobDelete', id, queueId);
             cursor.continue();
           };
           deleteRequest.onerror = function (event2) {
@@ -979,9 +979,9 @@ export async function markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase(queue
           };
         } else {
           const updateRequest = cursor.update(value);
+          localJobEmitter.emit('jobUpdate', id, queueId, type, status);
+          jobEmitter.emit('jobUpdate', id, queueId, type, status);
           updateRequest.onsuccess = function () {
-            localJobEmitter.emit('jobUpdate', id, queueId, type, status);
-            jobEmitter.emit('jobUpdate', id, queueId, type, status);
             cursor.continue();
           };
           updateRequest.onerror = function (event2) {
