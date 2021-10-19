@@ -901,18 +901,11 @@ function _removeQueueIdFromCleanupsDatabase() {
             store = _context13.sent;
             index = store.index('queueIdIndex'); // $FlowFixMe
 
-            request = index.openCursor(IDBKeyRange.only(queueId));
+            request = index.clear(IDBKeyRange.only(queueId));
             _context13.next = 7;
             return new Promise(function (resolve, reject) {
-              request.onsuccess = function (event) {
-                var cursor = event.target.result;
-
-                if (cursor) {
-                  store.delete(cursor.primaryKey);
-                  cursor.continue();
-                } else {
-                  resolve();
-                }
+              request.onsuccess = function () {
+                resolve();
               };
 
               request.onerror = function (event) {

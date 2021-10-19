@@ -368,16 +368,10 @@ async function removeQueueIdFromCleanupsDatabase(queueId:string) {
   const store = await getReadWriteCleanupsObjectStore();
   const index = store.index('queueIdIndex');
   // $FlowFixMe
-  const request = index.openCursor(IDBKeyRange.only(queueId));
+  const request = index.clear(IDBKeyRange.only(queueId));
   await new Promise((resolve, reject) => {
-    request.onsuccess = function (event) {
-      const cursor = event.target.result;
-      if (cursor) {
-        store.delete(cursor.primaryKey);
-        cursor.continue();
-      } else {
-        resolve();
-      }
+    request.onsuccess = function () {
+      resolve();
     };
     request.onerror = function (event) {
       logger.error(`Request error while removing queue ${queueId} from jobs database`);
