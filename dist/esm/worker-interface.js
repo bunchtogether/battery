@@ -234,11 +234,12 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
         }, [messageChannel.port2]);
       });
     } catch (error) {
+      controller.removeEventListener('statechange', handleStateChange);
+
       if (error instanceof RedundantServiceWorkerError) {
         return messageChannel.port1;
       }
 
-      controller.removeEventListener('statechange', handleStateChange);
       throw error;
     }
 

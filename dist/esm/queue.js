@@ -7,6 +7,7 @@ const PRIORITY_OFFSET = Math.floor(Number.MAX_SAFE_INTEGER / 2);
 export default class BatteryQueue extends EventEmitter {
   constructor(options = {}) {
     super();
+    this.stopped = false;
     this.dequeueQueue = new PQueue({
       concurrency: 1
     });
@@ -297,6 +298,10 @@ export default class BatteryQueue extends EventEmitter {
   }
 
   addToQueue(queueId, priority, func) {
+    if (this.stopped) {
+      return;
+    }
+
     const queue = this.queueMap.get(queueId);
 
     if (typeof queue !== 'undefined') {
@@ -416,13 +421,17 @@ export default class BatteryQueue extends EventEmitter {
     await this.startJobs(jobs);
   }
 
-  dequeue() {
+  async dequeue() {
+    if (this.stopped) {
+      return;
+    }
+
     if (this.dequeueQueue.size === 0) {
       // Add a subsequent dequeue
       this.dequeueQueue.add(this.startJobs.bind(this));
     }
 
-    return this.dequeueQueue.onIdle();
+    await this.dequeueQueue.onIdle();
   }
 
   async startJobs(newJobs) {
@@ -478,6 +487,36 @@ export default class BatteryQueue extends EventEmitter {
     }
   }
 
+  async stop() {
+    if (typeof this.stopPromise === 'undefined') {
+      this.stopped = true;
+
+      this.stopPromise = (async () => {
+        await this.dequeueQueue.onIdle();
+        const idlePromises = [];
+
+        for (const [queueId, queue] of this.queueMap) {
+          const interval = setInterval(() => {
+            this.logger.info(`Waiting on queue ${queueId} (stop), size ${queue.size}, pending ${queue.pending}`);
+          }, 250);
+          queue.clear();
+          idlePromises.push(queue.onIdle().finally(() => {
+            clearInterval(interval);
+          }));
+        }
+
+        await Promise.all(idlePromises);
+        this.jobIds.clear();
+        this.abortControllerMap.clear();
+        delete this.stopPromise;
+        this.emit('stop');
+        this.stopped = false;
+      })();
+    }
+
+    await this.stopPromise;
+  }
+
   async onIdle(maxDuration) {
     if (typeof this.onIdlePromise === 'undefined') {
       this.onIdlePromise = (async () => {
@@ -495,7 +534,7 @@ export default class BatteryQueue extends EventEmitter {
 
           for (const [queueId, queue] of this.queueMap) {
             const interval = setInterval(() => {
-              this.logger.info(`Waiting on queue ${queueId}`);
+              this.logger.info(`Waiting on queue ${queueId} (idle)`);
             }, 250);
             await queue.onIdle();
             clearInterval(interval);
@@ -930,6 +969,10 @@ export default class BatteryQueue extends EventEmitter {
     switch (type) {
       case 'unlink':
         this.logger.warn('Unlinking worker interface');
+        this.stop().catch(error => {
+          this.logger.error('Unable to stop queue after unlink');
+          this.logger.errorStack(error);
+        });
 
         if (port instanceof MessagePort) {
           port.onmessage = null;

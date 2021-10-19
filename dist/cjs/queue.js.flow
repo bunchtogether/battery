@@ -64,6 +64,7 @@ export default class BatteryQueue extends EventEmitter {
   declare abortControllerMap: Map<string, Map<number, AbortController>>;
   declare isClearing: boolean;
   declare onIdlePromise: Promise<void> | void;
+  declare stopPromise: Promise<void> | void;
   declare jobIds: Set<number>;
   declare emitCallbacks: Array<EmitCallback>;
   declare port: MessagePort | void;
@@ -72,9 +73,11 @@ export default class BatteryQueue extends EventEmitter {
   declare handleJobDelete: void | (number, string) => void;
   declare heartbeatExpiresTimestamp: void | number;
   declare heartbeatExpiresTimeout: void | TimeoutID;
+  declare stopped: boolean;
 
   constructor(options?: Options = {}) {
     super();
+    this.stopped = false;
     this.dequeueQueue = new PQueue({ concurrency: 1 });
     this.unloadQueue = new PQueue({ concurrency: 1 });
     this.handlerMap = new Map();
@@ -316,6 +319,9 @@ export default class BatteryQueue extends EventEmitter {
   }
 
   addToQueue(queueId:string, priority: number, func: () => Promise<void>) {
+    if (this.stopped) {
+      return;
+    }
     const queue = this.queueMap.get(queueId);
     if (typeof queue !== 'undefined') {
       queue.add(func, { priority });
@@ -415,12 +421,15 @@ export default class BatteryQueue extends EventEmitter {
     await this.startJobs(jobs);
   }
 
-  dequeue():void | Promise<void> {
+  async dequeue():Promise<void> {
+    if (this.stopped) {
+      return;
+    }
     if (this.dequeueQueue.size === 0) {
       // Add a subsequent dequeue
       this.dequeueQueue.add(this.startJobs.bind(this));
     }
-    return this.dequeueQueue.onIdle();
+    await this.dequeueQueue.onIdle();
   }
 
   async startJobs(newJobs?:Array<Job>) { // eslint-disable-line consistent-return
@@ -460,6 +469,32 @@ export default class BatteryQueue extends EventEmitter {
     }
   }
 
+  async stop() {
+    if (typeof this.stopPromise === 'undefined') {
+      this.stopped = true;
+      this.stopPromise = (async () => {
+        await this.dequeueQueue.onIdle();
+        const idlePromises = [];
+        for (const [queueId, queue] of this.queueMap) {
+          const interval = setInterval(() => {
+            this.logger.info(`Waiting on queue ${queueId} (stop), size ${queue.size}, pending ${queue.pending}`);
+          }, 250);
+          queue.clear();
+          idlePromises.push(queue.onIdle().finally(() => {
+            clearInterval(interval);
+          }));
+        }
+        await Promise.all(idlePromises);
+        this.jobIds.clear();
+        this.abortControllerMap.clear();
+        delete this.stopPromise;
+        this.emit('stop');
+        this.stopped = false;
+      })();
+    }
+    await this.stopPromise;
+  }
+
   async onIdle(maxDuration?: number) {
     if (typeof this.onIdlePromise === 'undefined') {
       this.onIdlePromise = (async () => {
@@ -473,7 +508,7 @@ export default class BatteryQueue extends EventEmitter {
           await this.dequeueQueue.onIdle();
           for (const [queueId, queue] of this.queueMap) {
             const interval = setInterval(() => {
-              this.logger.info(`Waiting on queue ${queueId}`);
+              this.logger.info(`Waiting on queue ${queueId} (idle)`);
             }, 250);
             await queue.onIdle();
             clearInterval(interval);
@@ -781,6 +816,10 @@ export default class BatteryQueue extends EventEmitter {
     switch (type) {
       case 'unlink':
         this.logger.warn('Unlinking worker interface');
+        this.stop().catch((error) => {
+          this.logger.error('Unable to stop queue after unlink');
+          this.logger.errorStack(error);
+        });
         if (port instanceof MessagePort) {
           port.onmessage = null;
           delete this.port;

@@ -529,16 +529,16 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
               case 18:
                 _context6.prev = 18;
                 _context6.t0 = _context6["catch"](13);
+                controller.removeEventListener('statechange', handleStateChange);
 
                 if (!(_context6.t0 instanceof RedundantServiceWorkerError)) {
-                  _context6.next = 22;
+                  _context6.next = 23;
                   break;
                 }
 
                 return _context6.abrupt("return", messageChannel.port1);
 
-              case 22:
-                controller.removeEventListener('statechange', handleStateChange);
+              case 23:
                 throw _context6.t0;
 
               case 24:
