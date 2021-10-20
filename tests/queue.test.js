@@ -18,6 +18,9 @@ import {
   JOB_COMPLETE_STATUS,
 } from '../src/database';
 import {
+  CLEANUP_JOB_TYPE,
+} from '../src/queue';
+import {
   TRIGGER_NO_ERROR,
   TRIGGER_ERROR,
   TRIGGER_FATAL_ERROR,
@@ -69,6 +72,36 @@ describe('Queue', () => {
     await queue.clear();
 
     await expectAsync(queue.getQueueIds()).toBeResolvedTo(new Set([]));
+  });
+
+  it('Gets the current job type', async () => {
+    queue.disableStartOnJob();
+    const queueId = uuidv4();
+    const value = uuidv4();
+    await enqueueToDatabase(queueId, 'echo', [TRIGGER_100MS_DELAY, value], 0);
+
+    expect(queue.getCurrentJobType(queueId)).toBeUndefined();
+    queue.dequeue();
+    await expectAsync(queue).toEmit('queueJobType', queueId, 'echo');
+
+    expect(queue.getCurrentJobType(queueId)).toEqual('echo');
+    await expectAsync(queue).toEmit('queueJobType', queueId, undefined);
+
+    expect(queue.getCurrentJobType(queueId)).toBeUndefined();
+    await queue.onIdle();
+    await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value], 0);
+    queue.dequeue();
+    await expectAsync(queue).toEmit('queueJobType', queueId, 'echo');
+
+    expect(queue.getCurrentJobType(queueId)).toEqual('echo');
+
+    await expectAsync(queue).toEmit('queueJobType', queueId, CLEANUP_JOB_TYPE);
+
+    expect(queue.getCurrentJobType(queueId)).toEqual(CLEANUP_JOB_TYPE);
+
+    await expectAsync(queue).toEmit('queueJobType', queueId, undefined);
+
+    expect(queue.getCurrentJobType(queueId)).toBeUndefined();
   });
 
   it('Enqueues to the database and is cleaned up after an error without retrying', async () => {

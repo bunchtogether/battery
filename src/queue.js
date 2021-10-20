@@ -38,8 +38,9 @@ import {
 } from './database';
 import { AbortError } from './errors';
 
-const PRIORITY_OFFSET = Math.floor(Number.MAX_SAFE_INTEGER / 2);
+export const CLEANUP_JOB_TYPE = 'CLEANUP_JOB_TYPE';
 
+const PRIORITY_OFFSET = Math.floor(Number.MAX_SAFE_INTEGER / 2);
 
 type HandlerFunction = (Array<any>, AbortSignal, (Object) => Promise<void>, (number, number) => void) => Promise<void | false>;
 type CleanupFunction = (Object | void, Array<any>, Array<string> => Promise<void>) => Promise<void>;
@@ -61,6 +62,7 @@ export default class BatteryQueue extends EventEmitter {
   declare retryJobDelayMap: Map<string, RetryDelayFunction>;
   declare retryCleanupDelayMap: Map<string, RetryDelayFunction>;
   declare cleanupMap: Map<string, CleanupFunction>;
+  declare queueCurrentJobTypeMap: Map<string, string>;
   declare durationEstimateHandlerMap: Map<string, DurationEstimateFunction>;
   declare durationEstimateMap: Map<string, Map<number, [number, number]>>;
   declare queueMap: Map<string, PQueue>;
@@ -90,6 +92,7 @@ export default class BatteryQueue extends EventEmitter {
     this.durationEstimateMap = new Map();
     this.retryJobDelayMap = new Map();
     this.retryCleanupDelayMap = new Map();
+    this.queueCurrentJobTypeMap = new Map();
     this.queueMap = new Map();
     this.jobIds = new Set();
     this.abortControllerMap = new Map();
@@ -371,6 +374,19 @@ export default class BatteryQueue extends EventEmitter {
     return [totalDuration, totalPending];
   }
 
+  setCurrentJobType(queueId:string, type?:void | string) {
+    if (typeof type === 'string') {
+      this.queueCurrentJobTypeMap.set(queueId, type);
+    } else {
+      this.queueCurrentJobTypeMap.delete(queueId);
+    }
+    this.emit('queueJobType', queueId, type);
+  }
+
+  getCurrentJobType(queueId:string) {
+    return this.queueCurrentJobTypeMap.get(queueId);
+  }
+
   async clear() {
     this.isClearing = true;
     await this.onIdle();
@@ -393,6 +409,7 @@ export default class BatteryQueue extends EventEmitter {
     this.queueMap.set(queueId, newQueue);
     newQueue.add(func, { priority });
     newQueue.on('idle', async () => {
+      this.setCurrentJobType(queueId, undefined);
       if (!this.isClearing) {
         await new Promise((resolve) => {
           const timeout = setTimeout(() => {
@@ -687,6 +704,7 @@ export default class BatteryQueue extends EventEmitter {
     this.removeDurationEstimate(queueId, id);
     const priority = PRIORITY_OFFSET + id;
     const run = async () => {
+      this.setCurrentJobType(queueId, CLEANUP_JOB_TYPE);
       this.logger.info(`Starting ${type} cleanup #${id} in queue ${queueId}`);
       await this.runCleanup(id, queueId, args, type);
       // Job could be marked for removal while cleanup is running
@@ -702,6 +720,7 @@ export default class BatteryQueue extends EventEmitter {
     const priority = PRIORITY_OFFSET + id;
     const abortController = this.getAbortController(id, queueId);
     const run = async () => {
+      this.setCurrentJobType(queueId, CLEANUP_JOB_TYPE);
       this.logger.info(`Starting ${type} error handler #${id} in queue ${queueId}`);
       await this.runCleanup(id, queueId, args, type);
       if (abortController.signal.aborted) {
@@ -779,6 +798,7 @@ export default class BatteryQueue extends EventEmitter {
         this.addDurationEstimate(queueId, id, Date.now() - start, 0);
         return;
       }
+      this.setCurrentJobType(queueId, type);
       let handlerDidRun = false;
       try {
         // Mark as error in database so the job is cleaned up and retried if execution
