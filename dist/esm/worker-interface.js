@@ -839,6 +839,88 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
     });
   }
 
+  async getDurationEstimate(queueId, maxDuration = 1000) {
+    const port = await this.link();
+    return new Promise((resolve, reject) => {
+      const requestId = Math.random();
+      const timeout = setTimeout(() => {
+        this.removeListener('getDurationEstimateComplete', handleGetDurationEstimateComplete);
+        this.removeListener('getDurationEstimateError', handleGetDurationEstimateError);
+        reject(new Error(`Did not receive duration estimate response within ${maxDuration}ms`));
+      }, maxDuration);
+
+      const handleGetDurationEstimateComplete = (responseId, values) => {
+        if (responseId !== requestId) {
+          return;
+        }
+
+        clearTimeout(timeout);
+        this.removeListener('getDurationEstimateComplete', handleGetDurationEstimateComplete);
+        this.removeListener('getDurationEstimateError', handleGetDurationEstimateError);
+        resolve(values);
+      };
+
+      const handleGetDurationEstimateError = (responseId, error) => {
+        if (responseId !== requestId) {
+          return;
+        }
+
+        clearTimeout(timeout);
+        this.removeListener('getDurationEstimateComplete', handleGetDurationEstimateComplete);
+        this.removeListener('getDurationEstimateError', handleGetDurationEstimateError);
+        reject(error);
+      };
+
+      this.addListener('getDurationEstimateComplete', handleGetDurationEstimateComplete);
+      this.addListener('getDurationEstimateError', handleGetDurationEstimateError);
+      port.postMessage({
+        type: 'getDurationEstimate',
+        args: [requestId, queueId]
+      });
+    });
+  }
+
+  async getCurrentJobType(queueId, maxDuration = 1000) {
+    const port = await this.link();
+    return new Promise((resolve, reject) => {
+      const requestId = Math.random();
+      const timeout = setTimeout(() => {
+        this.removeListener('getCurrentJobTypeComplete', handleGetCurrentJobTypeComplete);
+        this.removeListener('getCurrentJobTypeError', handleGetCurrentJobTypeError);
+        reject(new Error(`Did not receive duration estimate response within ${maxDuration}ms`));
+      }, maxDuration);
+
+      const handleGetCurrentJobTypeComplete = (responseId, type) => {
+        if (responseId !== requestId) {
+          return;
+        }
+
+        clearTimeout(timeout);
+        this.removeListener('getCurrentJobTypeComplete', handleGetCurrentJobTypeComplete);
+        this.removeListener('getCurrentJobTypeError', handleGetCurrentJobTypeError);
+        resolve(type);
+      };
+
+      const handleGetCurrentJobTypeError = (responseId, error) => {
+        if (responseId !== requestId) {
+          return;
+        }
+
+        clearTimeout(timeout);
+        this.removeListener('getCurrentJobTypeComplete', handleGetCurrentJobTypeComplete);
+        this.removeListener('getCurrentJobTypeError', handleGetCurrentJobTypeError);
+        reject(error);
+      };
+
+      this.addListener('getCurrentJobTypeComplete', handleGetCurrentJobTypeComplete);
+      this.addListener('getCurrentJobTypeError', handleGetCurrentJobTypeError);
+      port.postMessage({
+        type: 'getCurrentJobType',
+        args: [requestId, queueId]
+      });
+    });
+  }
+
   async sync() {
     if (!canUseSyncManager) {
       return;

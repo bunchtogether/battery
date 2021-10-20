@@ -336,29 +336,29 @@ export default class BatteryQueue extends EventEmitter {
     const queueDurationEstimateMap = this.durationEstimateMap.get(queueId);
     if (typeof queueDurationEstimateMap === 'undefined') {
       this.durationEstimateMap.set(queueId, new Map([[jobId, [duration, pending]]]));
-      this.getQueueDurationEstimate(queueId);
+      this.getDurationEstimate(queueId);
       return;
     }
     queueDurationEstimateMap.set(jobId, [duration, pending]);
-    this.getQueueDurationEstimate(queueId);
+    this.getDurationEstimate(queueId);
   }
 
   removeDurationEstimate(queueId:string, jobId?:number) {
     if (typeof jobId !== 'number') {
       this.durationEstimateMap.delete(queueId);
-      this.getQueueDurationEstimate(queueId);
+      this.getDurationEstimate(queueId);
       return;
     }
     const queueDurationEstimateMap = this.durationEstimateMap.get(queueId);
     if (typeof queueDurationEstimateMap === 'undefined') {
-      this.getQueueDurationEstimate(queueId);
+      this.getDurationEstimate(queueId);
       return;
     }
     queueDurationEstimateMap.delete(jobId);
-    this.getQueueDurationEstimate(queueId);
+    this.getDurationEstimate(queueId);
   }
 
-  getQueueDurationEstimate(queueId:string) {
+  getDurationEstimate(queueId:string) {
     const queueDurationEstimateMap = this.durationEstimateMap.get(queueId);
     let totalDuration = 0;
     let totalPending = 0;
@@ -1045,6 +1045,34 @@ export default class BatteryQueue extends EventEmitter {
         } catch (error) {
           this.emit('getQueuesError', requestId, error);
           this.logger.error('Unable to handle getQueueIds message');
+          this.emit('error', error);
+        }
+        break;
+      case 'getDurationEstimate':
+        try {
+          const [queueId] = requestArgs;
+          if (typeof queueId !== 'string') {
+            throw new Error(`Invalid "queueId" argument with type ${typeof queueId}, should be type string`);
+          }
+          const values = await this.getDurationEstimate(queueId);
+          this.emit('getDurationEstimateComplete', requestId, values);
+        } catch (error) {
+          this.emit('getDurationEstimateError', requestId, error);
+          this.logger.error('Unable to handle get duration estimate message');
+          this.emit('error', error);
+        }
+        break;
+      case 'getCurrentJobType':
+        try {
+          const [queueId] = requestArgs;
+          if (typeof queueId !== 'string') {
+            throw new Error(`Invalid "queueId" argument with type ${typeof queueId}, should be type string`);
+          }
+          const currentJobType = this.getCurrentJobType(queueId);
+          this.emit('getCurrentJobTypeComplete', requestId, currentJobType);
+        } catch (error) {
+          this.emit('getCurrentJobTypeError', requestId, error);
+          this.logger.error('Unable to handle get current job type message');
           this.emit('error', error);
         }
         break;

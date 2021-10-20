@@ -159,4 +159,28 @@ describe('Worker', () => {
     await expectAsync(jobEmitter).toEmit('jobDelete', id, queueId);
     await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([]);
   });
+
+  it('Estimates duration in a queue', async () => {
+    const queueId = uuidv4();
+    const value = uuidv4();
+    const args = [TRIGGER_NO_ERROR, value];
+    await enqueueToDatabase(queueId, 'echo', args, 0);
+    await queueInterface.onIdle(5000);
+    const [duration, pending] = await queueInterface.getDurationEstimate(queueId);
+
+    expect(duration).toBeGreaterThan(0);
+    expect(pending).toEqual(0);
+  });
+
+  it('Gets current job type in a queue', async () => {
+    const queueId = uuidv4();
+    const value = uuidv4();
+    const args = [TRIGGER_100MS_DELAY, value];
+    await expectAsync(queueInterface.getCurrentJobType(queueId)).toBeResolvedTo(undefined);
+    await enqueueToDatabase(queueId, 'echo', args, 0);
+    await expectAsync(queueInterface).toEmit('queueJobType', queueId, 'echo');
+    await expectAsync(queueInterface.getCurrentJobType(queueId)).toBeResolvedTo('echo');
+    await queueInterface.onIdle(5000);
+    await expectAsync(queueInterface.getCurrentJobType(queueId)).toBeResolvedTo(undefined);
+  });
 });

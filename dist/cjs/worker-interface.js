@@ -1602,36 +1602,198 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
       return disableStartOnJob;
     }()
   }, {
-    key: "sync",
+    key: "getDurationEstimate",
     value: function () {
-      var _sync = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee16() {
+      var _getDurationEstimate = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee16(queueId) {
         var _this15 = this;
 
-        var serviceWorker, _registration;
-
+        var maxDuration,
+            port,
+            _args17 = arguments;
         return regeneratorRuntime.wrap(function _callee16$(_context17) {
           while (1) {
             switch (_context17.prev = _context17.next) {
               case 0:
+                maxDuration = _args17.length > 1 && _args17[1] !== undefined ? _args17[1] : 1000;
+                _context17.next = 3;
+                return this.link();
+
+              case 3:
+                port = _context17.sent;
+                return _context17.abrupt("return", new Promise(function (resolve, reject) {
+                  var requestId = Math.random();
+                  var timeout = setTimeout(function () {
+                    _this15.removeListener('getDurationEstimateComplete', handleGetDurationEstimateComplete);
+
+                    _this15.removeListener('getDurationEstimateError', handleGetDurationEstimateError);
+
+                    reject(new Error("Did not receive duration estimate response within ".concat(maxDuration, "ms")));
+                  }, maxDuration);
+
+                  var handleGetDurationEstimateComplete = function handleGetDurationEstimateComplete(responseId, values) {
+                    if (responseId !== requestId) {
+                      return;
+                    }
+
+                    clearTimeout(timeout);
+
+                    _this15.removeListener('getDurationEstimateComplete', handleGetDurationEstimateComplete);
+
+                    _this15.removeListener('getDurationEstimateError', handleGetDurationEstimateError);
+
+                    resolve(values);
+                  };
+
+                  var handleGetDurationEstimateError = function handleGetDurationEstimateError(responseId, error) {
+                    if (responseId !== requestId) {
+                      return;
+                    }
+
+                    clearTimeout(timeout);
+
+                    _this15.removeListener('getDurationEstimateComplete', handleGetDurationEstimateComplete);
+
+                    _this15.removeListener('getDurationEstimateError', handleGetDurationEstimateError);
+
+                    reject(error);
+                  };
+
+                  _this15.addListener('getDurationEstimateComplete', handleGetDurationEstimateComplete);
+
+                  _this15.addListener('getDurationEstimateError', handleGetDurationEstimateError);
+
+                  port.postMessage({
+                    type: 'getDurationEstimate',
+                    args: [requestId, queueId]
+                  });
+                }));
+
+              case 5:
+              case "end":
+                return _context17.stop();
+            }
+          }
+        }, _callee16, this);
+      }));
+
+      function getDurationEstimate(_x5) {
+        return _getDurationEstimate.apply(this, arguments);
+      }
+
+      return getDurationEstimate;
+    }()
+  }, {
+    key: "getCurrentJobType",
+    value: function () {
+      var _getCurrentJobType = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee17(queueId) {
+        var _this16 = this;
+
+        var maxDuration,
+            port,
+            _args18 = arguments;
+        return regeneratorRuntime.wrap(function _callee17$(_context18) {
+          while (1) {
+            switch (_context18.prev = _context18.next) {
+              case 0:
+                maxDuration = _args18.length > 1 && _args18[1] !== undefined ? _args18[1] : 1000;
+                _context18.next = 3;
+                return this.link();
+
+              case 3:
+                port = _context18.sent;
+                return _context18.abrupt("return", new Promise(function (resolve, reject) {
+                  var requestId = Math.random();
+                  var timeout = setTimeout(function () {
+                    _this16.removeListener('getCurrentJobTypeComplete', handleGetCurrentJobTypeComplete);
+
+                    _this16.removeListener('getCurrentJobTypeError', handleGetCurrentJobTypeError);
+
+                    reject(new Error("Did not receive duration estimate response within ".concat(maxDuration, "ms")));
+                  }, maxDuration);
+
+                  var handleGetCurrentJobTypeComplete = function handleGetCurrentJobTypeComplete(responseId, type) {
+                    if (responseId !== requestId) {
+                      return;
+                    }
+
+                    clearTimeout(timeout);
+
+                    _this16.removeListener('getCurrentJobTypeComplete', handleGetCurrentJobTypeComplete);
+
+                    _this16.removeListener('getCurrentJobTypeError', handleGetCurrentJobTypeError);
+
+                    resolve(type);
+                  };
+
+                  var handleGetCurrentJobTypeError = function handleGetCurrentJobTypeError(responseId, error) {
+                    if (responseId !== requestId) {
+                      return;
+                    }
+
+                    clearTimeout(timeout);
+
+                    _this16.removeListener('getCurrentJobTypeComplete', handleGetCurrentJobTypeComplete);
+
+                    _this16.removeListener('getCurrentJobTypeError', handleGetCurrentJobTypeError);
+
+                    reject(error);
+                  };
+
+                  _this16.addListener('getCurrentJobTypeComplete', handleGetCurrentJobTypeComplete);
+
+                  _this16.addListener('getCurrentJobTypeError', handleGetCurrentJobTypeError);
+
+                  port.postMessage({
+                    type: 'getCurrentJobType',
+                    args: [requestId, queueId]
+                  });
+                }));
+
+              case 5:
+              case "end":
+                return _context18.stop();
+            }
+          }
+        }, _callee17, this);
+      }));
+
+      function getCurrentJobType(_x6) {
+        return _getCurrentJobType.apply(this, arguments);
+      }
+
+      return getCurrentJobType;
+    }()
+  }, {
+    key: "sync",
+    value: function () {
+      var _sync = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee18() {
+        var _this17 = this;
+
+        var serviceWorker, _registration;
+
+        return regeneratorRuntime.wrap(function _callee18$(_context19) {
+          while (1) {
+            switch (_context19.prev = _context19.next) {
+              case 0:
                 if (canUseSyncManager) {
-                  _context17.next = 2;
+                  _context19.next = 2;
                   break;
                 }
 
-                return _context17.abrupt("return");
+                return _context19.abrupt("return");
 
               case 2:
                 if (!this.isSyncing) {
-                  _context17.next = 4;
+                  _context19.next = 4;
                   break;
                 }
 
-                return _context17.abrupt("return");
+                return _context19.abrupt("return");
 
               case 4:
                 this.isSyncing = true;
-                _context17.prev = 5;
-                _context17.next = 8;
+                _context19.prev = 5;
+                _context19.next = 8;
                 return this.link();
 
               case 8:
@@ -1639,26 +1801,26 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                 serviceWorker = navigator && navigator.serviceWorker;
 
                 if (serviceWorker) {
-                  _context17.next = 12;
+                  _context19.next = 12;
                   break;
                 }
 
                 throw new Error('Service worker not available');
 
               case 12:
-                _context17.next = 14;
+                _context19.next = 14;
                 return serviceWorker.ready;
 
               case 14:
-                _registration = _context17.sent;
+                _registration = _context19.sent;
 
                 // $FlowFixMe
                 _registration.sync.register('syncManagerOnIdle');
 
-                _context17.next = 18;
+                _context19.next = 18;
                 return new Promise(function (resolve, reject) {
                   var timeout = setTimeout(function () {
-                    _this15.removeListener('syncManagerOnIdle', handleOnIdleSync);
+                    _this17.removeListener('syncManagerOnIdle', handleOnIdleSync);
 
                     reject(new Error('Unable to sync, did not receive syncManagerOnIdle acknowledgement'));
                   }, 5000);
@@ -1666,58 +1828,58 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
                   var handleOnIdleSync = function handleOnIdleSync() {
                     clearTimeout(timeout);
 
-                    _this15.removeListener('syncManagerOnIdle', handleOnIdleSync);
+                    _this17.removeListener('syncManagerOnIdle', handleOnIdleSync);
 
                     resolve();
                   };
 
-                  _this15.addListener('syncManagerOnIdle', handleOnIdleSync);
+                  _this17.addListener('syncManagerOnIdle', handleOnIdleSync);
                 });
 
               case 18:
-                _context17.next = 20;
+                _context19.next = 20;
                 return new Promise(function (resolve) {
                   var handleIdle = function handleIdle() {
-                    _this15.removeListener('idle', handleIdle);
+                    _this17.removeListener('idle', handleIdle);
 
-                    _this15.removeListener('unlink', handleUnlink);
+                    _this17.removeListener('unlink', handleUnlink);
 
                     resolve();
                   };
 
                   var handleUnlink = function handleUnlink() {
-                    _this15.removeListener('idle', handleIdle);
+                    _this17.removeListener('idle', handleIdle);
 
-                    _this15.removeListener('unlink', handleUnlink);
+                    _this17.removeListener('unlink', handleUnlink);
 
                     resolve();
                   };
 
-                  _this15.addListener('idle', handleIdle);
+                  _this17.addListener('idle', handleIdle);
 
-                  _this15.addListener('unlink', handleUnlink);
+                  _this17.addListener('unlink', handleUnlink);
                 });
 
               case 20:
-                _context17.next = 27;
+                _context19.next = 27;
                 break;
 
               case 22:
-                _context17.prev = 22;
-                _context17.t0 = _context17["catch"](5);
+                _context19.prev = 22;
+                _context19.t0 = _context19["catch"](5);
                 this.logger.error('Unable to sync');
-                this.emit('error', _context17.t0);
-                this.logger.errorStack(_context17.t0);
+                this.emit('error', _context19.t0);
+                this.logger.errorStack(_context19.t0);
 
               case 27:
                 this.isSyncing = false;
 
               case 28:
               case "end":
-                return _context17.stop();
+                return _context19.stop();
             }
           }
-        }, _callee16, this, [[5, 22]]);
+        }, _callee18, this, [[5, 22]]);
       }));
 
       function sync() {

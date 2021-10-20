@@ -50,7 +50,7 @@ describe('Time Estimation', () => {
     queue.setDurationEstimateHandler(type, durationEstimateHandler);
     queue.disableStartOnJob();
 
-    expect(queue.getQueueDurationEstimate(queueId)).toEqual([0, 0]);
+    expect(queue.getDurationEstimate(queueId)).toEqual([0, 0]);
     await enqueueToDatabase(queueId, type, argsA, 0);
     await enqueueToDatabase(queueId, type, argsB, 0);
     const queueDurationPromiseA1 = expectAsync(queue).toEmit('queueDuration', queueId, 100, 100);
@@ -109,7 +109,7 @@ describe('Time Estimation', () => {
     queue.setDurationEstimateHandler(type, durationEstimateHandler);
     queue.disableStartOnJob();
 
-    expect(queue.getQueueDurationEstimate(queueId)).toEqual([0, 0]);
+    expect(queue.getDurationEstimate(queueId)).toEqual([0, 0]);
     await enqueueToDatabase(queueId, type, argsA, 0);
     await enqueueToDatabase(queueId, type, argsB, 0);
     const queueDurationPromiseA1 = expectAsync(queue).toEmit('queueDuration', queueId, 100, 100);
