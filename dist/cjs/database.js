@@ -70,19 +70,13 @@ var _merge = _interopRequireDefault(require("lodash/merge"));
 
 var _unset = _interopRequireDefault(require("lodash/unset"));
 
+var _uniq = _interopRequireDefault(require("lodash/uniq"));
+
 var _events = _interopRequireDefault(require("events"));
 
 var _logger = _interopRequireDefault(require("./logger"));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _unsupportedIterableToArray(arr) || _nonIterableSpread(); }
-
-function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
-
-function _iterableToArray(iter) { if (typeof Symbol !== "undefined" && iter[Symbol.iterator] != null || iter["@@iterator"] != null) return Array.from(iter); }
-
-function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) return _arrayLikeToArray(arr); }
 
 function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
 
@@ -3405,59 +3399,55 @@ function _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase2(_x65) {
 
 function _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase() {
   _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee50(key) {
-    var map, _iterator6, _step6, jobId;
-
+    var store, index, request, jobIds;
     return regeneratorRuntime.wrap(function _callee50$(_context50) {
       while (1) {
         switch (_context50.prev = _context50.next) {
           case 0:
-            _context50.next = 2;
-            return _getArgLookupJobPathMap2(key);
-
-          case 2:
-            map = _context50.sent;
-            _iterator6 = _createForOfIteratorHelper(map.keys());
-            _context50.prev = 4;
-
-            _iterator6.s();
-
-          case 6:
-            if ((_step6 = _iterator6.n()).done) {
-              _context50.next = 12;
+            if (!(typeof key !== 'string')) {
+              _context50.next = 2;
               break;
             }
 
-            jobId = _step6.value;
-            _context50.next = 10;
-            return _markJobCleanupAndRemoveInDatabase(jobId);
+            throw new TypeError("Unable to lookup arguments, received invalid \"key\" argument type \"".concat(_typeof(key), "\""));
 
-          case 10:
-            _context50.next = 6;
-            break;
+          case 2:
+            _context50.next = 4;
+            return getReadOnlyArgLookupObjectStore();
+
+          case 4:
+            store = _context50.sent;
+            index = store.index('keyIndex'); // $FlowFixMe
+
+            request = index.getAll(IDBKeyRange.only(key));
+            _context50.next = 9;
+            return new Promise(function (resolve, reject) {
+              request.onsuccess = function (event) {
+                resolve((0, _uniq.default)(event.target.result.map(function (x) {
+                  return x.jobId;
+                })));
+              };
+
+              request.onerror = function (event) {
+                logger.error("Request error looking up arguments for key ".concat(key));
+                logger.errorObject(event);
+                reject(new Error("Request error looking up arguments for key ".concat(key)));
+              };
+
+              store.transaction.commit();
+            });
+
+          case 9:
+            jobIds = _context50.sent;
+            _context50.next = 12;
+            return Promise.all(jobIds.map(_markJobCleanupAndRemoveInDatabase));
 
           case 12:
-            _context50.next = 17;
-            break;
-
-          case 14:
-            _context50.prev = 14;
-            _context50.t0 = _context50["catch"](4);
-
-            _iterator6.e(_context50.t0);
-
-          case 17:
-            _context50.prev = 17;
-
-            _iterator6.f();
-
-            return _context50.finish(17);
-
-          case 20:
           case "end":
             return _context50.stop();
         }
       }
-    }, _callee50, null, [[4, 14, 17, 20]]);
+    }, _callee50);
   }));
   return _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase.apply(this, arguments);
 }
@@ -3468,100 +3458,109 @@ function _lookupArgs2(_x66) {
 
 function _lookupArgs() {
   _lookupArgs = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee51(key) {
-    var map, jobs, results, _iterator7, _step7, _step7$value, id, args, jsonPath, _iterator8, _step8, result;
-
+    var database, transaction, argLookupObjectStore, argLookupIndex, argLookupRequest, results;
     return regeneratorRuntime.wrap(function _callee51$(_context51) {
       while (1) {
         switch (_context51.prev = _context51.next) {
           case 0:
             _context51.next = 2;
-            return _getArgLookupJobPathMap2(key);
+            return _databasePromise;
 
           case 2:
-            map = _context51.sent;
+            database = _context51.sent;
+            transaction = database.transaction(['arg-lookup', 'jobs'], 'readonly', {
+              durability: 'relaxed'
+            });
+            argLookupObjectStore = transaction.objectStore('arg-lookup');
 
-            if (!(map.size === 0)) {
-              _context51.next = 5;
-              break;
-            }
+            transaction.onabort = function (event) {
+              logger.error('Read-only lookupArgs transaction was aborted');
+              logger.errorObject(event);
+            };
 
-            return _context51.abrupt("return", []);
+            transaction.onerror = function (event) {
+              logger.error('Error in read-only lookupArgs transaction');
+              logger.errorObject(event);
+            };
 
-          case 5:
-            _context51.next = 7;
-            return _getJobsInDatabase2(_toConsumableArray(map.keys()));
+            argLookupIndex = argLookupObjectStore.index('keyIndex'); // $FlowFixMe
 
-          case 7:
-            jobs = _context51.sent;
+            argLookupRequest = argLookupIndex.getAll(IDBKeyRange.only(key));
             results = [];
-            _iterator7 = _createForOfIteratorHelper(jobs);
-            _context51.prev = 10;
+            return _context51.abrupt("return", new Promise(function (resolve, reject) {
+              argLookupRequest.onsuccess = function (argLookupEvent) {
+                var argLookups = argLookupEvent.target.result;
 
-            _iterator7.s();
+                if (argLookups.length === 0) {
+                  resolve([]);
+                  transaction.commit();
+                  return;
+                }
 
-          case 12:
-            if ((_step7 = _iterator7.n()).done) {
-              _context51.next = 21;
-              break;
-            }
+                var jobsObjectStore = transaction.objectStore('jobs');
 
-            _step7$value = _step7.value, id = _step7$value.id, args = _step7$value.args;
-            jsonPath = map.get(id);
+                var _loop4 = function _loop4(i) {
+                  var _argLookups$i = argLookups[i],
+                      jobId = _argLookups$i.jobId,
+                      jsonPath = _argLookups$i.jsonPath;
+                  var jobRequest = jobsObjectStore.get(jobId);
 
-            if (!(typeof jsonPath !== 'string')) {
-              _context51.next = 17;
-              break;
-            }
+                  jobRequest.onsuccess = function () {
+                    if (typeof jobRequest.result === 'undefined') {
+                      return;
+                    }
 
-            return _context51.abrupt("continue", 19);
+                    var args = jobRequest.result.args;
 
-          case 17:
-            _iterator8 = _createForOfIteratorHelper((0, _jsonpathPlus.JSONPath)({
-              path: jsonPath,
-              json: args
+                    var _iterator6 = _createForOfIteratorHelper((0, _jsonpathPlus.JSONPath)({
+                      path: jsonPath,
+                      json: args
+                    })),
+                        _step6;
+
+                    try {
+                      for (_iterator6.s(); !(_step6 = _iterator6.n()).done;) {
+                        var result = _step6.value;
+                        results.push(result);
+                      }
+                    } catch (err) {
+                      _iterator6.e(err);
+                    } finally {
+                      _iterator6.f();
+                    }
+
+                    if (i === argLookups.length - 1) {
+                      resolve(results);
+                    }
+                  };
+
+                  jobRequest.onerror = function (event) {
+                    logger.error("Request error while getting job ".concat(jobId));
+                    logger.errorObject(event);
+                    reject(new Error("Request error looking up jobs for key ".concat(key)));
+                  };
+                };
+
+                for (var i = 0; i < argLookups.length; i += 1) {
+                  _loop4(i);
+                }
+
+                transaction.commit();
+              };
+
+              argLookupRequest.onerror = function (event) {
+                logger.error("Request error looking up arguments for key ".concat(key));
+                logger.errorObject(event);
+                reject(new Error("Request error looking up arguments for key ".concat(key)));
+              };
             }));
 
-            try {
-              for (_iterator8.s(); !(_step8 = _iterator8.n()).done;) {
-                result = _step8.value;
-                results.push(result);
-              }
-            } catch (err) {
-              _iterator8.e(err);
-            } finally {
-              _iterator8.f();
-            }
-
-          case 19:
-            _context51.next = 12;
-            break;
-
-          case 21:
-            _context51.next = 26;
-            break;
-
-          case 23:
-            _context51.prev = 23;
-            _context51.t0 = _context51["catch"](10);
-
-            _iterator7.e(_context51.t0);
-
-          case 26:
-            _context51.prev = 26;
-
-            _iterator7.f();
-
-            return _context51.finish(26);
-
-          case 29:
-            return _context51.abrupt("return", results);
-
-          case 30:
+          case 11:
           case "end":
             return _context51.stop();
         }
       }
-    }, _callee51, null, [[10, 23, 26, 29]]);
+    }, _callee51);
   }));
   return _lookupArgs.apply(this, arguments);
 }
@@ -3628,12 +3627,12 @@ function _removeArgLookupsForJob() {
             request = index.getAllKeys(IDBKeyRange.only(jobId));
 
             request.onsuccess = function (event) {
-              var _iterator9 = _createForOfIteratorHelper(event.target.result),
-                  _step9;
+              var _iterator7 = _createForOfIteratorHelper(event.target.result),
+                  _step7;
 
               try {
-                for (_iterator9.s(); !(_step9 = _iterator9.n()).done;) {
-                  var id = _step9.value;
+                for (_iterator7.s(); !(_step7 = _iterator7.n()).done;) {
+                  var id = _step7.value;
                   var deleteRequest = store.delete(id);
 
                   deleteRequest.onerror = function (deleteEvent) {
@@ -3642,9 +3641,9 @@ function _removeArgLookupsForJob() {
                   };
                 }
               } catch (err) {
-                _iterator9.e(err);
+                _iterator7.e(err);
               } finally {
-                _iterator9.f();
+                _iterator7.f();
               }
 
               store.transaction.commit();

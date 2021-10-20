@@ -1,6 +1,7 @@
 import { JSONPath } from 'jsonpath-plus';
 import merge from 'lodash/merge';
 import unset from 'lodash/unset';
+import uniq from 'lodash/uniq';
 import EventEmitter from 'events';
 import makeLogger from './logger'; // Local job emitter is for this process only,
 // jobEmitter is bridged when a MessagePort is open
@@ -1757,41 +1758,106 @@ export async function getArgLookupJobPathMap(key) {
   });
 }
 export async function markJobsWithArgLookupKeyCleanupAndRemoveInDatabase(key) {
-  const map = await getArgLookupJobPathMap(key);
-
-  for (const jobId of map.keys()) {
-    await markJobCleanupAndRemoveInDatabase(jobId);
+  if (typeof key !== 'string') {
+    throw new TypeError(`Unable to lookup arguments, received invalid "key" argument type "${typeof key}"`);
   }
+
+  const store = await getReadOnlyArgLookupObjectStore();
+  const index = store.index('keyIndex'); // $FlowFixMe
+
+  const request = index.getAll(IDBKeyRange.only(key));
+  const jobIds = await new Promise((resolve, reject) => {
+    request.onsuccess = function (event) {
+      resolve(uniq(event.target.result.map(x => x.jobId)));
+    };
+
+    request.onerror = function (event) {
+      logger.error(`Request error looking up arguments for key ${key}`);
+      logger.errorObject(event);
+      reject(new Error(`Request error looking up arguments for key ${key}`));
+    };
+
+    store.transaction.commit();
+  });
+  await Promise.all(jobIds.map(markJobCleanupAndRemoveInDatabase));
 }
 export async function lookupArgs(key) {
-  const map = await getArgLookupJobPathMap(key);
+  const database = await databasePromise;
+  const transaction = database.transaction(['arg-lookup', 'jobs'], 'readonly', {
+    durability: 'relaxed'
+  });
+  const argLookupObjectStore = transaction.objectStore('arg-lookup');
 
-  if (map.size === 0) {
-    return [];
-  }
+  transaction.onabort = event => {
+    logger.error('Read-only lookupArgs transaction was aborted');
+    logger.errorObject(event);
+  };
 
-  const jobs = await getJobsInDatabase([...map.keys()]);
+  transaction.onerror = event => {
+    logger.error('Error in read-only lookupArgs transaction');
+    logger.errorObject(event);
+  };
+
+  const argLookupIndex = argLookupObjectStore.index('keyIndex'); // $FlowFixMe
+
+  const argLookupRequest = argLookupIndex.getAll(IDBKeyRange.only(key));
   const results = [];
+  return new Promise((resolve, reject) => {
+    argLookupRequest.onsuccess = function (argLookupEvent) {
+      const argLookups = argLookupEvent.target.result;
 
-  for (const {
-    id,
-    args
-  } of jobs) {
-    const jsonPath = map.get(id);
+      if (argLookups.length === 0) {
+        resolve([]);
+        transaction.commit();
+        return;
+      }
 
-    if (typeof jsonPath !== 'string') {
-      continue;
-    }
+      const jobsObjectStore = transaction.objectStore('jobs');
 
-    for (const result of JSONPath({
-      path: jsonPath,
-      json: args
-    })) {
-      results.push(result);
-    }
-  }
+      for (let i = 0; i < argLookups.length; i += 1) {
+        const {
+          jobId,
+          jsonPath
+        } = argLookups[i];
+        const jobRequest = jobsObjectStore.get(jobId);
 
-  return results;
+        jobRequest.onsuccess = function () {
+          if (typeof jobRequest.result === 'undefined') {
+            return;
+          }
+
+          const {
+            args
+          } = jobRequest.result;
+
+          for (const result of JSONPath({
+            path: jsonPath,
+            json: args
+          })) {
+            results.push(result);
+          }
+
+          if (i === argLookups.length - 1) {
+            resolve(results);
+          }
+        };
+
+        jobRequest.onerror = function (event) {
+          logger.error(`Request error while getting job ${jobId}`);
+          logger.errorObject(event);
+          reject(new Error(`Request error looking up jobs for key ${key}`));
+        };
+      }
+
+      transaction.commit();
+    };
+
+    argLookupRequest.onerror = function (event) {
+      logger.error(`Request error looking up arguments for key ${key}`);
+      logger.errorObject(event);
+      reject(new Error(`Request error looking up arguments for key ${key}`));
+    };
+  });
 }
 export async function lookupArg(key) {
   const results = await lookupArgs(key);
