@@ -16,6 +16,8 @@ export default class BatteryQueue extends EventEmitter {
     });
     this.handlerMap = new Map();
     this.cleanupMap = new Map();
+    this.durationEstimateHandlerMap = new Map();
+    this.durationEstimateMap = new Map();
     this.retryJobDelayMap = new Map();
     this.retryCleanupDelayMap = new Map();
     this.queueMap = new Map();
@@ -288,6 +290,75 @@ export default class BatteryQueue extends EventEmitter {
     this.cleanupMap.delete(type);
   }
 
+  setDurationEstimateHandler(type, timeEstimationHandler) {
+    if (this.durationEstimateHandlerMap.has(type)) {
+      throw new Error(`Time estimation handler for type "${type}" already exists`);
+    }
+
+    this.durationEstimateHandlerMap.set(type, timeEstimationHandler);
+  }
+
+  removeDurationEstimateHandler(type) {
+    if (!this.durationEstimateHandlerMap.has(type)) {
+      throw new Error(`Time estimation handler for type "${type}" does not exist`);
+    }
+
+    this.durationEstimateHandlerMap.delete(type);
+  }
+
+  addDurationEstimate(queueId, jobId, duration, complete) {
+    const queueDurationEstimateMap = this.durationEstimateMap.get(queueId);
+
+    if (typeof queueDurationEstimateMap === 'undefined') {
+      this.durationEstimateMap.set(queueId, new Map([[jobId, [duration, complete]]]));
+      this.getQueueDurationEstimate(queueId);
+      return;
+    }
+
+    queueDurationEstimateMap.set(jobId, [duration, complete]);
+    this.getQueueDurationEstimate(queueId);
+  }
+
+  removeDurationEstimate(queueId, jobId) {
+    if (typeof jobId !== 'number') {
+      this.durationEstimateMap.delete(queueId);
+      this.getQueueDurationEstimate(queueId);
+      return;
+    }
+
+    const queueDurationEstimateMap = this.durationEstimateMap.get(queueId);
+
+    if (typeof queueDurationEstimateMap === 'undefined') {
+      this.getQueueDurationEstimate(queueId);
+      return;
+    }
+
+    queueDurationEstimateMap.delete(jobId);
+    this.getQueueDurationEstimate(queueId);
+  }
+
+  getQueueDurationEstimate(queueId) {
+    const queueDurationEstimateMap = this.durationEstimateMap.get(queueId);
+    let total = 0;
+    let pending = 0;
+
+    if (typeof queueDurationEstimateMap === 'undefined') {
+      this.emit('queueDuration', queueId, total, pending);
+      return [total, pending];
+    }
+
+    for (const [duration, complete] of queueDurationEstimateMap.values()) {
+      total += duration;
+
+      if (!complete) {
+        pending += duration;
+      }
+    }
+
+    this.emit('queueDuration', queueId, total, pending);
+    return [total, pending];
+  }
+
   async clear() {
     this.isClearing = true;
     await this.onIdle();
@@ -358,7 +429,8 @@ export default class BatteryQueue extends EventEmitter {
   }
 
   async abortQueue(queueId) {
-    this.logger.info(`Aborting queue ${queueId}`); // Abort active jobs
+    this.logger.info(`Aborting queue ${queueId}`);
+    this.removeDurationEstimate(queueId); // Abort active jobs
 
     const queueAbortControllerMap = this.abortControllerMap.get(queueId);
 
@@ -378,7 +450,8 @@ export default class BatteryQueue extends EventEmitter {
   }
 
   async abortAndRemoveQueue(queueId) {
-    this.logger.info(`Aborting and removing queue ${queueId}`); // Abort active jobs
+    this.logger.info(`Aborting and removing queue ${queueId}`);
+    this.removeDurationEstimate(queueId); // Abort active jobs
 
     const queueAbortControllerMap = this.abortControllerMap.get(queueId);
 
@@ -406,6 +479,7 @@ export default class BatteryQueue extends EventEmitter {
     if (typeof queueAbortControllerMap !== 'undefined') {
       for (const [jobId, abortController] of queueAbortControllerMap) {
         if (jobId > id) {
+          this.removeDurationEstimate(queueId, jobId);
           abortController.abort();
         }
       }
@@ -692,6 +766,7 @@ export default class BatteryQueue extends EventEmitter {
   startCleanup(id, queueId, args, type) {
     this.logger.info(`Adding ${type} cleanup job #${id} to queue ${queueId}`);
     this.jobIds.add(id);
+    this.removeDurationEstimate(queueId, id);
     const priority = PRIORITY_OFFSET + id;
 
     const run = async () => {
@@ -769,8 +844,21 @@ export default class BatteryQueue extends EventEmitter {
     const updateCleanupData = data => updateCleanupValuesInDatabase(id, queueId, data);
 
     const abortController = this.getAbortController(id, queueId);
+    const durationEstimateHandler = this.durationEstimateHandlerMap.get(type);
+
+    if (typeof durationEstimateHandler === 'function') {
+      try {
+        const duration = durationEstimateHandler(args);
+        this.addDurationEstimate(queueId, id, duration, false);
+      } catch (error) {
+        this.logger.error(`Unable to estimate duration of ${type} job #${id} in queue ${queueId}`);
+        this.logger.errorStack(error);
+      }
+    }
 
     const run = async () => {
+      const start = Date.now();
+
       if (abortController.signal.aborted) {
         this.emit('fatalError', {
           id,
@@ -779,6 +867,7 @@ export default class BatteryQueue extends EventEmitter {
         });
         this.removeAbortController(id, queueId);
         this.jobIds.delete(id);
+        this.removeDurationEstimate(queueId, id);
         return;
       }
 
@@ -789,6 +878,7 @@ export default class BatteryQueue extends EventEmitter {
         await markJobCompleteInDatabase(id);
         this.removeAbortController(id, queueId);
         this.jobIds.delete(id);
+        this.addDurationEstimate(queueId, id, Date.now() - start, true);
         return;
       }
 
@@ -815,6 +905,7 @@ export default class BatteryQueue extends EventEmitter {
 
         this.removeAbortController(id, queueId);
         this.jobIds.delete(id);
+        this.addDurationEstimate(queueId, id, Date.now() - start, true);
         return;
       } catch (error) {
         if (error.name === 'JobDoesNotExistError') {
@@ -838,6 +929,7 @@ export default class BatteryQueue extends EventEmitter {
             });
             this.jobIds.delete(id);
             this.removeAbortController(id, queueId);
+            this.removeDurationEstimate(queueId, id);
           }
 
           return;
@@ -869,6 +961,7 @@ export default class BatteryQueue extends EventEmitter {
             await markJobAsAbortedOrRemoveFromDatabase(id);
             this.jobIds.delete(id);
             this.removeAbortController(id, queueId);
+            this.removeDurationEstimate(queueId, id);
           }
 
           return;
