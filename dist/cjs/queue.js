@@ -533,16 +533,16 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
     }
   }, {
     key: "addDurationEstimate",
-    value: function addDurationEstimate(queueId, jobId, duration, complete) {
+    value: function addDurationEstimate(queueId, jobId, duration, pending) {
       var queueDurationEstimateMap = this.durationEstimateMap.get(queueId);
 
       if (typeof queueDurationEstimateMap === 'undefined') {
-        this.durationEstimateMap.set(queueId, new Map([[jobId, [duration, complete]]]));
+        this.durationEstimateMap.set(queueId, new Map([[jobId, [duration, pending]]]));
         this.getQueueDurationEstimate(queueId);
         return;
       }
 
-      queueDurationEstimateMap.set(jobId, [duration, complete]);
+      queueDurationEstimateMap.set(jobId, [duration, pending]);
       this.getQueueDurationEstimate(queueId);
     }
   }, {
@@ -568,12 +568,12 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
     key: "getQueueDurationEstimate",
     value: function getQueueDurationEstimate(queueId) {
       var queueDurationEstimateMap = this.durationEstimateMap.get(queueId);
-      var total = 0;
-      var pending = 0;
+      var totalDuration = 0;
+      var totalPending = 0;
 
       if (typeof queueDurationEstimateMap === 'undefined') {
-        this.emit('queueDuration', queueId, total, pending);
-        return [total, pending];
+        this.emit('queueDuration', queueId, totalDuration, totalPending);
+        return [totalDuration, totalPending];
       }
 
       var _iterator2 = _createForOfIteratorHelper(queueDurationEstimateMap.values()),
@@ -583,13 +583,10 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
         for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
           var _step2$value = _slicedToArray(_step2.value, 2),
               duration = _step2$value[0],
-              complete = _step2$value[1];
+              pending = _step2$value[1];
 
-          total += duration;
-
-          if (!complete) {
-            pending += duration;
-          }
+          totalDuration += duration;
+          totalPending += pending;
         }
       } catch (err) {
         _iterator2.e(err);
@@ -597,8 +594,8 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
         _iterator2.f();
       }
 
-      this.emit('queueDuration', queueId, total, pending);
-      return [total, pending];
+      this.emit('queueDuration', queueId, totalDuration, totalPending);
+      return [totalDuration, totalPending];
     }
   }, {
     key: "clear",
@@ -1731,13 +1728,17 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
         return (0, _database.updateCleanupValuesInDatabase)(id, queueId, data);
       };
 
+      var updateDuration = function updateDuration(duration, pending) {
+        _this8.addDurationEstimate(queueId, id, duration, pending);
+      };
+
       var abortController = this.getAbortController(id, queueId);
       var durationEstimateHandler = this.durationEstimateHandlerMap.get(type);
 
       if (typeof durationEstimateHandler === 'function') {
         try {
           var duration = durationEstimateHandler(args);
-          this.addDurationEstimate(queueId, id, duration, false);
+          this.addDurationEstimate(queueId, id, duration, duration);
         } catch (error) {
           this.logger.error("Unable to estimate duration of ".concat(type, " job #").concat(id, " in queue ").concat(queueId));
           this.logger.errorStack(error);
@@ -1790,7 +1791,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
                   _this8.jobIds.delete(id);
 
-                  _this8.addDurationEstimate(queueId, id, Date.now() - start, true);
+                  _this8.addDurationEstimate(queueId, id, Date.now() - start, 0);
 
                   return _context20.abrupt("return");
 
@@ -1809,7 +1810,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
                   handlerDidRun = true;
                   _context20.next = 26;
-                  return handler(args, abortController.signal, updateCleanupData);
+                  return handler(args, abortController.signal, updateCleanupData, updateDuration);
 
                 case 26:
                   shouldKeepJobInDatabase = _context20.sent;
@@ -1843,7 +1844,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
                   _this8.jobIds.delete(id);
 
-                  _this8.addDurationEstimate(queueId, id, Date.now() - start, true);
+                  _this8.addDurationEstimate(queueId, id, Date.now() - start, 0);
 
                   return _context20.abrupt("return");
 

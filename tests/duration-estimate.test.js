@@ -30,8 +30,11 @@ describe('Time Estimation', () => {
     const type = uuidv4();
     const argsA = [Math.round(Math.random() * 100)];
     const argsB = [Math.round(Math.random() * 100)];
-    const handler = async () => {
-      await new Promise((resolve) => setTimeout(resolve, Math.round(Math.random() * 10) + 100));
+    const handler = async (args, abortSignal, updateCleanupData, updateDuration) => { // eslint-disable-line no-unused-vars
+      const start = Date.now();
+      await new Promise((resolve) => setTimeout(resolve, Math.round(Math.random() * 10) + 50));
+      updateDuration(Date.now() - start + 50, 50);
+      await new Promise((resolve) => setTimeout(resolve, Math.round(Math.random() * 10) + 50));
     };
     let durationEstimateCount = 0;
     const durationEstimateHandler = (args) => {
@@ -58,11 +61,19 @@ describe('Time Estimation', () => {
     const queueDurationA2 = await getNextEmit(queue, 'queueDuration');
 
     expect(queueDurationA2[1]).toBeGreaterThan(200);
-    expect(queueDurationA2[2]).toEqual(100);
+    expect(queueDurationA2[2]).toBeLessThan(200);
+    const queueDurationA3 = await getNextEmit(queue, 'queueDuration');
+
+    expect(queueDurationA3[1]).toBeGreaterThan(200);
+    expect(queueDurationA3[2]).toEqual(100);
     const queueDurationB2 = await getNextEmit(queue, 'queueDuration');
 
     expect(queueDurationB2[1]).toBeGreaterThan(200);
-    expect(queueDurationB2[2]).toEqual(0);
+    expect(queueDurationB2[2]).toBeLessThan(100);
+    const queueDurationB3 = await getNextEmit(queue, 'queueDuration');
+
+    expect(queueDurationB3[1]).toBeGreaterThan(200);
+    expect(queueDurationB3[2]).toEqual(0);
     await queue.onIdle();
     queue.removeHandler(type);
     queue.removeDurationEstimateHandler(type);
