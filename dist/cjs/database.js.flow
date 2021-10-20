@@ -60,7 +60,7 @@ export const JOB_CLEANUP_STATUS = -2;
 export const JOB_CLEANUP_AND_REMOVE_STATUS = -3;
 
 export const databasePromise = (async () => {
-  const request = self.indexedDB.open('battery-queue-06', 1);
+  const request = self.indexedDB.open('battery-queue-07', 1);
 
   request.onupgradeneeded = function (e) {
     try {
@@ -68,6 +68,7 @@ export const databasePromise = (async () => {
       store.createIndex('statusIndex', 'status', { unique: false });
       store.createIndex('queueIdIndex', 'queueId', { unique: false });
       store.createIndex('queueIdTypeIndex', ['queueId', 'type'], { unique: false });
+      store.createIndex('typeIndex', 'type', { unique: false });
       store.createIndex('statusQueueIdIndex', ['queueId', 'status'], { unique: false });
       store.createIndex('createdIndex', 'created', { unique: false });
     } catch (error) {
@@ -314,24 +315,6 @@ export async function clearDatabase() {
   await clearJobsDatabase();
   await clearCleanupsDatabase();
   await clearAllMetadataInDatabase();
-}
-
-export async function getJobsWithQueueIdAndTypeFromDatabase(queueId:string, type:string) {
-  const store = await getReadWriteJobsObjectStore();
-  const index = store.index('queueIdTypeIndex');
-  // $FlowFixMe
-  const request = index.getAllKeys(IDBKeyRange.only([queueId, type]));
-  return new Promise((resolve, reject) => {
-    request.onsuccess = function (event) {
-      resolve(event.target.result);
-    };
-    request.onerror = function (event) {
-      logger.error(`Request error while getting jobs with queue ${queueId} and type ${type} from jobs database`);
-      logger.errorObject(event);
-      reject(new Error(`Error while getting jobs with queue ${queueId} and type ${type}`));
-    };
-    store.transaction.commit();
-  });
 }
 
 export async function removeJobsWithQueueIdAndTypeFromDatabase(queueId:string, type:string) {
@@ -1271,6 +1254,24 @@ export async function dequeueFromDatabaseNotIn(ids:Array<number>):Promise<Array<
   };
   await promise;
   return jobs;
+}
+
+export async function getJobsWithTypeFromDatabase(type:string):Promise<Array<Job>> {
+  const store = await getReadWriteJobsObjectStore();
+  const index = store.index('typeIndex');
+  // $FlowFixMe
+  const request = index.getAll(IDBKeyRange.only(type));
+  return new Promise((resolve, reject) => {
+    request.onsuccess = function (event) {
+      resolve(event.target.result);
+    };
+    request.onerror = function (event) {
+      logger.error(`Request error while getting jobs with type ${type} from jobs database`);
+      logger.errorObject(event);
+      reject(new Error(`Error while getting jobs with type ${type} from jobs database`));
+    };
+    store.transaction.commit();
+  });
 }
 
 export async function getJobsInQueueFromDatabase(queueId: string):Promise<Array<Job>> { // eslint-disable-line no-underscore-dangle

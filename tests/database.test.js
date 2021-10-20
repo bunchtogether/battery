@@ -26,6 +26,7 @@ import {
   removeCleanupFromDatabase,
   removeJobFromDatabase,
   restoreJobToDatabaseForCleanupAndRemove,
+  getJobsWithTypeFromDatabase,
   markCleanupStartAfterInDatabase,
   markQueueForCleanupInDatabase,
   markQueueForCleanupAndRemoveInDatabase,
@@ -40,7 +41,6 @@ import {
   removeAuthDataFromDatabase,
   getContiguousIds,
   jobEmitter,
-  getJobsWithQueueIdAndTypeFromDatabase,
   removeJobsWithQueueIdAndTypeFromDatabase,
   removeQueueIdFromJobsDatabase,
   removeCompletedExpiredItemsFromDatabase,
@@ -68,6 +68,34 @@ describe('IndexedDB Database', () => {
     jasmine.addAsyncMatchers(asyncEmitMatchers);
   });
 
+  it('Gets jobs of a certain type from the database', async () => {
+    const queueId = uuidv4();
+    const typeA = uuidv4();
+    const typeB = uuidv4();
+    const idA = await enqueueToDatabase(queueId, typeA, [], 0);
+    const idB = await enqueueToDatabase(queueId, typeB, [], 0);
+    await expectAsync(getJobsWithTypeFromDatabase(typeA)).toBeResolvedTo([{
+      id: idA,
+      queueId,
+      type: typeA,
+      args: [],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    }]);
+    await expectAsync(getJobsWithTypeFromDatabase(typeB)).toBeResolvedTo([{
+      id: idB,
+      queueId,
+      type: typeB,
+      args: [],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    }]);
+  });
+
   it('Job emitter emits job updates', async () => {
     const queueId = uuidv4();
     const type = uuidv4();
@@ -76,10 +104,6 @@ describe('IndexedDB Database', () => {
     const idA = await enqueueToDatabase(queueId, type, [], 0);
 
     await expectAsync(jobAddPromiseA).toBeResolvedTo([idA, queueId, type]);
-
-    await expectAsync(getJobsWithQueueIdAndTypeFromDatabase(queueId, type)).toBeResolvedTo([idA]);
-    await expectAsync(getJobsWithQueueIdAndTypeFromDatabase(queueId, uuidv4())).toBeResolvedTo([]);
-    await expectAsync(getJobsWithQueueIdAndTypeFromDatabase(uuidv4(), type)).toBeResolvedTo([]);
 
     const jobDeletePromiseA = getNextEmit(jobEmitter, 'jobDelete');
     await removeJobsWithQueueIdAndTypeFromDatabase(queueId, type);
@@ -335,7 +359,7 @@ describe('IndexedDB Database', () => {
       throw new Error('Cleanup does not exist');
     }
 
-    expect(cleanupBeforeDatabase.startAfter).toBeLessThan(Date.now());
+    expect(cleanupBeforeDatabase.startAfter).toBeLessThanOrEqual(Date.now());
 
     await markCleanupStartAfterInDatabase(id, Date.now() + 1000);
 
