@@ -62,7 +62,6 @@ const register = async (url:string) => {
   if (!serviceWorker) {
     throw new Error('Service worker not available');
   }
-
   await serviceWorker.ready;
 
   // https://w3c.github.io/ServiceWorker/#navigator-service-worker-controller
@@ -106,7 +105,6 @@ const register = async (url:string) => {
 
     serviceWorkerEmitter.emit(type, ...args);
   };
-
   return [serviceWorker, registration];
 };
 

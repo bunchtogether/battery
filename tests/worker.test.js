@@ -47,7 +47,7 @@ describe('Worker', () => {
     await unregister();
     getServiceWorkerAndRegistration('/worker-alt.js');
     await expectAsync(queueInterface).toEmit('unlink');
-    const linkPromise = expectAsync(queueInterface).toEmit('link');
+    const linkPromise = expectAsync(queueInterface).toEmit(15000, 'link');
     await unregister();
     await getServiceWorkerAndRegistration();
     queueInterface.link();

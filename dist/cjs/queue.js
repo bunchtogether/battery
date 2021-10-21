@@ -2097,8 +2097,6 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
     key: "handlePortMessage",
     value: function () {
       var _handlePortMessage = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee20(event) {
-        var _this9 = this;
-
         var data, type, args, port, _args21, requestId, requestArgs, _requestArgs, queueId, id, _requestArgs2, _queueId2, _requestArgs3, _queueId3, queueIds, _requestArgs4, _queueId4, values, _requestArgs5, _queueId5, currentJobType, _requestArgs6, maxDuration, start;
 
         return regeneratorRuntime.wrap(function _callee20$(_context21) {
@@ -2149,205 +2147,216 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
               case 16:
                 port = this.port;
                 _context21.t0 = type;
-                _context21.next = _context21.t0 === 'unlink' ? 20 : _context21.t0 === 'heartbeat' ? 24 : _context21.t0 === 'jobAdd' ? 26 : _context21.t0 === 'jobDelete' ? 28 : _context21.t0 === 'jobUpdate' ? 30 : _context21.t0 === 'jobsClear' ? 32 : 34;
+                _context21.next = _context21.t0 === 'heartbeat' ? 20 : _context21.t0 === 'jobAdd' ? 22 : _context21.t0 === 'jobDelete' ? 24 : _context21.t0 === 'jobUpdate' ? 26 : _context21.t0 === 'jobsClear' ? 28 : 30;
                 break;
 
               case 20:
-                this.logger.warn('Unlinking worker interface');
-                this.stop().catch(function (error) {
-                  _this9.logger.error('Unable to stop queue after unlink');
-
-                  _this9.logger.errorStack(error);
-                });
-
-                if (port instanceof MessagePort) {
-                  port.onmessage = null;
-                  delete this.port;
-                }
-
-                return _context21.abrupt("return");
-
-              case 24:
                 this.emit.apply(this, ['heartbeat'].concat(_toConsumableArray(args)));
                 return _context21.abrupt("return");
 
-              case 26:
+              case 22:
                 _database.jobEmitter.emit.apply(_database.jobEmitter, ['jobAdd'].concat(_toConsumableArray(args)));
 
                 return _context21.abrupt("return");
 
-              case 28:
+              case 24:
                 _database.jobEmitter.emit.apply(_database.jobEmitter, ['jobDelete'].concat(_toConsumableArray(args)));
 
                 return _context21.abrupt("return");
 
-              case 30:
+              case 26:
                 _database.jobEmitter.emit.apply(_database.jobEmitter, ['jobUpdate'].concat(_toConsumableArray(args)));
 
                 return _context21.abrupt("return");
 
-              case 32:
+              case 28:
                 _database.jobEmitter.emit.apply(_database.jobEmitter, ['jobsClear'].concat(_toConsumableArray(args)));
 
                 return _context21.abrupt("return");
 
-              case 34:
-                return _context21.abrupt("break", 35);
+              case 30:
+                return _context21.abrupt("break", 31);
 
-              case 35:
+              case 31:
                 _args21 = _toArray(args), requestId = _args21[0], requestArgs = _args21.slice(1);
 
                 if (!(typeof requestId !== 'number')) {
-                  _context21.next = 38;
+                  _context21.next = 34;
                   break;
                 }
 
                 throw new Error('Request arguments should start with a requestId number');
 
-              case 38:
+              case 34:
                 _context21.t1 = type;
-                _context21.next = _context21.t1 === 'clear' ? 41 : _context21.t1 === 'abortAndRemoveQueueJobsGreaterThanId' ? 53 : _context21.t1 === 'abortAndRemoveQueue' ? 70 : _context21.t1 === 'abortQueue' ? 85 : _context21.t1 === 'dequeue' ? 100 : _context21.t1 === 'enableStartOnJob' ? 112 : _context21.t1 === 'disableStartOnJob' ? 114 : _context21.t1 === 'getQueueIds' ? 116 : _context21.t1 === 'getDurationEstimate' ? 129 : _context21.t1 === 'getCurrentJobType' ? 145 : _context21.t1 === 'runUnloadHandlers' ? 159 : _context21.t1 === 'idle' ? 171 : 188;
+                _context21.next = _context21.t1 === 'unlink' ? 37 : _context21.t1 === 'clear' ? 51 : _context21.t1 === 'abortAndRemoveQueueJobsGreaterThanId' ? 63 : _context21.t1 === 'abortAndRemoveQueue' ? 80 : _context21.t1 === 'abortQueue' ? 95 : _context21.t1 === 'dequeue' ? 110 : _context21.t1 === 'enableStartOnJob' ? 122 : _context21.t1 === 'disableStartOnJob' ? 124 : _context21.t1 === 'getQueueIds' ? 126 : _context21.t1 === 'getDurationEstimate' ? 139 : _context21.t1 === 'getCurrentJobType' ? 155 : _context21.t1 === 'runUnloadHandlers' ? 169 : _context21.t1 === 'idle' ? 181 : 198;
                 break;
+
+              case 37:
+                this.logger.warn('Unlinking worker interface');
+                _context21.prev = 38;
+                _context21.next = 41;
+                return this.stop();
 
               case 41:
-                _context21.prev = 41;
-                _context21.next = 44;
-                return this.clear();
-
-              case 44:
-                this.emit('clearComplete', requestId);
-                _context21.next = 52;
+                this.emit('unlinkComplete', requestId);
+                _context21.next = 49;
                 break;
 
-              case 47:
-                _context21.prev = 47;
-                _context21.t2 = _context21["catch"](41);
-                this.emit('clearError', requestId, _context21.t2);
-                this.logger.error('Unable to handle clear message');
+              case 44:
+                _context21.prev = 44;
+                _context21.t2 = _context21["catch"](38);
+                this.emit('unlinkError', requestId, _context21.t2);
+                this.logger.error('Unable to handle unlink message');
                 this.emit('error', _context21.t2);
 
-              case 52:
-                return _context21.abrupt("break", 189);
+              case 49:
+                if (port instanceof MessagePort) {
+                  port.onmessage = null;
+                  delete this.port;
+                }
 
-              case 53:
-                _context21.prev = 53;
+                return _context21.abrupt("break", 199);
+
+              case 51:
+                _context21.prev = 51;
+                _context21.next = 54;
+                return this.clear();
+
+              case 54:
+                this.emit('clearComplete', requestId);
+                _context21.next = 62;
+                break;
+
+              case 57:
+                _context21.prev = 57;
+                _context21.t3 = _context21["catch"](51);
+                this.emit('clearError', requestId, _context21.t3);
+                this.logger.error('Unable to handle clear message');
+                this.emit('error', _context21.t3);
+
+              case 62:
+                return _context21.abrupt("break", 199);
+
+              case 63:
+                _context21.prev = 63;
                 _requestArgs = _slicedToArray(requestArgs, 2), queueId = _requestArgs[0], id = _requestArgs[1];
 
                 if (!(typeof queueId !== 'string')) {
-                  _context21.next = 57;
+                  _context21.next = 67;
                   break;
                 }
 
                 throw new Error("Invalid \"queueId\" argument with type ".concat(_typeof(queueId), ", should be type string"));
 
-              case 57:
+              case 67:
                 if (!(typeof id !== 'number')) {
-                  _context21.next = 59;
+                  _context21.next = 69;
                   break;
                 }
 
                 throw new Error("Invalid \"id\" argument with type ".concat(_typeof(id), ", should be type number"));
 
-              case 59:
-                _context21.next = 61;
+              case 69:
+                _context21.next = 71;
                 return this.abortAndRemoveQueueJobsGreaterThanId(queueId, id);
 
-              case 61:
+              case 71:
                 this.emit('abortAndRemoveQueueJobsGreaterThanIdComplete', requestId);
-                _context21.next = 69;
+                _context21.next = 79;
                 break;
 
-              case 64:
-                _context21.prev = 64;
-                _context21.t3 = _context21["catch"](53);
-                this.emit('abortAndRemoveQueueJobsGreaterThanIdError', requestId, _context21.t3);
+              case 74:
+                _context21.prev = 74;
+                _context21.t4 = _context21["catch"](63);
+                this.emit('abortAndRemoveQueueJobsGreaterThanIdError', requestId, _context21.t4);
                 this.logger.error('Unable to handle abort and remove queue jobs greater than ID message');
-                this.emit('error', _context21.t3);
+                this.emit('error', _context21.t4);
 
-              case 69:
-                return _context21.abrupt("break", 189);
+              case 79:
+                return _context21.abrupt("break", 199);
 
-              case 70:
-                _context21.prev = 70;
+              case 80:
+                _context21.prev = 80;
                 _requestArgs2 = _slicedToArray(requestArgs, 1), _queueId2 = _requestArgs2[0];
 
                 if (!(typeof _queueId2 !== 'string')) {
-                  _context21.next = 74;
+                  _context21.next = 84;
                   break;
                 }
 
                 throw new Error("Invalid \"queueId\" argument with type ".concat(_typeof(_queueId2), ", should be type string"));
 
-              case 74:
-                _context21.next = 76;
+              case 84:
+                _context21.next = 86;
                 return this.abortAndRemoveQueue(_queueId2);
 
-              case 76:
+              case 86:
                 this.emit('abortAndRemoveQueueComplete', requestId);
-                _context21.next = 84;
+                _context21.next = 94;
                 break;
 
-              case 79:
-                _context21.prev = 79;
-                _context21.t4 = _context21["catch"](70);
-                this.emit('abortAndRemoveQueueError', requestId, _context21.t4);
+              case 89:
+                _context21.prev = 89;
+                _context21.t5 = _context21["catch"](80);
+                this.emit('abortAndRemoveQueueError', requestId, _context21.t5);
                 this.logger.error('Unable to handle abort and remove queue message');
-                this.emit('error', _context21.t4);
+                this.emit('error', _context21.t5);
 
-              case 84:
-                return _context21.abrupt("break", 189);
+              case 94:
+                return _context21.abrupt("break", 199);
 
-              case 85:
-                _context21.prev = 85;
+              case 95:
+                _context21.prev = 95;
                 _requestArgs3 = _slicedToArray(requestArgs, 1), _queueId3 = _requestArgs3[0];
 
                 if (!(typeof _queueId3 !== 'string')) {
-                  _context21.next = 89;
+                  _context21.next = 99;
                   break;
                 }
 
                 throw new Error("Invalid \"queueId\" argument with type ".concat(_typeof(_queueId3), ", should be type string"));
 
-              case 89:
-                _context21.next = 91;
+              case 99:
+                _context21.next = 101;
                 return this.abortQueue(_queueId3);
 
-              case 91:
+              case 101:
                 this.emit('abortQueueComplete', requestId);
-                _context21.next = 99;
+                _context21.next = 109;
                 break;
 
-              case 94:
-                _context21.prev = 94;
-                _context21.t5 = _context21["catch"](85);
-                this.emit('abortQueueError', requestId, _context21.t5);
+              case 104:
+                _context21.prev = 104;
+                _context21.t6 = _context21["catch"](95);
+                this.emit('abortQueueError', requestId, _context21.t6);
                 this.logger.error('Unable to handle abort queue message');
-                this.emit('error', _context21.t5);
-
-              case 99:
-                return _context21.abrupt("break", 189);
-
-              case 100:
-                _context21.prev = 100;
-                _context21.next = 103;
-                return this.dequeue();
-
-              case 103:
-                this.emit('dequeueComplete', requestId);
-                _context21.next = 111;
-                break;
-
-              case 106:
-                _context21.prev = 106;
-                _context21.t6 = _context21["catch"](100);
-                this.emit('dequeueError', requestId, _context21.t6);
-                this.logger.error('Unable to handle dequeue message');
                 this.emit('error', _context21.t6);
 
-              case 111:
-                return _context21.abrupt("break", 189);
+              case 109:
+                return _context21.abrupt("break", 199);
 
-              case 112:
+              case 110:
+                _context21.prev = 110;
+                _context21.next = 113;
+                return this.dequeue();
+
+              case 113:
+                this.emit('dequeueComplete', requestId);
+                _context21.next = 121;
+                break;
+
+              case 116:
+                _context21.prev = 116;
+                _context21.t7 = _context21["catch"](110);
+                this.emit('dequeueError', requestId, _context21.t7);
+                this.logger.error('Unable to handle dequeue message');
+                this.emit('error', _context21.t7);
+
+              case 121:
+                return _context21.abrupt("break", 199);
+
+              case 122:
                 try {
                   this.enableStartOnJob();
                   this.emit('enableStartOnJobComplete', requestId);
@@ -2357,9 +2366,9 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   this.emit('error', error);
                 }
 
-                return _context21.abrupt("break", 189);
+                return _context21.abrupt("break", 199);
 
-              case 114:
+              case 124:
                 try {
                   this.disableStartOnJob();
                   this.emit('disableStartOnJobComplete', requestId);
@@ -2369,154 +2378,154 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   this.emit('error', error);
                 }
 
-                return _context21.abrupt("break", 189);
+                return _context21.abrupt("break", 199);
 
-              case 116:
-                _context21.prev = 116;
-                _context21.next = 119;
+              case 126:
+                _context21.prev = 126;
+                _context21.next = 129;
                 return this.getQueueIds();
 
-              case 119:
+              case 129:
                 queueIds = _context21.sent;
                 this.emit('getQueuesComplete', requestId, _toConsumableArray(queueIds));
-                _context21.next = 128;
+                _context21.next = 138;
                 break;
 
-              case 123:
-                _context21.prev = 123;
-                _context21.t7 = _context21["catch"](116);
-                this.emit('getQueuesError', requestId, _context21.t7);
+              case 133:
+                _context21.prev = 133;
+                _context21.t8 = _context21["catch"](126);
+                this.emit('getQueuesError', requestId, _context21.t8);
                 this.logger.error('Unable to handle getQueueIds message');
-                this.emit('error', _context21.t7);
+                this.emit('error', _context21.t8);
 
-              case 128:
-                return _context21.abrupt("break", 189);
+              case 138:
+                return _context21.abrupt("break", 199);
 
-              case 129:
-                _context21.prev = 129;
+              case 139:
+                _context21.prev = 139;
                 _requestArgs4 = _slicedToArray(requestArgs, 1), _queueId4 = _requestArgs4[0];
 
                 if (!(typeof _queueId4 !== 'string')) {
-                  _context21.next = 133;
+                  _context21.next = 143;
                   break;
                 }
 
                 throw new Error("Invalid \"queueId\" argument with type ".concat(_typeof(_queueId4), ", should be type string"));
 
-              case 133:
-                _context21.next = 135;
+              case 143:
+                _context21.next = 145;
                 return this.getDurationEstimate(_queueId4);
 
-              case 135:
+              case 145:
                 values = _context21.sent;
                 this.emit('getDurationEstimateComplete', requestId, values);
-                _context21.next = 144;
+                _context21.next = 154;
                 break;
 
-              case 139:
-                _context21.prev = 139;
-                _context21.t8 = _context21["catch"](129);
-                this.emit('getDurationEstimateError', requestId, _context21.t8);
+              case 149:
+                _context21.prev = 149;
+                _context21.t9 = _context21["catch"](139);
+                this.emit('getDurationEstimateError', requestId, _context21.t9);
                 this.logger.error('Unable to handle get duration estimate message');
-                this.emit('error', _context21.t8);
+                this.emit('error', _context21.t9);
 
-              case 144:
-                return _context21.abrupt("break", 189);
+              case 154:
+                return _context21.abrupt("break", 199);
 
-              case 145:
-                _context21.prev = 145;
+              case 155:
+                _context21.prev = 155;
                 _requestArgs5 = _slicedToArray(requestArgs, 1), _queueId5 = _requestArgs5[0];
 
                 if (!(typeof _queueId5 !== 'string')) {
-                  _context21.next = 149;
+                  _context21.next = 159;
                   break;
                 }
 
                 throw new Error("Invalid \"queueId\" argument with type ".concat(_typeof(_queueId5), ", should be type string"));
 
-              case 149:
+              case 159:
                 currentJobType = this.getCurrentJobType(_queueId5);
                 this.emit('getCurrentJobTypeComplete', requestId, currentJobType);
-                _context21.next = 158;
+                _context21.next = 168;
                 break;
 
-              case 153:
-                _context21.prev = 153;
-                _context21.t9 = _context21["catch"](145);
-                this.emit('getCurrentJobTypeError', requestId, _context21.t9);
+              case 163:
+                _context21.prev = 163;
+                _context21.t10 = _context21["catch"](155);
+                this.emit('getCurrentJobTypeError', requestId, _context21.t10);
                 this.logger.error('Unable to handle get current job type message');
-                this.emit('error', _context21.t9);
-
-              case 158:
-                return _context21.abrupt("break", 189);
-
-              case 159:
-                _context21.prev = 159;
-                _context21.next = 162;
-                return this.runUnloadHandlers();
-
-              case 162:
-                this.emit('runUnloadHandlersComplete', requestId);
-                _context21.next = 170;
-                break;
-
-              case 165:
-                _context21.prev = 165;
-                _context21.t10 = _context21["catch"](159);
-                this.emit('runUnloadHandlersError', requestId, _context21.t10);
-                this.logger.error('Unable to run unload handlers message');
                 this.emit('error', _context21.t10);
 
-              case 170:
-                return _context21.abrupt("break", 189);
+              case 168:
+                return _context21.abrupt("break", 199);
 
-              case 171:
-                _context21.prev = 171;
+              case 169:
+                _context21.prev = 169;
+                _context21.next = 172;
+                return this.runUnloadHandlers();
+
+              case 172:
+                this.emit('runUnloadHandlersComplete', requestId);
+                _context21.next = 180;
+                break;
+
+              case 175:
+                _context21.prev = 175;
+                _context21.t11 = _context21["catch"](169);
+                this.emit('runUnloadHandlersError', requestId, _context21.t11);
+                this.logger.error('Unable to run unload handlers message');
+                this.emit('error', _context21.t11);
+
+              case 180:
+                return _context21.abrupt("break", 199);
+
+              case 181:
+                _context21.prev = 181;
                 _requestArgs6 = _slicedToArray(requestArgs, 2), maxDuration = _requestArgs6[0], start = _requestArgs6[1];
 
                 if (!(typeof maxDuration !== 'number')) {
-                  _context21.next = 175;
+                  _context21.next = 185;
                   break;
                 }
 
                 throw new Error("Invalid \"queueId\" argument with type ".concat(_typeof(maxDuration), ", should be type number"));
 
-              case 175:
+              case 185:
                 if (!(typeof start !== 'number')) {
-                  _context21.next = 177;
+                  _context21.next = 187;
                   break;
                 }
 
                 throw new Error("Invalid \"queueId\" argument with type ".concat(_typeof(start), ", should be type number"));
 
-              case 177:
-                _context21.next = 179;
+              case 187:
+                _context21.next = 189;
                 return this.onIdle(maxDuration - (Date.now() - start));
 
-              case 179:
+              case 189:
                 this.emit('idleComplete', requestId);
-                _context21.next = 187;
+                _context21.next = 197;
                 break;
 
-              case 182:
-                _context21.prev = 182;
-                _context21.t11 = _context21["catch"](171);
-                this.emit('idleError', requestId, _context21.t11);
+              case 192:
+                _context21.prev = 192;
+                _context21.t12 = _context21["catch"](181);
+                this.emit('idleError', requestId, _context21.t12);
                 this.logger.error('Unable to handle idle message');
-                this.emit('error', _context21.t11);
+                this.emit('error', _context21.t12);
 
-              case 187:
-                return _context21.abrupt("break", 189);
+              case 197:
+                return _context21.abrupt("break", 199);
 
-              case 188:
+              case 198:
                 this.logger.warn("Unknown worker interface message type ".concat(type));
 
-              case 189:
+              case 199:
               case "end":
                 return _context21.stop();
             }
           }
-        }, _callee20, this, [[41, 47], [53, 64], [70, 79], [85, 94], [100, 106], [116, 123], [129, 139], [145, 153], [159, 165], [171, 182]]);
+        }, _callee20, this, [[38, 44], [51, 57], [63, 74], [80, 89], [95, 104], [110, 116], [126, 133], [139, 149], [155, 163], [169, 175], [181, 192]]);
       }));
 
       function handlePortMessage(_x22) {
@@ -2529,7 +2538,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
     key: "unloadClient",
     value: function () {
       var _unloadClient = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee21() {
-        var _this10 = this;
+        var _this9 = this;
 
         var heartbeatExpiresTimestamp, delay;
         return regeneratorRuntime.wrap(function _callee21$(_context22) {
@@ -2561,7 +2570,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   var timeout = setTimeout(function () {
                     clearTimeout(timeout);
 
-                    _this10.removeListener('heartbeat', handleHeartbeat);
+                    _this9.removeListener('heartbeat', handleHeartbeat);
 
                     resolve();
                   }, delay);
@@ -2569,12 +2578,12 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   var handleHeartbeat = function handleHeartbeat() {
                     clearTimeout(timeout);
 
-                    _this10.removeListener('heartbeat', handleHeartbeat);
+                    _this9.removeListener('heartbeat', handleHeartbeat);
 
                     resolve();
                   };
 
-                  _this10.addListener('heartbeat', handleHeartbeat);
+                  _this9.addListener('heartbeat', handleHeartbeat);
                 });
 
               case 10:
@@ -2613,7 +2622,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
   }, {
     key: "runUnloadHandlers",
     value: function runUnloadHandlers() {
-      var _this11 = this;
+      var _this10 = this;
 
       return this.unloadQueue.add( /*#__PURE__*/_asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee22() {
         var handleUnload, unloadData;
@@ -2621,7 +2630,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
           while (1) {
             switch (_context23.prev = _context23.next) {
               case 0:
-                handleUnload = _this11.handleUnload;
+                handleUnload = _this10.handleUnload;
 
                 if (!(typeof handleUnload === 'function')) {
                   _context23.next = 16;
@@ -2649,9 +2658,9 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 _context23.prev = 12;
                 _context23.t0 = _context23["catch"](2);
 
-                _this11.logger.error('Error in unload handler');
+                _this10.logger.error('Error in unload handler');
 
-                _this11.logger.errorStack(_context23.t0);
+                _this10.logger.errorStack(_context23.t0);
 
               case 16:
               case "end":
@@ -2664,7 +2673,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
   }, {
     key: "listenForServiceWorkerInterface",
     value: function listenForServiceWorkerInterface() {
-      var _this12 = this;
+      var _this11 = this;
 
       var activeEmitCallback;
       var handleJobAdd;
@@ -2672,28 +2681,28 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
       var handleJobUpdate;
       var handleJobsClear;
       self.addEventListener('sync', function (event) {
-        _this12.logger.info("SyncManager event ".concat(event.tag).concat(event.lastChance ? ', last chance' : ''));
+        _this11.logger.info("SyncManager event ".concat(event.tag).concat(event.lastChance ? ', last chance' : ''));
 
         if (event.tag === 'syncManagerOnIdle') {
-          _this12.logger.info('Starting SyncManager idle handler');
+          _this11.logger.info('Starting SyncManager idle handler');
 
-          _this12.emit('syncManagerOnIdle');
+          _this11.emit('syncManagerOnIdle');
 
-          event.waitUntil(_this12.onIdle().catch(function (error) {
-            _this12.logger.error("SyncManager event handler failed".concat(event.lastChance ? ' on last chance' : ''));
+          event.waitUntil(_this11.onIdle().catch(function (error) {
+            _this11.logger.error("SyncManager event handler failed".concat(event.lastChance ? ' on last chance' : ''));
 
-            _this12.logger.errorStack(error);
+            _this11.logger.errorStack(error);
           }));
         } else if (event.tag === 'unload') {
-          _this12.logger.info('Starting SyncManager unload client handler');
+          _this11.logger.info('Starting SyncManager unload client handler');
 
-          event.waitUntil(_this12.unloadClient().catch(function (error) {
-            _this12.logger.error("SyncManager event handler failed".concat(event.lastChance ? ' on last chance' : ''));
+          event.waitUntil(_this11.unloadClient().catch(function (error) {
+            _this11.logger.error("SyncManager event handler failed".concat(event.lastChance ? ' on last chance' : ''));
 
-            _this12.logger.errorStack(error);
+            _this11.logger.errorStack(error);
           }));
         } else {
-          _this12.logger.warn("Received unknown SyncManager event tag ".concat(event.tag));
+          _this11.logger.warn("Received unknown SyncManager event tag ".concat(event.tag));
         }
       });
       self.addEventListener('message', function (event) {
@@ -2723,13 +2732,13 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
           return;
         }
 
-        _this12.emitCallbacks = _this12.emitCallbacks.filter(function (x) {
+        _this11.emitCallbacks = _this11.emitCallbacks.filter(function (x) {
           return x !== activeEmitCallback;
         });
-        var previousPort = _this12.port;
+        var previousPort = _this11.port;
 
         if (previousPort instanceof MessagePort) {
-          _this12.logger.info('Closing previous worker interface');
+          _this11.logger.info('Closing previous worker interface');
 
           previousPort.close();
         }
@@ -2750,7 +2759,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
           _database.localJobEmitter.removeListener('jobsClear', handleJobsClear);
         }
 
-        port.onmessage = _this12.handlePortMessage.bind(_this12);
+        port.onmessage = _this11.handlePortMessage.bind(_this11);
 
         handleJobAdd = function handleJobAdd() {
           for (var _len2 = arguments.length, args = new Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
@@ -2813,19 +2822,19 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
         activeEmitCallback = emitCallback;
 
-        _this12.emitCallbacks.push(emitCallback);
+        _this11.emitCallbacks.push(emitCallback);
 
-        _this12.port = port;
+        _this11.port = port;
         port.postMessage({
           type: 'BATTERY_QUEUE_WORKER_CONFIRMATION'
         });
 
-        _this12.logger.info('Linked to worker interface');
+        _this11.logger.info('Linked to worker interface');
       });
       self.addEventListener('messageerror', function (event) {
-        _this12.logger.error('Service worker interface message error');
+        _this11.logger.error('Service worker interface message error');
 
-        _this12.logger.errorObject(event);
+        _this11.logger.errorObject(event);
       });
     }
   }]);

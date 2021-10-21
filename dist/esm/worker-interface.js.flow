@@ -85,7 +85,7 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
     return [registration, controller];
   }
 
-  async unlink() {
+  async unlink(maxDuration?: number = 60000) {
     const linkPromise = this.linkPromise;
     if (typeof linkPromise !== 'undefined') {
       try {
@@ -99,19 +99,6 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
     if (!(port instanceof MessagePort)) {
       return;
     }
-    try {
-      port.postMessage({ type: 'unlink', args: [] });
-    } catch (error) {
-      this.logger.error('Error while posting unlink message to redundant service worker');
-      this.logger.errorStack(error);
-    }
-    try {
-      port.close();
-    } catch (error) {
-      this.logger.error('Error while closing MessageChannel port with redundant service worker');
-      this.logger.errorStack(error);
-    }
-    port.onmessage = null;
     delete this.port;
     clearInterval(this.portHeartbeatInterval);
     delete this.portHeartbeatInterval;
@@ -123,6 +110,45 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
     if (typeof handlePortHeartbeat === 'function') {
       window.removeEventListener('beforeunload', handleBeforeUnload, { capture: true });
     }
+    await new Promise((resolve) => {
+      const requestId = Math.random();
+      const timeout = setTimeout(() => {
+        this.removeListener('unlinkComplete', handleUnlinkComplete);
+        this.removeListener('unlinkError', handleUnlinkError);
+        this.logger.error(`Did not receive unlink response within ${maxDuration}ms`);
+        resolve();
+      }, maxDuration);
+      const handleUnlinkComplete = (responseId:number) => {
+        if (responseId !== requestId) {
+          return;
+        }
+        clearTimeout(timeout);
+        this.removeListener('unlinkComplete', handleUnlinkComplete);
+        this.removeListener('unlinkError', handleUnlinkError);
+        resolve();
+      };
+      const handleUnlinkError = (responseId:number, error:Error) => {
+        if (responseId !== requestId) {
+          return;
+        }
+        clearTimeout(timeout);
+        this.removeListener('unlinkComplete', handleUnlinkComplete);
+        this.removeListener('unlinkError', handleUnlinkError);
+        this.logger.error('Received unlink error');
+        this.logger.errorStack(error);
+        resolve();
+      };
+      this.addListener('unlinkComplete', handleUnlinkComplete);
+      this.addListener('unlinkError', handleUnlinkError);
+      port.postMessage({ type: 'unlink', args: [requestId] });
+    });
+    try {
+      port.close();
+    } catch (error) {
+      this.logger.error('Error while closing MessageChannel port with redundant service worker');
+      this.logger.errorStack(error);
+    }
+    port.onmessage = null;
     this.emit('unlink');
     this.logger.info('Unlinked');
   }
@@ -153,20 +179,43 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
     const port = messageChannel.port1;
     this.port = messageChannel.port1;
 
+    const handleUpdateFound = async () => {
+      const installingWorker = registration.installing;
+      const activeWorker = registration.active;
+      if (!installingWorker) {
+        return;
+      }
+      if (!activeWorker) {
+        return;
+      }
+      registration.removeEventListener('updatefound', handleUpdateFound);
+      controller.removeEventListener('statechange', handleStateChange);
+      try {
+        await this.unlink();
+        this.logger.info('Unlinked service worker after detecting new service worker');
+      } catch (error) {
+        this.logger.error('Unable to unlink service worker after detecting new service worker');
+        this.logger.errorStack(error);
+      }
+    };
+
     const handleStateChange = async () => {
       this.logger.warn(`Service worker state change to ${controller.state}`);
       if (controller.state !== 'redundant') {
         return;
       }
+      registration.removeEventListener('updatefound', handleUpdateFound);
+      controller.removeEventListener('statechange', handleStateChange);
       try {
         await this.unlink();
-        await this.link();
+        this.logger.info('Unlinked service worker after detecting redundant service worker');
       } catch (error) {
-        this.logger.error('Unable to re-link service worker');
+        this.logger.error('Unable to unlink service worker after detecting redundant service worker');
         this.logger.errorStack(error);
       }
     };
 
+    registration.addEventListener('updatefound', handleUpdateFound);
     controller.addEventListener('statechange', handleStateChange);
 
     try {
@@ -213,6 +262,7 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
         ]);
       });
     } catch (error) {
+      registration.removeEventListener('updatefound', handleUpdateFound);
       controller.removeEventListener('statechange', handleStateChange);
       if (error instanceof RedundantServiceWorkerError) {
         return messageChannel.port1;

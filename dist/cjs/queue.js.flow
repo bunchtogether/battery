@@ -919,17 +919,6 @@ export default class BatteryQueue extends EventEmitter {
     }
     const port = this.port;
     switch (type) {
-      case 'unlink':
-        this.logger.warn('Unlinking worker interface');
-        this.stop().catch((error) => {
-          this.logger.error('Unable to stop queue after unlink');
-          this.logger.errorStack(error);
-        });
-        if (port instanceof MessagePort) {
-          port.onmessage = null;
-          delete this.port;
-        }
-        return;
       case 'heartbeat':
         this.emit('heartbeat', ...args);
         return;
@@ -953,6 +942,21 @@ export default class BatteryQueue extends EventEmitter {
       throw new Error('Request arguments should start with a requestId number');
     }
     switch (type) {
+      case 'unlink':
+        this.logger.warn('Unlinking worker interface');
+        try {
+          await this.stop();
+          this.emit('unlinkComplete', requestId);
+        } catch (error) {
+          this.emit('unlinkError', requestId, error);
+          this.logger.error('Unable to handle unlink message');
+          this.emit('error', error);
+        }
+        if (port instanceof MessagePort) {
+          port.onmessage = null;
+          delete this.port;
+        }
+        break;
       case 'clear':
         try {
           await this.clear();
