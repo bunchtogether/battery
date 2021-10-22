@@ -866,11 +866,12 @@ export default class BatteryQueue extends EventEmitter {
 
     const abortController = this.getAbortController(id, queueId);
     const durationEstimateHandler = this.durationEstimateHandlerMap.get(type);
+    let durationEstimate;
 
     if (typeof durationEstimateHandler === 'function') {
       try {
-        const duration = durationEstimateHandler(args);
-        this.addDurationEstimate(queueId, id, duration, duration);
+        durationEstimate = durationEstimateHandler(args);
+        this.addDurationEstimate(queueId, id, durationEstimate, durationEstimate);
       } catch (error) {
         this.logger.error(`Unable to estimate duration of ${type} job #${id} in queue ${queueId}`);
         this.logger.errorStack(error);
@@ -927,7 +928,17 @@ export default class BatteryQueue extends EventEmitter {
 
         this.removeAbortController(id, queueId);
         this.jobIds.delete(id);
-        this.addDurationEstimate(queueId, id, Date.now() - start, 0);
+        const duration = Date.now() - start;
+
+        if (typeof durationEstimate === 'number') {
+          const estimatedToActualRatio = durationEstimate / duration;
+
+          if (estimatedToActualRatio < 0.8 || estimatedToActualRatio < 1.25) {
+            this.logger.warn(`Duration estimate of ${type} job #${id} (${durationEstimate}ms) was ${Math.round(100 * estimatedToActualRatio)}% of actual value (${duration}ms)`);
+          }
+        }
+
+        this.addDurationEstimate(queueId, id, duration, 0);
         return;
       } catch (error) {
         if (error.name === 'JobDoesNotExistError') {
