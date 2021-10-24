@@ -9,7 +9,7 @@ import {
   markJobErrorInDatabase,
   markJobAbortedInDatabase,
   markJobCleanupInDatabase,
-  removeQueueIdFromJobsDatabase,
+  removeQueueFromDatabase,
   clearDatabase,
   QUEUE_ERROR_STATUS,
   QUEUE_PENDING_STATUS,
@@ -70,7 +70,7 @@ describe('Queue Watcher', () => {
     await expectAsync(getQueueStatus(queueId)).toBeResolvedTo(QUEUE_ERROR_STATUS);
     //
     const emptyEmitPromise = expectAsync(watcher).toEmit('status', QUEUE_EMPTY_STATUS);
-    await removeQueueIdFromJobsDatabase(queueId);
+    await removeQueueFromDatabase(queueId);
     await emptyEmitPromise;
     await expectAsync(watcher.getStatus()).toBeResolvedTo(QUEUE_EMPTY_STATUS);
 

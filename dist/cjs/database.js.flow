@@ -335,14 +335,61 @@ export async function removeJobsWithQueueIdAndTypeFromDatabase(queueId:string, t
   await promise;
 }
 
-export async function removeQueueIdFromJobsDatabase(queueId:string) {
-  const [store, promise] = await getReadWriteJobsObjectStoreAndTransactionPromise();
-  const index = store.index('queueIdIndex');
+export async function removeQueueFromDatabase(queueId:string) {
+  const database = await databasePromise;
+  const transaction = database.transaction(['jobs', 'cleanups', 'arg-lookup'], 'readwrite', { durability: 'relaxed' });
+  const jobsObjectStore = transaction.objectStore('jobs');
+  const cleanupsObjectStore = transaction.objectStore('cleanups');
+  const argLookupObjectStore = transaction.objectStore('arg-lookup');
+  const promise = new Promise((resolve, reject) => {
+    transaction.onabort = (event) => {
+      logger.error('Read-write remove queue transaction was aborted');
+      logger.errorObject(event);
+      reject(new Error('Read-write emove queue transaction was aborted'));
+    };
+    transaction.onerror = (event) => {
+      logger.error('Error in read-write remove queue transaction');
+      logger.errorObject(event);
+      reject(new Error('Error in read-write remove queue transaction'));
+    };
+    transaction.oncomplete = () => {
+      resolve();
+    };
+  });
+  const queueIdIndex = jobsObjectStore.index('queueIdIndex');
+  const argLookupJobIdIndex = argLookupObjectStore.index('jobIdIndex');
   // $FlowFixMe
-  const request = index.getAllKeys(IDBKeyRange.only(queueId));
-  request.onsuccess = function (event) {
-    for (const id of event.target.result) {
-      removeJobFromObjectStore(store, id, queueId);
+  const request = queueIdIndex.getAllKeys(IDBKeyRange.only(queueId));
+
+  request.onsuccess = function ({ target: { result: jobIds } }) {
+    for (const jobId of jobIds) {
+      const jobDeleteRequest = jobsObjectStore.delete(jobId);
+      localJobEmitter.emit('jobDelete', jobId, queueId);
+      jobEmitter.emit('jobDelete', jobId, queueId);
+      jobDeleteRequest.onerror = function (event) {
+        logger.error(`Request error while removing job ${jobId} in queue ${queueId} from database`);
+        logger.errorObject(event);
+      };
+      const cleanupDeleteRequest = cleanupsObjectStore.delete(jobId);
+      cleanupDeleteRequest.onerror = function (event) {
+        logger.error(`Request error while removing cleanup for job ${jobId} in queue ${queueId} from database`);
+        logger.errorObject(event);
+      };
+      // $FlowFixMe
+      const argLookupJobRequest = argLookupJobIdIndex.getAllKeys(IDBKeyRange.only(jobId));
+      argLookupJobRequest.onsuccess = function (event) {
+        for (const id of event.target.result) {
+          const argLookupDeleteRequest = argLookupObjectStore.delete(id);
+          argLookupDeleteRequest.onerror = function (deleteEvent) {
+            logger.error(`Delete request error while removing argument lookups for job ${jobId} in queue ${queueId} from database`);
+            logger.errorObject(deleteEvent);
+          };
+        }
+      };
+      argLookupJobRequest.onerror = function (event) {
+        logger.error(`Request error while removing argument lookups for job ${jobId} in queue ${queueId} from database`);
+        logger.errorObject(event);
+      };
     }
   };
   request.onerror = function (event) {
@@ -350,29 +397,6 @@ export async function removeQueueIdFromJobsDatabase(queueId:string) {
     logger.errorObject(event);
   };
   await promise;
-}
-
-async function removeQueueIdFromCleanupsDatabase(queueId:string) {
-  const store = await getReadWriteCleanupsObjectStore();
-  const index = store.index('queueIdIndex');
-  // $FlowFixMe
-  const request = index.clear(IDBKeyRange.only(queueId));
-  await new Promise((resolve, reject) => {
-    request.onsuccess = function () {
-      resolve();
-    };
-    request.onerror = function (event) {
-      logger.error(`Request error while removing queue ${queueId} from jobs database`);
-      logger.errorObject(event);
-      reject(new Error(`Request error while removing queue ${queueId} from jobs database`));
-    };
-    store.transaction.commit();
-  });
-}
-
-export async function removeQueueIdFromDatabase(queueId:string) {
-  await removeQueueIdFromJobsDatabase(queueId);
-  await removeQueueIdFromCleanupsDatabase(queueId);
 }
 
 export async function removeCompletedExpiredItemsFromDatabase(maxAge:number) {

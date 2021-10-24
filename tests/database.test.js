@@ -42,7 +42,7 @@ import {
   getContiguousIds,
   jobEmitter,
   removeJobsWithQueueIdAndTypeFromDatabase,
-  removeQueueIdFromJobsDatabase,
+  removeQueueFromDatabase,
   removeCompletedExpiredItemsFromDatabase,
   updateUnloadDataInDatabase,
   getUnloadDataFromDatabase,
@@ -112,7 +112,7 @@ describe('IndexedDB Database', () => {
 
     const idB = await enqueueToDatabase(queueId, type, [], 0);
     const jobDeletePromiseB = getNextEmit(jobEmitter, 'jobDelete');
-    await removeQueueIdFromJobsDatabase(queueId);
+    await removeQueueFromDatabase(queueId);
 
     await expectAsync(jobDeletePromiseB).toBeResolvedTo([idB, queueId]);
 
@@ -134,7 +134,7 @@ describe('IndexedDB Database', () => {
     });
 
     await expectAsync(jobUpdatePromiseA).toBeResolvedTo([idD, queueId, type, JOB_ABORTED_STATUS]);
-    await removeQueueIdFromJobsDatabase(queueId);
+    await removeQueueFromDatabase(queueId);
 
     const idE = await enqueueToDatabase(queueId, type, [], 0);
     const jobUpdatePromiseB = getNextEmit(jobEmitter, 'jobUpdate');
