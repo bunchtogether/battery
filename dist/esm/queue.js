@@ -933,12 +933,13 @@ export default class BatteryQueue extends EventEmitter {
         if (typeof durationEstimate === 'number') {
           const estimatedToActualRatio = durationEstimate / duration;
 
-          if (estimatedToActualRatio < 0.8 || estimatedToActualRatio < 1.25) {
+          if (estimatedToActualRatio < 0.8 || estimatedToActualRatio > 1.25) {
             this.logger.warn(`Duration estimate of ${type} job #${id} (${durationEstimate}ms) was ${Math.round(100 * estimatedToActualRatio)}% of actual value (${duration}ms)`);
           }
         }
 
         this.addDurationEstimate(queueId, id, duration, 0);
+        this.logger.info(`Completed ${type} job #${id} in queue ${queueId} attempt ${attempt} in ${duration}ms`);
         return;
       } catch (error) {
         if (error.name === 'JobDoesNotExistError') {
