@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   enqueueToDatabase,
 } from '../src/database';
-import { getNextEmit, asyncEmitMatchers } from './lib/emit';
+import { asyncEmitMatchers } from './lib/emit';
 import { queue } from './lib/queue';
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
@@ -53,32 +53,59 @@ describe('Time Estimation', () => {
     expect(queue.getDurationEstimate(queueId)).toEqual([0, 0]);
     await enqueueToDatabase(queueId, type, argsA, 0);
     await enqueueToDatabase(queueId, type, argsB, 0);
-    const queueDurationPromiseA1 = expectAsync(queue).toEmit('queueDuration', queueId, 100, 100);
-    const queueDurationPromiseB1 = expectAsync(queue).toEmit('queueDuration', queueId, 200, 200);
+
+    const events = [];
+    const handleQueueDuration = (...args) => {
+      events.push(args);
+    };
+    queue.addListener('queueDuration', handleQueueDuration);
     await queue.dequeue();
-    await queueDurationPromiseA1;
-    await queueDurationPromiseB1;
-    const queueDurationA2 = await getNextEmit(queue, 'queueDuration');
-
-    expect(queueDurationA2[1]).toBeGreaterThan(200);
-    expect(queueDurationA2[2]).toBeLessThan(200);
-    const queueDurationA3 = await getNextEmit(queue, 'queueDuration');
-
-    expect(queueDurationA3[1]).toBeGreaterThan(200);
-    expect(queueDurationA3[2]).toEqual(100);
-    const queueDurationB2 = await getNextEmit(queue, 'queueDuration');
-
-    expect(queueDurationB2[1]).toBeGreaterThan(200);
-    expect(queueDurationB2[2]).toBeLessThan(100);
-    const queueDurationB3 = await getNextEmit(queue, 'queueDuration');
-
-    expect(queueDurationB3[1]).toBeGreaterThan(200);
-    expect(queueDurationB3[2]).toEqual(0);
     await queue.onIdle();
     queue.removeHandler(type);
     queue.removeDurationEstimateHandler(type);
 
-    expect(durationEstimateCount).toEqual(2);
+    const eventA1 = events.shift();
+
+    expect(eventA1).toEqual([queueId, 100, 100]);
+
+    const eventB1 = events.shift();
+
+    expect(eventB1).toEqual([queueId, 200, 200]);
+
+    const eventA2 = events.shift();
+
+    expect(eventA2).toEqual([queueId, 200, 200]);
+
+    const eventA3 = events.shift();
+
+    expect(eventA3[1]).toBeGreaterThan(200);
+    expect(eventA3[2]).toBeLessThan(200);
+
+    const eventA4 = events.shift();
+
+    expect(eventA4[1]).toBeGreaterThan(200);
+    expect(eventA4[2]).toEqual(100);
+
+    const eventB2 = events.shift();
+
+    expect(eventB2[1]).toBeGreaterThan(200);
+    expect(eventB2[2]).toEqual(100);
+
+    const eventB3 = events.shift();
+
+    expect(eventB3[1]).toBeGreaterThan(200);
+    expect(eventB3[2]).toBeLessThan(100);
+
+    const eventB4 = events.shift();
+
+    expect(eventB4[1]).toBeGreaterThan(200);
+    expect(eventB4[2]).toEqual(0);
+
+    expect(durationEstimateCount).toEqual(4);
+
+    queue.removeListener('queueDuration', handleQueueDuration);
+
+    expect(durationEstimateCount).toEqual(4);
   });
 
   it('Estimates duration remaining in a queue after errors', async () => {
@@ -103,6 +130,11 @@ describe('Time Estimation', () => {
       durationEstimateCount += 1;
       return 100;
     };
+    const events = [];
+    const handleQueueDuration = (...args) => {
+      events.push(args);
+    };
+
     queue.setHandler(type, handler);
     queue.setRetryJobDelay(type, retryJobDelay);
     queue.setCleanup(type, cleanup);
@@ -110,28 +142,54 @@ describe('Time Estimation', () => {
     queue.disableStartOnJob();
 
     expect(queue.getDurationEstimate(queueId)).toEqual([0, 0]);
+    queue.addListener('queueDuration', handleQueueDuration);
     await enqueueToDatabase(queueId, type, argsA, 0);
     await enqueueToDatabase(queueId, type, argsB, 0);
-    const queueDurationPromiseA1 = expectAsync(queue).toEmit('queueDuration', queueId, 100, 100);
-    const queueDurationPromiseB1 = expectAsync(queue).toEmit('queueDuration', queueId, 200, 200);
+
     await queue.dequeue();
-    await queueDurationPromiseA1;
-    await queueDurationPromiseB1;
-    await expectAsync(queue).toEmit('queueDuration', queueId, 200, 200); // Repeat estimate after the error
-    const queueDurationA2 = await getNextEmit(queue, 'queueDuration');
-
-    expect(queueDurationA2[1]).toBeGreaterThan(200);
-    expect(queueDurationA2[2]).toEqual(100);
-    const queueDurationB2 = await getNextEmit(queue, 'queueDuration');
-
-    expect(queueDurationB2[1]).toBeGreaterThan(200);
-    expect(queueDurationB2[2]).toEqual(0);
     await queue.onIdle();
+
     queue.removeHandler(type);
     queue.removeRetryJobDelay(type);
     queue.removeCleanup(type);
     queue.removeDurationEstimateHandler(type);
+    queue.removeListener('queueDuration', handleQueueDuration);
 
-    expect(durationEstimateCount).toEqual(3);
+    const eventA1 = events.shift();
+
+    expect(eventA1).toEqual([queueId, 100, 100]);
+
+    const eventB1 = events.shift();
+
+    expect(eventB1).toEqual([queueId, 200, 200]);
+
+    const eventA2 = events.shift();
+
+    expect(eventA2).toEqual([queueId, 200, 200]);
+
+    const eventA3 = events.shift();
+
+    expect(eventA3).toEqual([queueId, 200, 200]);
+
+    const eventA4 = events.shift();
+
+    expect(eventA4).toEqual([queueId, 200, 200]);
+
+    const eventA5 = events.shift();
+
+    expect(eventA5[1]).toBeGreaterThan(200);
+    expect(eventA5[2]).toEqual(100);
+
+    const eventB2 = events.shift();
+
+    expect(eventB2[1]).toBeGreaterThan(200);
+    expect(eventB2[2]).toEqual(100);
+
+    const eventB3 = events.shift();
+
+    expect(eventB3[1]).toBeGreaterThan(200);
+    expect(eventB3[2]).toEqual(0);
+
+    expect(durationEstimateCount).toEqual(6);
   });
 });

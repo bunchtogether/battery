@@ -866,11 +866,10 @@ export default class BatteryQueue extends EventEmitter {
 
     const abortController = this.getAbortController(id, queueId);
     const durationEstimateHandler = this.durationEstimateHandlerMap.get(type);
-    let durationEstimate;
 
     if (typeof durationEstimateHandler === 'function') {
       try {
-        durationEstimate = durationEstimateHandler(args);
+        const durationEstimate = durationEstimateHandler(args);
         this.addDurationEstimate(queueId, id, durationEstimate, durationEstimate);
       } catch (error) {
         this.logger.error(`Unable to estimate duration of ${type} job #${id} in queue ${queueId}`);
@@ -880,6 +879,17 @@ export default class BatteryQueue extends EventEmitter {
 
     const run = async () => {
       const start = Date.now();
+      let durationEstimate;
+
+      if (typeof durationEstimateHandler === 'function') {
+        try {
+          durationEstimate = durationEstimateHandler(args);
+          this.addDurationEstimate(queueId, id, durationEstimate, durationEstimate);
+        } catch (error) {
+          this.logger.error(`Unable to estimate duration of ${type} job #${id} in queue ${queueId}`);
+          this.logger.errorStack(error);
+        }
+      }
 
       if (abortController.signal.aborted) {
         this.emit('fatalError', {
