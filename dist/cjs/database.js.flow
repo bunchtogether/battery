@@ -1023,9 +1023,84 @@ export async function markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase(queue
   return jobs;
 }
 
-
 export function markQueueForCleanupAndRemoveInDatabase(queueId:string) {
   return markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase(queueId, -1);
+}
+
+export async function markQueueJobsGreaterThanIdPendingInDatabase(queueId:string, jobId:number) {
+  const store = await getReadWriteJobsObjectStore();
+  const index = store.index('queueIdIndex');
+  // $FlowFixMe
+  const request = index.getAll(IDBKeyRange.only(queueId));
+  const jobs = [];
+  await new Promise((resolve, reject) => {
+    request.onsuccess = function (event) {
+      const length = event.target.result.length;
+      let lastRequest;
+      for (let i = 0; i < length; i += 1) {
+        const value = Object.assign({}, event.target.result[i]);
+        if (value.id <= jobId) {
+          continue;
+        }
+        switch (value.status) {
+          case JOB_ERROR_STATUS:
+            value.attempt = 0;
+            jobs.push(value);
+            break;
+          case JOB_COMPLETE_STATUS:
+            continue;
+          case JOB_PENDING_STATUS:
+            value.attempt = 0;
+            jobs.push(value);
+            break;
+          case JOB_CLEANUP_STATUS:
+            value.attempt = 0;
+            jobs.push(value);
+            break;
+          case JOB_CLEANUP_AND_REMOVE_STATUS:
+            jobs.push(value);
+            continue;
+          case JOB_ABORTED_STATUS:
+            value.attempt = 0;
+            value.status = JOB_PENDING_STATUS;
+            jobs.push(value);
+            break;
+          default:
+            logger.warn(`Unhandled job status ${value.status} while marking queue ${queueId} as pending`);
+            continue;
+        }
+        const { id, type, status } = value;
+        const putRequest = store.put(value);
+        localJobEmitter.emit('jobUpdate', id, queueId, type, status);
+        jobEmitter.emit('jobUpdate', id, queueId, type, status);
+        lastRequest = putRequest;
+        putRequest.onerror = function (event2) {
+          logger.error(`Put request error while marking queue ${queueId} as pending`);
+          logger.errorObject(event2);
+          reject(new Error(`Put request error while marking queue ${queueId} as pending`));
+        };
+      }
+      if (typeof lastRequest !== 'undefined') {
+        lastRequest.onsuccess = function () {
+          resolve();
+        };
+      } else {
+        resolve();
+      }
+      store.transaction.commit();
+    };
+    request.onerror = function (event) {
+      logger.error(`Request error while marking queue ${queueId} as pending`);
+      logger.errorObject(event);
+      reject(new Error(`Request error while marking queue ${queueId} as pending`));
+    };
+  });
+  return jobs;
+}
+
+
+export function markQueuePendingInDatabase(queueId:string) {
+  return markQueueJobsGreaterThanIdPendingInDatabase(queueId, -1);
 }
 
 export async function getGreatestJobIdFromQueueInDatabase(queueId:string) {

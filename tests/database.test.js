@@ -31,6 +31,8 @@ import {
   markQueueForCleanupInDatabase,
   markQueueForCleanupAndRemoveInDatabase,
   markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase,
+  markQueuePendingInDatabase,
+  markQueueJobsGreaterThanIdPendingInDatabase,
   clearDatabase,
   setMetadataInDatabase,
   getMetadataFromDatabase,
@@ -1184,6 +1186,448 @@ describe('IndexedDB Database', () => {
       startAfter: jasmine.any(Number),
     });
   });
+
+  it('Sets pending job attempts to zero when marking a queue as pending', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const args = [uuidv4()];
+    const id = await enqueueToDatabase(queueId, type, args, 0);
+    await incrementJobAttemptInDatabase(id);
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 1,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+    await markQueuePendingInDatabase(queueId);
+
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+  });
+
+  it('Marks aborted jobs as pending when marking a queue as pending', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const args = [uuidv4()];
+    const id = await enqueueToDatabase(queueId, type, args, 0);
+
+    await markJobAbortedInDatabase(id);
+    await incrementJobAttemptInDatabase(id);
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 1,
+      created: jasmine.any(Number),
+      status: JOB_ABORTED_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+    await markQueuePendingInDatabase(queueId);
+
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+  });
+
+  it('Does not update completed jobs when marking a queue as pending', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const args = [uuidv4()];
+    const id = await enqueueToDatabase(queueId, type, args, 0);
+    await markJobCompleteInDatabase(id);
+    await incrementJobAttemptInDatabase(id);
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 1,
+      created: jasmine.any(Number),
+      status: JOB_COMPLETE_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+    await markQueuePendingInDatabase(queueId);
+
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 1,
+      created: jasmine.any(Number),
+      status: JOB_COMPLETE_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+  });
+
+  it('Sets error job attempts to zero when marking a queue as pending', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const args = [uuidv4()];
+    const id = await enqueueToDatabase(queueId, type, args, 0);
+    await markJobErrorInDatabase(id);
+    await incrementJobAttemptInDatabase(id);
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 1,
+      created: jasmine.any(Number),
+      status: JOB_ERROR_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+    await markQueuePendingInDatabase(queueId);
+
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_ERROR_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+  });
+
+  it('Sets cleanup job attempts to zero when marking a queue as pending', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const args = [uuidv4()];
+    const id = await enqueueToDatabase(queueId, type, args, 0);
+    await markJobCleanupInDatabase(id);
+    await incrementJobAttemptInDatabase(id);
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 1,
+      created: jasmine.any(Number),
+      status: JOB_CLEANUP_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+    await markQueuePendingInDatabase(queueId);
+
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_CLEANUP_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+  });
+
+  it('Does not update cleanup and remove jobs when marking a queue as pending', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const args = [uuidv4()];
+    const id = await enqueueToDatabase(queueId, type, args, 0);
+    await markJobCompleteInDatabase(id);
+    await markJobCleanupAndRemoveInDatabase(id);
+    await incrementJobAttemptInDatabase(id);
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 1,
+      created: jasmine.any(Number),
+      status: JOB_CLEANUP_AND_REMOVE_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+    await markQueuePendingInDatabase(queueId);
+
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 1,
+      created: jasmine.any(Number),
+      status: JOB_CLEANUP_AND_REMOVE_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+  });
+
+  it('Sets pending job attempts to zero when marking a queue as pending with job ids greater than a number', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const args = [uuidv4()];
+    const id = await enqueueToDatabase(queueId, type, args, 0);
+    await incrementJobAttemptInDatabase(id);
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 1,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+    await markQueueJobsGreaterThanIdPendingInDatabase(queueId, id);
+
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 1,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+
+    await markQueueJobsGreaterThanIdPendingInDatabase(queueId, -1);
+
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+  });
+
+  it('Marks aborted jobs as pending when marking a queue as pending with job ids greater than a number', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const args = [uuidv4()];
+    const id = await enqueueToDatabase(queueId, type, args, 0);
+
+    await markJobAbortedInDatabase(id);
+    await incrementJobAttemptInDatabase(id);
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 1,
+      created: jasmine.any(Number),
+      status: JOB_ABORTED_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+    await markQueueJobsGreaterThanIdPendingInDatabase(queueId, id);
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 1,
+      created: jasmine.any(Number),
+      status: JOB_ABORTED_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+    await markQueueJobsGreaterThanIdPendingInDatabase(queueId, -1);
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_PENDING_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+  });
+
+  it('Does not update completed jobs when marking a queue as pending with job ids greater than a number', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const args = [uuidv4()];
+    const id = await enqueueToDatabase(queueId, type, args, 0);
+    await markJobCompleteInDatabase(id);
+    await incrementJobAttemptInDatabase(id);
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 1,
+      created: jasmine.any(Number),
+      status: JOB_COMPLETE_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+    await markQueueJobsGreaterThanIdPendingInDatabase(queueId, id);
+
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 1,
+      created: jasmine.any(Number),
+      status: JOB_COMPLETE_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+    await markQueueJobsGreaterThanIdPendingInDatabase(queueId, -1);
+
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 1,
+      created: jasmine.any(Number),
+      status: JOB_COMPLETE_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+  });
+
+  it('Sets error job attempts to zero when marking a queue as pending with job ids greater than a number', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const args = [uuidv4()];
+    const id = await enqueueToDatabase(queueId, type, args, 0);
+    await markJobErrorInDatabase(id);
+    await incrementJobAttemptInDatabase(id);
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 1,
+      created: jasmine.any(Number),
+      status: JOB_ERROR_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+    await markQueueJobsGreaterThanIdPendingInDatabase(queueId, id);
+
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 1,
+      created: jasmine.any(Number),
+      status: JOB_ERROR_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+    await markQueueJobsGreaterThanIdPendingInDatabase(queueId, -1);
+
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_ERROR_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+  });
+
+  it('Sets cleanup job attempts to zero when marking a queue as pending with job ids greater than a number', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const args = [uuidv4()];
+    const id = await enqueueToDatabase(queueId, type, args, 0);
+    await markJobCleanupInDatabase(id);
+    await incrementJobAttemptInDatabase(id);
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 1,
+      created: jasmine.any(Number),
+      status: JOB_CLEANUP_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+    await markQueueJobsGreaterThanIdPendingInDatabase(queueId, id);
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 1,
+      created: jasmine.any(Number),
+      status: JOB_CLEANUP_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+    await markQueueJobsGreaterThanIdPendingInDatabase(queueId, -1);
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_CLEANUP_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+  });
+
+  it('Does not update cleanup and remove jobs when marking a queue as pending with job ids greater than a number', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const args = [uuidv4()];
+    const id = await enqueueToDatabase(queueId, type, args, 0);
+    await markJobCompleteInDatabase(id);
+    await markJobCleanupAndRemoveInDatabase(id);
+    await incrementJobAttemptInDatabase(id);
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 1,
+      created: jasmine.any(Number),
+      status: JOB_CLEANUP_AND_REMOVE_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+    await markQueueJobsGreaterThanIdPendingInDatabase(queueId, id);
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 1,
+      created: jasmine.any(Number),
+      status: JOB_CLEANUP_AND_REMOVE_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+    await markQueueJobsGreaterThanIdPendingInDatabase(queueId, -1);
+    await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
+      id,
+      queueId,
+      type,
+      args,
+      attempt: 1,
+      created: jasmine.any(Number),
+      status: JOB_CLEANUP_AND_REMOVE_STATUS,
+      startAfter: jasmine.any(Number),
+    });
+  });
+
 
   it('Bulk enqueues items to the database', async () => {
     const queueId = uuidv4();

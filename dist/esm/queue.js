@@ -1,7 +1,7 @@
 import PQueue from 'p-queue';
 import EventEmitter from 'events';
 import makeLogger from './logger';
-import { jobEmitter, localJobEmitter, clearDatabase, dequeueFromDatabase, dequeueFromDatabaseNotIn, incrementJobAttemptInDatabase, incrementCleanupAttemptInDatabase, markJobCompleteInDatabase, markJobCompleteThenRemoveFromDatabase, markJobPendingInDatabase, markJobErrorInDatabase, markJobStartAfterInDatabase, markJobAsAbortedOrRemoveFromDatabase, markCleanupStartAfterInDatabase, updateCleanupValuesInDatabase, getCleanupFromDatabase, removePathFromCleanupDataInDatabase, getJobFromDatabase, markQueueForCleanupInDatabase, markQueueForCleanupAndRemoveInDatabase, markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase, removeCleanupFromDatabase, restoreJobToDatabaseForCleanupAndRemove, getUnloadDataFromDatabase, clearUnloadDataInDatabase, JOB_PENDING_STATUS, JOB_ERROR_STATUS, JOB_CLEANUP_STATUS, JOB_CLEANUP_AND_REMOVE_STATUS } from './database';
+import { jobEmitter, localJobEmitter, clearDatabase, dequeueFromDatabase, dequeueFromDatabaseNotIn, incrementJobAttemptInDatabase, incrementCleanupAttemptInDatabase, markJobCompleteInDatabase, markJobCompleteThenRemoveFromDatabase, markJobPendingInDatabase, markJobErrorInDatabase, markJobStartAfterInDatabase, markJobAsAbortedOrRemoveFromDatabase, markCleanupStartAfterInDatabase, markQueuePendingInDatabase, updateCleanupValuesInDatabase, getCleanupFromDatabase, removePathFromCleanupDataInDatabase, getJobFromDatabase, markQueueForCleanupInDatabase, markQueueForCleanupAndRemoveInDatabase, markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase, removeCleanupFromDatabase, restoreJobToDatabaseForCleanupAndRemove, getUnloadDataFromDatabase, clearUnloadDataInDatabase, getGreatestJobIdFromQueueInDatabase, JOB_PENDING_STATUS, JOB_ERROR_STATUS, JOB_CLEANUP_STATUS, JOB_CLEANUP_AND_REMOVE_STATUS } from './database';
 import { AbortError } from './errors';
 export const CLEANUP_JOB_TYPE = 'CLEANUP_JOB_TYPE';
 const PRIORITY_OFFSET = Math.floor(Number.MAX_SAFE_INTEGER / 2);
@@ -462,6 +462,22 @@ export default class BatteryQueue extends EventEmitter {
 
     const jobs = await markQueueForCleanupInDatabase(queueId);
     await this.startJobs(jobs);
+  }
+
+  async retryQueue(queueId) {
+    this.logger.info(`Retrying queue ${queueId}`);
+    const lastJobId = await getGreatestJobIdFromQueueInDatabase(queueId);
+    const priority = PRIORITY_OFFSET - lastJobId - 0.5;
+    this.addToQueue(queueId, priority, async () => {
+      // Resets job attempts. Changes:
+      // * JOB_ABORTED_STATUS -> JOB_PENDING_STATUS
+      // * JOB_ERROR_STATUS -> JOB_ERROR_STATUS
+      // * JOB_CLEANUP_STATUS -> JOB_CLEANUP_STATUS
+      // * JOB_COMPLETE_STATUS -> JOB_COMPLETE_STATUS
+      // * JOB_CLEANUP_AND_REMOVE_STATUS -> JOB_CLEANUP_AND_REMOVE_STATUS
+      const jobs = await markQueuePendingInDatabase(queueId);
+      await this.startJobs(jobs);
+    });
   }
 
   async abortAndRemoveQueue(queueId) {
@@ -1219,6 +1235,24 @@ export default class BatteryQueue extends EventEmitter {
         } catch (error) {
           this.emit('abortQueueError', requestId, error);
           this.logger.error('Unable to handle abort queue message');
+          this.emit('error', error);
+        }
+
+        break;
+
+      case 'retryQueue':
+        try {
+          const [queueId] = requestArgs;
+
+          if (typeof queueId !== 'string') {
+            throw new Error(`Invalid "queueId" argument with type ${typeof queueId}, should be type string`);
+          }
+
+          await this.retryQueue(queueId);
+          this.emit('retryQueueComplete', requestId);
+        } catch (error) {
+          this.emit('retryQueueError', requestId, error);
+          this.logger.error('Unable to handle retry queue message');
           this.emit('error', error);
         }
 

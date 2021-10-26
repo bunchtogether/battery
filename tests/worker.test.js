@@ -10,6 +10,8 @@ import {
   JOB_COMPLETE_STATUS,
   JOB_ERROR_STATUS,
   JOB_CLEANUP_AND_REMOVE_STATUS,
+  getQueueStatus,
+  QUEUE_ERROR_STATUS,
 } from '../src/database';
 import { asyncEmitMatchers, getNextEmit } from './lib/emit';
 import {
@@ -182,5 +184,17 @@ describe('Worker', () => {
     await expectAsync(queueInterface.getCurrentJobType(queueId)).toBeResolvedTo('echo');
     await queueInterface.onIdle(5000);
     await expectAsync(queueInterface.getCurrentJobType(queueId)).toBeResolvedTo(undefined);
+  });
+
+  it('Retries a queue', async () => {
+    const queueId = uuidv4();
+    const value = uuidv4();
+    const args = [TRIGGER_ERROR, value];
+    const id = await enqueueToDatabase(queueId, 'echo', args, 0);
+    await expectAsync(queueInterface).toEmit('fatalError', { queueId, id, error: jasmine.any(Error) });
+    await expectAsync(getQueueStatus(queueId)).toBeResolvedTo(QUEUE_ERROR_STATUS);
+    await queueInterface.retryQueue(queueId);
+    await expectAsync(queueInterface).toEmit('fatalError', { queueId, id, error: jasmine.any(Error) });
+    await expectAsync(getQueueStatus(queueId)).toBeResolvedTo(QUEUE_ERROR_STATUS);
   });
 });

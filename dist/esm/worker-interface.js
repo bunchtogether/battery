@@ -630,6 +630,47 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
     });
   }
 
+  async retryQueue(queueId, maxDuration = 1000) {
+    const port = await this.link();
+    await new Promise((resolve, reject) => {
+      const requestId = Math.random();
+      const timeout = setTimeout(() => {
+        this.removeListener('retryQueueComplete', handleRetryQueueComplete);
+        this.removeListener('retryQueueError', handleRetryQueueError);
+        reject(new Error(`Did not receive retry queue response within ${maxDuration}ms`));
+      }, maxDuration);
+
+      const handleRetryQueueComplete = responseId => {
+        if (responseId !== requestId) {
+          return;
+        }
+
+        clearTimeout(timeout);
+        this.removeListener('retryQueueComplete', handleRetryQueueComplete);
+        this.removeListener('retryQueueError', handleRetryQueueError);
+        resolve();
+      };
+
+      const handleRetryQueueError = (responseId, error) => {
+        if (responseId !== requestId) {
+          return;
+        }
+
+        clearTimeout(timeout);
+        this.removeListener('retryQueueComplete', handleRetryQueueComplete);
+        this.removeListener('retryQueueError', handleRetryQueueError);
+        reject(error);
+      };
+
+      this.addListener('retryQueueComplete', handleRetryQueueComplete);
+      this.addListener('retryQueueError', handleRetryQueueError);
+      port.postMessage({
+        type: 'retryQueue',
+        args: [requestId, queueId]
+      });
+    });
+  }
+
   async dequeue(maxDuration = 1000) {
     const port = await this.link();
     await new Promise((resolve, reject) => {

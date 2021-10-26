@@ -20,6 +20,7 @@ import {
   markJobStartAfterInDatabase,
   markJobAsAbortedOrRemoveFromDatabase,
   markCleanupStartAfterInDatabase,
+  markQueuePendingInDatabase,
   updateCleanupValuesInDatabase,
   getCleanupFromDatabase,
   removePathFromCleanupDataInDatabase,
@@ -31,6 +32,7 @@ import {
   restoreJobToDatabaseForCleanupAndRemove,
   getUnloadDataFromDatabase,
   clearUnloadDataInDatabase,
+  getGreatestJobIdFromQueueInDatabase,
   JOB_PENDING_STATUS,
   JOB_ERROR_STATUS,
   JOB_CLEANUP_STATUS,
@@ -459,6 +461,22 @@ export default class BatteryQueue extends EventEmitter {
     // * JOB_PENDING_STATUS -> JOB_ABORTED_STATUS
     const jobs = await markQueueForCleanupInDatabase(queueId);
     await this.startJobs(jobs);
+  }
+
+  async retryQueue(queueId: string) {
+    this.logger.info(`Retrying queue ${queueId}`);
+    const lastJobId = await getGreatestJobIdFromQueueInDatabase(queueId);
+    const priority = PRIORITY_OFFSET - lastJobId - 0.5;
+    this.addToQueue(queueId, priority, async () => {
+      // Resets job attempts. Changes:
+      // * JOB_ABORTED_STATUS -> JOB_PENDING_STATUS
+      // * JOB_ERROR_STATUS -> JOB_ERROR_STATUS
+      // * JOB_CLEANUP_STATUS -> JOB_CLEANUP_STATUS
+      // * JOB_COMPLETE_STATUS -> JOB_COMPLETE_STATUS
+      // * JOB_CLEANUP_AND_REMOVE_STATUS -> JOB_CLEANUP_AND_REMOVE_STATUS
+      const jobs = await markQueuePendingInDatabase(queueId);
+      await this.startJobs(jobs);
+    });
   }
 
   async abortAndRemoveQueue(queueId: string) {
@@ -1027,6 +1045,20 @@ export default class BatteryQueue extends EventEmitter {
         } catch (error) {
           this.emit('abortQueueError', requestId, error);
           this.logger.error('Unable to handle abort queue message');
+          this.emit('error', error);
+        }
+        break;
+      case 'retryQueue':
+        try {
+          const [queueId] = requestArgs;
+          if (typeof queueId !== 'string') {
+            throw new Error(`Invalid "queueId" argument with type ${typeof queueId}, should be type string`);
+          }
+          await this.retryQueue(queueId);
+          this.emit('retryQueueComplete', requestId);
+        } catch (error) {
+          this.emit('retryQueueError', requestId, error);
+          this.logger.error('Unable to handle retry queue message');
           this.emit('error', error);
         }
         break;

@@ -16,6 +16,9 @@ import {
   JOB_CLEANUP_STATUS,
   JOB_CLEANUP_AND_REMOVE_STATUS,
   JOB_COMPLETE_STATUS,
+  QUEUE_ERROR_STATUS,
+  QUEUE_COMPLETE_STATUS,
+  getQueueStatus,
 } from '../src/database';
 import {
   CLEANUP_JOB_TYPE,
@@ -1390,5 +1393,96 @@ describe('Queue', () => {
 
     expect(handlerCount).toEqual(1);
     expect(cleanupCount).toEqual(1);
+  });
+
+  it('Retries a queue', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    let handlerCount = 0;
+    let cleanupCount = 0;
+    const handler = async () => {
+      handlerCount += 1;
+      if (handlerCount === 1) {
+        throw new Error('Test error');
+      }
+    };
+    const cleanup = async () => {
+      cleanupCount += 1;
+    };
+    queue.setHandler(type, handler);
+    queue.setCleanup(type, cleanup);
+    await enqueueToDatabase(queueId, type, [], 0);
+    await queue.onIdle();
+    await expectAsync(getQueueStatus(queueId)).toBeResolvedTo(QUEUE_ERROR_STATUS);
+
+    expect(handlerCount).toEqual(1);
+    expect(cleanupCount).toEqual(1);
+    await queue.onIdle();
+    await queue.retryQueue(queueId);
+    await queue.onIdle();
+    await expectAsync(getQueueStatus(queueId)).toBeResolvedTo(QUEUE_COMPLETE_STATUS);
+
+    expect(handlerCount).toEqual(2);
+    expect(cleanupCount).toEqual(1);
+    queue.removeHandler(type);
+    queue.removeCleanup(type);
+  });
+
+  it('Does not retry a completed queue', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    let handlerCount = 0;
+    let cleanupCount = 0;
+    const handler = async () => {
+      handlerCount += 1;
+    };
+    const cleanup = async () => {
+      cleanupCount += 1;
+    };
+    queue.setHandler(type, handler);
+    queue.setCleanup(type, cleanup);
+    await enqueueToDatabase(queueId, type, [], 0);
+    await queue.onIdle();
+    await expectAsync(getQueueStatus(queueId)).toBeResolvedTo(QUEUE_COMPLETE_STATUS);
+
+    expect(handlerCount).toEqual(1);
+    expect(cleanupCount).toEqual(0);
+    await queue.onIdle();
+    await queue.retryQueue(queueId);
+    await queue.onIdle();
+    await expectAsync(getQueueStatus(queueId)).toBeResolvedTo(QUEUE_COMPLETE_STATUS);
+
+    expect(handlerCount).toEqual(1);
+    expect(cleanupCount).toEqual(0);
+    queue.removeHandler(type);
+    queue.removeCleanup(type);
+  });
+
+  it('Waits for queue operations to complete before retrying', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    let handlerCount = 0;
+    let cleanupCount = 0;
+    const handler = async () => {
+      handlerCount += 1;
+      if (handlerCount === 1) {
+        await queue.retryQueue(queueId);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        throw new Error('Test error');
+      }
+    };
+    const cleanup = async () => {
+      cleanupCount += 1;
+    };
+    queue.setHandler(type, handler);
+    queue.setCleanup(type, cleanup);
+    await enqueueToDatabase(queueId, type, [], 0);
+    await queue.onIdle();
+    await expectAsync(getQueueStatus(queueId)).toBeResolvedTo(QUEUE_COMPLETE_STATUS);
+
+    expect(handlerCount).toEqual(2);
+    expect(cleanupCount).toEqual(1);
+    queue.removeHandler(type);
+    queue.removeCleanup(type);
   });
 });
