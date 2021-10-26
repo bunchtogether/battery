@@ -21,6 +21,17 @@ export const TRIGGER_HANDLER_RETURN_FALSE = 9;
 
 export const emitter = new EventEmitter();
 
+export function durationEstimateHandler(args:Array<any>) {
+  const [instruction] = args;
+  if (typeof instruction !== 'number') {
+    return 5;
+  }
+  if (instruction === TRIGGER_100MS_DELAY) {
+    return 100;
+  }
+  return 5;
+}
+
 export async function handler(args:Array<any>, abortSignal: AbortSignal, updateCleanupData: (Object) => Promise<void>) { // eslint-disable-line consistent-return
   const [instruction, value] = args;
   if (typeof instruction !== 'number') {

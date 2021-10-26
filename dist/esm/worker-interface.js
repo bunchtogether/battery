@@ -507,6 +507,47 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
     });
   }
 
+  async updateDurationEstimates(maxDuration = 1000) {
+    const port = await this.link();
+    await new Promise((resolve, reject) => {
+      const requestId = Math.random();
+      const timeout = setTimeout(() => {
+        this.removeListener('updateDurationEstimatesComplete', handleUpdateDurationEstimatesComplete);
+        this.removeListener('updateDurationEstimatesError', handleUpdateDurationEstimatesError);
+        reject(new Error(`Did not receive update duration estimates response within ${maxDuration}ms`));
+      }, maxDuration);
+
+      const handleUpdateDurationEstimatesComplete = responseId => {
+        if (responseId !== requestId) {
+          return;
+        }
+
+        clearTimeout(timeout);
+        this.removeListener('updateDurationEstimatesComplete', handleUpdateDurationEstimatesComplete);
+        this.removeListener('updateDurationEstimatesError', handleUpdateDurationEstimatesError);
+        resolve();
+      };
+
+      const handleUpdateDurationEstimatesError = (responseId, error) => {
+        if (responseId !== requestId) {
+          return;
+        }
+
+        clearTimeout(timeout);
+        this.removeListener('updateDurationEstimatesComplete', handleUpdateDurationEstimatesComplete);
+        this.removeListener('updateDurationEstimatesError', handleUpdateDurationEstimatesError);
+        reject(error);
+      };
+
+      this.addListener('updateDurationEstimatesComplete', handleUpdateDurationEstimatesComplete);
+      this.addListener('updateDurationEstimatesError', handleUpdateDurationEstimatesError);
+      port.postMessage({
+        type: 'updateDurationEstimates',
+        args: [requestId]
+      });
+    });
+  }
+
   async abortQueue(queueId, maxDuration = 1000) {
     const port = await this.link();
     await new Promise((resolve, reject) => {

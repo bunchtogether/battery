@@ -174,6 +174,22 @@ describe('Worker', () => {
     expect(pending).toEqual(0);
   });
 
+  it('Updates queue duration estimates', async () => {
+    const queueId = uuidv4();
+    const value = uuidv4();
+    await queueInterface.disableStartOnJob();
+    await enqueueToDatabase(queueId, 'echo', [TRIGGER_100MS_DELAY, value], 0);
+    await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, value], 0);
+    queueInterface.dequeue();
+    await expectAsync(queueInterface).toEmit('queueDuration', queueId, 100, 100);
+    await expectAsync(queueInterface).toEmit('queueDuration', queueId, 105, 105);
+    await expectAsync(queueInterface).toEmit('queueDuration', queueId, 105, 105);
+    queueInterface.updateDurationEstimates();
+    await expectAsync(queueInterface).toEmit('queueDuration', queueId, 105, 105);
+    await queueInterface.onIdle(5000);
+    await queueInterface.enableStartOnJob();
+  });
+
   it('Gets current job type in a queue', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
@@ -192,9 +208,11 @@ describe('Worker', () => {
     const args = [TRIGGER_ERROR, value];
     const id = await enqueueToDatabase(queueId, 'echo', args, 0);
     await expectAsync(queueInterface).toEmit('fatalError', { queueId, id, error: jasmine.any(Error) });
+    await queueInterface.onIdle(5000);
     await expectAsync(getQueueStatus(queueId)).toBeResolvedTo(QUEUE_ERROR_STATUS);
     await queueInterface.retryQueue(queueId);
     await expectAsync(queueInterface).toEmit('fatalError', { queueId, id, error: jasmine.any(Error) });
+    await queueInterface.onIdle(5000);
     await expectAsync(getQueueStatus(queueId)).toBeResolvedTo(QUEUE_ERROR_STATUS);
   });
 });

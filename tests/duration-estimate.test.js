@@ -192,4 +192,62 @@ describe('Time Estimation', () => {
 
     expect(durationEstimateCount).toEqual(6);
   });
+
+  it('Updates duration remaining in a queue', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const argsA = [Math.round(Math.random() * 100)];
+    const argsB = [Math.round(Math.random() * 100)];
+    const handler = async (args, abortSignal, updateCleanupData, updateDuration) => { // eslint-disable-line no-unused-vars
+      queue.updateDurationEstimates();
+      await new Promise((resolve) => setTimeout(resolve, Math.round(Math.random() * 10) + 100));
+    };
+    const durationEstimateHandler = () => 100;
+    queue.setHandler(type, handler);
+    queue.setDurationEstimateHandler(type, durationEstimateHandler);
+    queue.disableStartOnJob();
+
+    expect(queue.getDurationEstimate(queueId)).toEqual([0, 0]);
+    await enqueueToDatabase(queueId, type, argsA, 0);
+    await enqueueToDatabase(queueId, type, argsB, 0);
+    const events = [];
+    const handleQueueDuration = (...args) => {
+      events.push(args);
+    };
+    queue.addListener('queueDuration', handleQueueDuration);
+    await queue.dequeue();
+    await queue.onIdle();
+    queue.removeHandler(type);
+    queue.removeDurationEstimateHandler(type);
+    const eventA1 = events.shift();
+
+    expect(eventA1).toEqual([queueId, 100, 100]);
+
+    const eventB1 = events.shift();
+
+    expect(eventB1).toEqual([queueId, 200, 200]);
+
+    const eventA2 = events.shift();
+
+    expect(eventA2).toEqual([queueId, 200, 200]);
+
+    const eventB2 = events.shift();
+
+    expect(eventB2).toEqual([queueId, 200, 200]);
+
+    const eventA3 = events.shift();
+
+    expect(eventA3[1]).toBeGreaterThan(200);
+    expect(eventA3[2]).toBe(100);
+
+    const eventB3 = events.shift();
+
+    expect(eventB3[1]).toBeGreaterThan(200);
+    expect(eventB3[2]).toBe(100);
+
+    const eventB4 = events.shift();
+
+    expect(eventB4[1]).toBeGreaterThan(200);
+    expect(eventB4[2]).toBe(0);
+  });
 });

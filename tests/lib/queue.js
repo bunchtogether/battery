@@ -4,6 +4,7 @@ import BatteryQueue from '../../src/queue';
 import {
   handler as echoHandler,
   cleanup as echoCleanup,
+  durationEstimateHandler as echoDurationEstimateHandler,
 } from './echo-handler';
 import {
   handler as fuzzHandler,
@@ -16,6 +17,7 @@ export const queue = new BatteryQueue();
 
 queue.setHandler('echo', echoHandler);
 queue.setCleanup('echo', echoCleanup);
+queue.setDurationEstimateHandler('echo', echoDurationEstimateHandler);
 
 queue.setHandler('fuzz', fuzzHandler);
 queue.setCleanup('fuzz', fuzzCleanup);

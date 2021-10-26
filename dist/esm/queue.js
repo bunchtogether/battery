@@ -19,11 +19,13 @@ export default class BatteryQueue extends EventEmitter {
     this.cleanupMap = new Map();
     this.durationEstimateHandlerMap = new Map();
     this.durationEstimateMap = new Map();
+    this.durationEstimateUpdaterMap = new Map();
     this.retryJobDelayMap = new Map();
     this.retryCleanupDelayMap = new Map();
     this.queueCurrentJobTypeMap = new Map();
     this.queueMap = new Map();
     this.jobIds = new Set();
+    this.durationEstimateUpdaterMap = new Map();
     this.abortControllerMap = new Map();
     this.isClearing = false;
     this.emitCallbacks = [];
@@ -313,30 +315,36 @@ export default class BatteryQueue extends EventEmitter {
 
     if (typeof queueDurationEstimateMap === 'undefined') {
       this.durationEstimateMap.set(queueId, new Map([[jobId, [duration, pending]]]));
-      this.getDurationEstimate(queueId);
+      this.emitDurationEstimate(queueId);
       return;
     }
 
     queueDurationEstimateMap.set(jobId, [duration, pending]);
-    this.getDurationEstimate(queueId);
+    this.emitDurationEstimate(queueId);
   }
 
   removeDurationEstimate(queueId, jobId) {
     if (typeof jobId !== 'number') {
       this.durationEstimateMap.delete(queueId);
-      this.getDurationEstimate(queueId);
+      this.emitDurationEstimate(queueId);
       return;
     }
 
     const queueDurationEstimateMap = this.durationEstimateMap.get(queueId);
 
     if (typeof queueDurationEstimateMap === 'undefined') {
-      this.getDurationEstimate(queueId);
+      this.emitDurationEstimate(queueId);
       return;
     }
 
     queueDurationEstimateMap.delete(jobId);
-    this.getDurationEstimate(queueId);
+    this.emitDurationEstimate(queueId);
+  }
+
+  updateDurationEstimates() {
+    for (const updateDurationEstimate of this.durationEstimateUpdaterMap.values()) {
+      updateDurationEstimate();
+    }
   }
 
   getDurationEstimate(queueId) {
@@ -345,7 +353,6 @@ export default class BatteryQueue extends EventEmitter {
     let totalPending = 0;
 
     if (typeof queueDurationEstimateMap === 'undefined') {
-      this.emit('queueDuration', queueId, totalDuration, totalPending);
       return [totalDuration, totalPending];
     }
 
@@ -354,8 +361,12 @@ export default class BatteryQueue extends EventEmitter {
       totalPending += pending;
     }
 
-    this.emit('queueDuration', queueId, totalDuration, totalPending);
     return [totalDuration, totalPending];
+  }
+
+  emitDurationEstimate(queueId) {
+    const [totalDuration, totalPending] = this.getDurationEstimate(queueId);
+    this.emit('queueDuration', queueId, totalDuration, totalPending);
   }
 
   setCurrentJobType(queueId, type) {
@@ -880,32 +891,31 @@ export default class BatteryQueue extends EventEmitter {
       this.addDurationEstimate(queueId, id, duration, pending);
     };
 
-    const abortController = this.getAbortController(id, queueId);
-    const durationEstimateHandler = this.durationEstimateHandlerMap.get(type);
-
-    if (typeof durationEstimateHandler === 'function') {
-      try {
-        const durationEstimate = durationEstimateHandler(args);
-        this.addDurationEstimate(queueId, id, durationEstimate, durationEstimate);
-      } catch (error) {
-        this.logger.error(`Unable to estimate duration of ${type} job #${id} in queue ${queueId}`);
-        this.logger.errorStack(error);
-      }
-    }
-
-    const run = async () => {
-      const start = Date.now();
-      let durationEstimate;
+    const updateDurationEstimate = () => {
+      const durationEstimateHandler = this.durationEstimateHandlerMap.get(type);
 
       if (typeof durationEstimateHandler === 'function') {
         try {
-          durationEstimate = durationEstimateHandler(args);
+          const durationEstimate = durationEstimateHandler(args);
           this.addDurationEstimate(queueId, id, durationEstimate, durationEstimate);
+          return durationEstimate;
         } catch (error) {
           this.logger.error(`Unable to estimate duration of ${type} job #${id} in queue ${queueId}`);
           this.logger.errorStack(error);
         }
       }
+
+      return 0;
+    };
+
+    updateDurationEstimate();
+    this.durationEstimateUpdaterMap.set(id, updateDurationEstimate);
+    const abortController = this.getAbortController(id, queueId);
+
+    const run = async () => {
+      const start = Date.now();
+      const durationEstimate = updateDurationEstimate();
+      this.durationEstimateUpdaterMap.delete(id);
 
       if (abortController.signal.aborted) {
         this.emit('fatalError', {
@@ -1217,6 +1227,18 @@ export default class BatteryQueue extends EventEmitter {
         } catch (error) {
           this.emit('abortAndRemoveQueueError', requestId, error);
           this.logger.error('Unable to handle abort and remove queue message');
+          this.emit('error', error);
+        }
+
+        break;
+
+      case 'updateDurationEstimates':
+        try {
+          await this.updateDurationEstimates();
+          this.emit('updateDurationEstimatesComplete', requestId);
+        } catch (error) {
+          this.emit('updateDurationEstimatesError', requestId, error);
+          this.logger.error('Unable to handle update duration estimates message');
           this.emit('error', error);
         }
 
