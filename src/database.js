@@ -1357,7 +1357,7 @@ export async function dequeueFromDatabaseNotIn(ids:Array<number>):Promise<Array<
 }
 
 export async function getJobsWithTypeFromDatabase(type:string):Promise<Array<Job>> {
-  const store = await getReadWriteJobsObjectStore();
+  const store = await getReadOnlyJobsObjectStore();
   const index = store.index('typeIndex');
   // $FlowFixMe
   const request = index.getAll(IDBKeyRange.only(type));

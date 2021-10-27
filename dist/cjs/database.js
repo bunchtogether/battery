@@ -2836,7 +2836,7 @@ function _getJobsWithTypeFromDatabase() {
         switch (_context38.prev = _context38.next) {
           case 0:
             _context38.next = 2;
-            return getReadWriteJobsObjectStore();
+            return getReadOnlyJobsObjectStore();
 
           case 2:
             store = _context38.sent;
