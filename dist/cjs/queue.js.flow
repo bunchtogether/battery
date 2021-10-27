@@ -171,11 +171,7 @@ export default class BatteryQueue extends EventEmitter {
           return;
         }
         const { args } = job;
-        this.startCleanup(id, queueId, args, type);
-        const queue = this.queueMap.get(queueId);
-        if (typeof queue !== 'undefined') {
-          queue.start();
-        }
+        this.startCleanup(id, queueId, args, type, true);
       }).catch((error) => {
         this.logger.error(`Error while cleaning up and removing ${type} job #${id} in queue ${queueId}`);
         this.logger.errorStack(error);
@@ -411,7 +407,7 @@ export default class BatteryQueue extends EventEmitter {
     this.isClearing = false;
   }
 
-  addToQueue(queueId:string, priority: number, func: () => Promise<void>) {
+  addToQueue(queueId:string, priority: number, autoStart: boolean, func: () => Promise<void>) {
     if (this.stopped) {
       return;
     }
@@ -420,7 +416,7 @@ export default class BatteryQueue extends EventEmitter {
       queue.add(func, { priority });
       return;
     }
-    const newQueue = new PQueue({ concurrency: 1, autoStart: false });
+    const newQueue = new PQueue({ concurrency: 1, autoStart });
     this.queueMap.set(queueId, newQueue);
     newQueue.add(func, { priority });
     newQueue.on('idle', async () => {
@@ -480,7 +476,7 @@ export default class BatteryQueue extends EventEmitter {
     this.logger.info(`Retrying queue ${queueId}`);
     const lastJobId = await getGreatestJobIdFromQueueInDatabase(queueId);
     const priority = PRIORITY_OFFSET - lastJobId - 0.5;
-    this.addToQueue(queueId, priority, async () => {
+    this.addToQueue(queueId, priority, true, async () => {
       // Resets job attempts. Changes:
       // * JOB_ABORTED_STATUS -> JOB_PENDING_STATUS
       // * JOB_ERROR_STATUS -> JOB_ERROR_STATUS
@@ -561,13 +557,13 @@ export default class BatteryQueue extends EventEmitter {
         queueIds.add(queueId);
       }
       if (status === JOB_PENDING_STATUS) {
-        this.startJob(id, queueId, args, type, attempt + 1, startAfter);
+        this.startJob(id, queueId, args, type, attempt + 1, startAfter, false);
       } else if (status === JOB_ERROR_STATUS) {
-        this.startErrorHandler(id, queueId, args, type, attempt, startAfter);
+        this.startErrorHandler(id, queueId, args, type, attempt, startAfter, false);
       } else if (status === JOB_CLEANUP_STATUS) {
-        this.startCleanup(id, queueId, args, type);
+        this.startCleanup(id, queueId, args, type, false);
       } else if (status === JOB_CLEANUP_AND_REMOVE_STATUS) {
-        this.startCleanup(id, queueId, args, type);
+        this.startCleanup(id, queueId, args, type, false);
       } else {
         throw new Error(`Unknown job status ${status} in job ${id} of queue ${queueId}`);
       }
@@ -590,7 +586,7 @@ export default class BatteryQueue extends EventEmitter {
         const idlePromises = [];
         for (const [queueId, queue] of this.queueMap) {
           const interval = setInterval(() => {
-            this.logger.info(`Waiting on queue ${queueId} (stop), size ${queue.size}, pending ${queue.pending}`);
+            this.logger.info(`Waiting on queue ${queueId} stop() request. Queue ${queue.isPaused ? 'is paused' : 'is not paused'}, with ${queue.pending} ${queue.pending === 1 ? 'job' : 'jobs'} pending and ${queue.size} ${queue.size === 1 ? 'job' : 'jobs'} remaining.`);
           }, 250);
           queue.clear();
           idlePromises.push(queue.onIdle().finally(() => {
@@ -621,7 +617,7 @@ export default class BatteryQueue extends EventEmitter {
           await this.dequeueQueue.onIdle();
           for (const [queueId, queue] of this.queueMap) {
             const interval = setInterval(() => {
-              this.logger.info(`Waiting on queue ${queueId} (idle)`);
+              this.logger.info(`Waiting on queue ${queueId} onIdle() request. Queue ${queue.isPaused ? 'is paused' : 'is not paused'}, with ${queue.pending} ${queue.pending === 1 ? 'job' : 'jobs'} pending and ${queue.size} ${queue.size === 1 ? 'job' : 'jobs'} remaining.`);
             }, 250);
             await queue.onIdle();
             clearInterval(interval);
@@ -729,7 +725,7 @@ export default class BatteryQueue extends EventEmitter {
     this.emit('cleanup', { id });
   }
 
-  startCleanup(id:number, queueId:string, args:Array<any>, type:string) {
+  startCleanup(id:number, queueId:string, args:Array<any>, type:string, autoStart:boolean) {
     this.logger.info(`Adding ${type} cleanup job #${id} to queue ${queueId}`);
     this.jobIds.add(id);
     this.removeDurationEstimate(queueId, id);
@@ -742,10 +738,10 @@ export default class BatteryQueue extends EventEmitter {
       await markJobAsAbortedOrRemoveFromDatabase(id);
       this.jobIds.delete(id);
     };
-    this.addToQueue(queueId, priority, run);
+    this.addToQueue(queueId, priority, autoStart, run);
   }
 
-  startErrorHandler(id:number, queueId:string, args:Array<any>, type:string, attempt: number, startAfter: number) {
+  startErrorHandler(id:number, queueId:string, args:Array<any>, type:string, attempt: number, startAfter: number, autoStart:boolean) {
     this.logger.info(`Adding ${type} error handler job #${id} to queue ${queueId}`);
     this.jobIds.add(id);
     const priority = PRIORITY_OFFSET + id;
@@ -763,11 +759,11 @@ export default class BatteryQueue extends EventEmitter {
         await markJobPendingInDatabase(id);
         this.logger.info(`Retrying ${type} job #${id} in queue ${queueId}`);
         this.emit('retry', { id });
-        this.startJob(id, queueId, args, type, attempt + 1, startAfter);
+        this.startJob(id, queueId, args, type, attempt + 1, startAfter, true);
       }
       this.logger.info(`Completed ${type} error handler #${id} in queue ${queueId}`);
     };
-    this.addToQueue(queueId, priority, run);
+    this.addToQueue(queueId, priority, autoStart, run);
   }
 
   async delayJobStart(id:number, queueId:string, type:string, signal: AbortSignal, startAfter: number) {
@@ -792,7 +788,7 @@ export default class BatteryQueue extends EventEmitter {
     }
   }
 
-  startJob(id:number, queueId:string, args:Array<any>, type:string, attempt:number, startAfter: number) {
+  startJob(id:number, queueId:string, args:Array<any>, type:string, attempt:number, startAfter: number, autoStart:boolean) {
     this.logger.info(`Adding ${type} job #${id} to queue ${queueId}`);
     this.jobIds.add(id);
     const priority = PRIORITY_OFFSET - id;
@@ -875,7 +871,7 @@ export default class BatteryQueue extends EventEmitter {
             await restoreJobToDatabaseForCleanupAndRemove(id, queueId, type, args);
             this.jobIds.delete(id);
             this.removeAbortController(id, queueId);
-            this.startCleanup(id, queueId, args, type);
+            this.startCleanup(id, queueId, args, type, true);
           } else {
             this.emit('fatalError', { id, queueId, error });
             this.jobIds.delete(id);
@@ -895,7 +891,7 @@ export default class BatteryQueue extends EventEmitter {
             this.emit('fatalError', { id, queueId, error });
             this.jobIds.delete(id);
             this.removeAbortController(id, queueId);
-            this.startCleanup(id, queueId, args, type);
+            this.startCleanup(id, queueId, args, type, true);
           } else {
             this.emit('fatalError', { id, queueId, error });
             await markJobAsAbortedOrRemoveFromDatabase(id);
@@ -932,14 +928,14 @@ export default class BatteryQueue extends EventEmitter {
           const newStartAfter = Date.now() + retryDelay;
           await markJobStartAfterInDatabase(id, newStartAfter);
           this.jobIds.delete(id);
-          this.startErrorHandler(id, queueId, args, type, attempt, newStartAfter);
+          this.startErrorHandler(id, queueId, args, type, attempt, newStartAfter, true);
         } else {
           this.jobIds.delete(id);
-          this.startErrorHandler(id, queueId, args, type, attempt, startAfter);
+          this.startErrorHandler(id, queueId, args, type, attempt, startAfter, true);
         }
       }
     };
-    this.addToQueue(queueId, priority, run);
+    this.addToQueue(queueId, priority, autoStart, run);
     this.emit('dequeue', { id });
   }
 

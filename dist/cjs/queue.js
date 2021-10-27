@@ -206,13 +206,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
           var args = job.args;
 
-          _this2.startCleanup(id, queueId, args, type);
-
-          var queue = _this2.queueMap.get(queueId);
-
-          if (typeof queue !== 'undefined') {
-            queue.start();
-          }
+          _this2.startCleanup(id, queueId, args, type, true);
         }).catch(function (error) {
           _this2.logger.error("Error while cleaning up and removing ".concat(type, " job #").concat(id, " in queue ").concat(queueId));
 
@@ -680,7 +674,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
     }()
   }, {
     key: "addToQueue",
-    value: function addToQueue(queueId, priority, func) {
+    value: function addToQueue(queueId, priority, autoStart, func) {
       var _this3 = this;
 
       if (this.stopped) {
@@ -698,7 +692,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
       var newQueue = new _pQueue.default({
         concurrency: 1,
-        autoStart: false
+        autoStart: autoStart
       });
       this.queueMap.set(queueId, newQueue);
       newQueue.add(func, {
@@ -845,7 +839,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
               case 3:
                 lastJobId = _context8.sent;
                 priority = PRIORITY_OFFSET - lastJobId - 0.5;
-                this.addToQueue(queueId, priority, /*#__PURE__*/_asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee7() {
+                this.addToQueue(queueId, priority, true, /*#__PURE__*/_asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee7() {
                   var jobs;
                   return regeneratorRuntime.wrap(function _callee7$(_context7) {
                     while (1) {
@@ -1104,7 +1098,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   break;
                 }
 
-                this.startJob(id, queueId, args, type, attempt + 1, startAfter);
+                this.startJob(id, queueId, args, type, attempt + 1, startAfter, false);
                 _context12.next = 34;
                 break;
 
@@ -1114,7 +1108,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   break;
                 }
 
-                this.startErrorHandler(id, queueId, args, type, attempt, startAfter);
+                this.startErrorHandler(id, queueId, args, type, attempt, startAfter, false);
                 _context12.next = 34;
                 break;
 
@@ -1124,7 +1118,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   break;
                 }
 
-                this.startCleanup(id, queueId, args, type);
+                this.startCleanup(id, queueId, args, type, false);
                 _context12.next = 34;
                 break;
 
@@ -1134,7 +1128,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   break;
                 }
 
-                this.startCleanup(id, queueId, args, type);
+                this.startCleanup(id, queueId, args, type, false);
                 _context12.next = 34;
                 break;
 
@@ -1229,7 +1223,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                                     queue = _step9$value[1];
 
                                 var interval = setInterval(function () {
-                                  _this5.logger.info("Waiting on queue ".concat(queueId, " (stop), size ").concat(queue.size, ", pending ").concat(queue.pending));
+                                  _this5.logger.info("Waiting on queue ".concat(queueId, " stop() request. Queue ").concat(queue.isPaused ? 'is paused' : 'is not paused', ", with ").concat(queue.pending, " ").concat(queue.pending === 1 ? 'job' : 'jobs', " pending and ").concat(queue.size, " ").concat(queue.size === 1 ? 'job' : 'jobs', " remaining."));
                                 }, 250);
                                 queue.clear();
                                 idlePromises.push(queue.onIdle().finally(function () {
@@ -1338,7 +1332,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                                     case 0:
                                       _step10$value = _slicedToArray(_step10.value, 2), queueId = _step10$value[0], queue = _step10$value[1];
                                       interval = setInterval(function () {
-                                        _this6.logger.info("Waiting on queue ".concat(queueId, " (idle)"));
+                                        _this6.logger.info("Waiting on queue ".concat(queueId, " onIdle() request. Queue ").concat(queue.isPaused ? 'is paused' : 'is not paused', ", with ").concat(queue.pending, " ").concat(queue.pending === 1 ? 'job' : 'jobs', " pending and ").concat(queue.size, " ").concat(queue.size === 1 ? 'job' : 'jobs', " remaining."));
                                       }, 250);
                                       _context15.next = 4;
                                       return queue.onIdle();
@@ -1652,7 +1646,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
     }()
   }, {
     key: "startCleanup",
-    value: function startCleanup(id, queueId, args, type) {
+    value: function startCleanup(id, queueId, args, type, autoStart) {
       var _this7 = this;
 
       this.logger.info("Adding ".concat(type, " cleanup job #").concat(id, " to queue ").concat(queueId));
@@ -1693,11 +1687,11 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
         };
       }();
 
-      this.addToQueue(queueId, priority, run);
+      this.addToQueue(queueId, priority, autoStart, run);
     }
   }, {
     key: "startErrorHandler",
-    value: function startErrorHandler(id, queueId, args, type, attempt, startAfter) {
+    value: function startErrorHandler(id, queueId, args, type, attempt, startAfter, autoStart) {
       var _this8 = this;
 
       this.logger.info("Adding ".concat(type, " error handler job #").concat(id, " to queue ").concat(queueId));
@@ -1746,7 +1740,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                     id: id
                   });
 
-                  _this8.startJob(id, queueId, args, type, attempt + 1, startAfter);
+                  _this8.startJob(id, queueId, args, type, attempt + 1, startAfter, true);
 
                 case 16:
                   _this8.logger.info("Completed ".concat(type, " error handler #").concat(id, " in queue ").concat(queueId));
@@ -1764,7 +1758,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
         };
       }();
 
-      this.addToQueue(queueId, priority, run);
+      this.addToQueue(queueId, priority, autoStart, run);
     }
   }, {
     key: "delayJobStart",
@@ -1823,7 +1817,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
     }()
   }, {
     key: "startJob",
-    value: function startJob(id, queueId, args, type, attempt, startAfter) {
+    value: function startJob(id, queueId, args, type, attempt, startAfter, autoStart) {
       var _this9 = this;
 
       this.logger.info("Adding ".concat(type, " job #").concat(id, " to queue ").concat(queueId));
@@ -2012,7 +2006,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
                   _this9.removeAbortController(id, queueId);
 
-                  _this9.startCleanup(id, queueId, args, type);
+                  _this9.startCleanup(id, queueId, args, type, true);
 
                   _context22.next = 65;
                   break;
@@ -2062,7 +2056,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
                   _this9.removeAbortController(id, queueId);
 
-                  _this9.startCleanup(id, queueId, args, type);
+                  _this9.startCleanup(id, queueId, args, type, true);
 
                   _context22.next = 81;
                   break;
@@ -2172,7 +2166,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 case 112:
                   _this9.jobIds.delete(id);
 
-                  _this9.startErrorHandler(id, queueId, args, type, attempt, newStartAfter);
+                  _this9.startErrorHandler(id, queueId, args, type, attempt, newStartAfter, true);
 
                   _context22.next = 118;
                   break;
@@ -2180,7 +2174,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 case 116:
                   _this9.jobIds.delete(id);
 
-                  _this9.startErrorHandler(id, queueId, args, type, attempt, startAfter);
+                  _this9.startErrorHandler(id, queueId, args, type, attempt, startAfter, true);
 
                 case 118:
                 case "end":
@@ -2195,7 +2189,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
         };
       }();
 
-      this.addToQueue(queueId, priority, run);
+      this.addToQueue(queueId, priority, autoStart, run);
       this.emit('dequeue', {
         id: id
       });
