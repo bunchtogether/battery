@@ -450,6 +450,8 @@ export async function updateJobInDatabase(id:number, transform:(Job | void) => J
             logger.errorObject(event);
             reject(new Error(`Delete request error while updating job ${id} in queue ${queueId} and type ${type} from jobs database`));
           };
+        } else {
+          resolve();
         }
       } else {
         const { queueId, type, status } = newValue;

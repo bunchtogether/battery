@@ -1676,7 +1676,9 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 case 6:
                   _this7.jobIds.delete(id);
 
-                case 7:
+                  _this7.logger.info("Completed ".concat(type, " cleanup #").concat(id, " in queue ").concat(queueId));
+
+                case 8:
                 case "end":
                   return _context19.stop();
               }

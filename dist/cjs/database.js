@@ -1003,6 +1003,8 @@ function _updateJobInDatabase() {
                       logger.errorObject(event);
                       reject(new Error("Delete request error while updating job ".concat(id, " in queue ").concat(queueId, " and type ").concat(type, " from jobs database")));
                     };
+                  } else {
+                    resolve();
                   }
                 } else {
                   var _newValue = newValue,

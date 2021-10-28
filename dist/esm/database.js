@@ -507,6 +507,8 @@ export async function updateJobInDatabase(id, transform) {
             logger.errorObject(event);
             reject(new Error(`Delete request error while updating job ${id} in queue ${queueId} and type ${type} from jobs database`));
           };
+        } else {
+          resolve();
         }
       } else {
         const {

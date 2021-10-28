@@ -816,6 +816,7 @@ export default class BatteryQueue extends EventEmitter {
 
       await markJobAsAbortedOrRemoveFromDatabase(id);
       this.jobIds.delete(id);
+      this.logger.info(`Completed ${type} cleanup #${id} in queue ${queueId}`);
     };
 
     this.addToQueue(queueId, priority, autoStart, run);
