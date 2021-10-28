@@ -1738,7 +1738,7 @@ function _markJobCompleteThenRemoveFromDatabase() {
 function _markJobCleanupAndRemoveInDatabase(id) {
   return _updateJobInDatabase2(id, function (value) {
     if (typeof value === 'undefined') {
-      throw new _JobDoesNotExistError("Unable to mark job ".concat(id, " as status ").concat(_JOB_CLEANUP_AND_REMOVE_STATUS, " in database, job does not exist"));
+      return false;
     }
 
     if (value.status === _JOB_PENDING_STATUS) {

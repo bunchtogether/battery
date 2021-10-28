@@ -891,7 +891,7 @@ export async function markJobCompleteThenRemoveFromDatabase(id) {
 export function markJobCleanupAndRemoveInDatabase(id) {
   return updateJobInDatabase(id, value => {
     if (typeof value === 'undefined') {
-      throw new JobDoesNotExistError(`Unable to mark job ${id} as status ${JOB_CLEANUP_AND_REMOVE_STATUS} in database, job does not exist`);
+      return false;
     }
 
     if (value.status === JOB_PENDING_STATUS) {
