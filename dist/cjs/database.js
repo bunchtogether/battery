@@ -3745,8 +3745,6 @@ function _removeArgLookupsAndCleanupsForJob() {
                   } finally {
                     _iterator6.f();
                   }
-
-                  transaction.commit();
                 };
 
                 argLookupJobRequest.onerror = function (event) {

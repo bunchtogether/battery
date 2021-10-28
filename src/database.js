@@ -1768,7 +1768,6 @@ async function removeArgLookupsAndCleanupsForJob() {
           logger.errorObject(deleteEvent);
         };
       }
-      transaction.commit();
     };
     argLookupJobRequest.onerror = function (event) {
       logger.error(`Request error while removing argument lookups for job ${jobId} from database`);

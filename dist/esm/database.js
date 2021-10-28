@@ -2007,8 +2007,6 @@ async function removeArgLookupsAndCleanupsForJob() {
           logger.errorObject(deleteEvent);
         };
       }
-
-      transaction.commit();
     };
 
     argLookupJobRequest.onerror = function (event) {
