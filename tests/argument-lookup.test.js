@@ -30,7 +30,7 @@ describe('Argument Lookup', () => {
     const key = uuidv4();
     const jsonPath = '$';
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
     await addArgLookup(id, key, jsonPath);
     await expectAsync(getArgLookupJobPathMap(key)).toBeResolvedTo(new Map([[id, jsonPath]]));
     removeArgLookupsAndCleanupsForJobAsMicrotask(id);
@@ -44,7 +44,7 @@ describe('Argument Lookup', () => {
     const key = uuidv4();
     const jsonPath = '$';
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
     await addArgLookup(id, key, jsonPath);
     await expectAsync(getArgLookupJobPathMap(key)).toBeResolvedTo(new Map([[id, jsonPath]]));
     await markJobCleanupAndRemoveInDatabase(id);
@@ -68,8 +68,8 @@ describe('Argument Lookup', () => {
     const jsonPath = '$';
     const argsA = [uuidv4()];
     const argsB = [uuidv4()];
-    const idA = await enqueueToDatabase(queueId, type, argsA, 0);
-    const idB = await enqueueToDatabase(queueId, type, argsB, 0);
+    const idA = await enqueueToDatabase(queueId, type, argsA, 0, false);
+    const idB = await enqueueToDatabase(queueId, type, argsB, 0, false);
     await addArgLookup(idA, key, jsonPath);
     await addArgLookup(idB, key, jsonPath);
     await expectAsync(lookupArgs(key)).toBeResolvedTo([argsA, argsB]);
@@ -83,8 +83,8 @@ describe('Argument Lookup', () => {
     const jsonPath = '$[0]';
     const argsA = [uuidv4()];
     const argsB = [uuidv4()];
-    const idA = await enqueueToDatabase(queueId, type, argsA, 0);
-    const idB = await enqueueToDatabase(queueId, type, argsB, 0);
+    const idA = await enqueueToDatabase(queueId, type, argsA, 0, false);
+    const idB = await enqueueToDatabase(queueId, type, argsB, 0, false);
     await addArgLookup(idA, key, jsonPath);
     await addArgLookup(idB, key, jsonPath);
     await expectAsync(lookupArgs(key)).toBeResolvedTo([argsA[0], argsB[0]]);
@@ -97,7 +97,7 @@ describe('Argument Lookup', () => {
     const key = uuidv4();
     const jsonPath = '$';
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
     await addArgLookup(id, key, jsonPath);
     await markJobCompleteInDatabase(id);
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -109,6 +109,7 @@ describe('Argument Lookup', () => {
       created: jasmine.any(Number),
       status: JOB_COMPLETE_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
     await markJobsWithArgLookupKeyCleanupAndRemoveInDatabase(key);
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -120,6 +121,7 @@ describe('Argument Lookup', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_AND_REMOVE_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
   });
 });

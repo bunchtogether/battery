@@ -1303,7 +1303,7 @@ export async function bulkEnqueueToDatabase(queueId, items, delay) {
   }
 
   for (let i = 0; i < items.length; i += 1) {
-    const [type, args] = items[i];
+    const [type, args, prioritize] = items[i];
 
     if (typeof type !== 'string') {
       throw new TypeError(`Unable to bulk enqueue in database, received invalid items[${i}] "type" argument type "${typeof type}"`);
@@ -1311,6 +1311,10 @@ export async function bulkEnqueueToDatabase(queueId, items, delay) {
 
     if (!Array.isArray(args)) {
       throw new TypeError(`Unable to bulk enqueue in database, received invalid items[${i}] "args" argument type "${typeof args}"`);
+    }
+
+    if (typeof prioritize !== 'boolean') {
+      throw new TypeError(`Unable to enqueue in database, received invalid "prioritize" argument type "${typeof prioritize}", should be boolean`);
     }
   }
 
@@ -1322,7 +1326,7 @@ export async function bulkEnqueueToDatabase(queueId, items, delay) {
   const store = await getReadWriteJobsObjectStore();
   await new Promise((resolve, reject) => {
     for (let i = 0; i < items.length; i += 1) {
-      const [type, args] = items[i];
+      const [type, args, prioritize] = items[i];
       const value = {
         queueId,
         type,
@@ -1330,7 +1334,8 @@ export async function bulkEnqueueToDatabase(queueId, items, delay) {
         attempt: 0,
         created: Date.now(),
         status: JOB_PENDING_STATUS,
-        startAfter: Date.now() + delay
+        startAfter: Date.now() + delay,
+        prioritize
       };
       const request = store.put(value);
 
@@ -1353,22 +1358,26 @@ export async function bulkEnqueueToDatabase(queueId, items, delay) {
   });
   return ids;
 }
-export async function enqueueToDatabase(queueId, type, args, delay) {
+export async function enqueueToDatabase(queueId, type, args, delay, prioritize) {
   // eslint-disable-line no-underscore-dangle
   if (typeof queueId !== 'string') {
-    throw new TypeError(`Unable to enqueue in database, received invalid "queueId" argument type "${typeof queueId}"`);
+    throw new TypeError(`Unable to enqueue in database, received invalid "queueId" argument type "${typeof queueId}", should be string`);
   }
 
   if (typeof type !== 'string') {
-    throw new TypeError(`Unable to enqueue in database, received invalid "type" argument type "${typeof type}"`);
+    throw new TypeError(`Unable to enqueue in database, received invalid "type" argument type "${typeof type}", should be string`);
   }
 
   if (!Array.isArray(args)) {
-    throw new TypeError(`Unable to enqueue in database, received invalid "args" argument type "${typeof args}"`);
+    throw new TypeError(`Unable to enqueue in database, received invalid "args" argument type "${typeof args}", should be Array<any>`);
   }
 
   if (typeof delay !== 'number') {
-    throw new TypeError(`Unable to enqueue in database, received invalid "delay" argument type "${typeof delay}"`);
+    throw new TypeError(`Unable to enqueue in database, received invalid "delay" argument type "${typeof delay}", should be number`);
+  }
+
+  if (typeof prioritize !== 'boolean') {
+    throw new TypeError(`Unable to enqueue in database, received invalid "prioritize" argument type "${typeof prioritize}", should be boolean`);
   }
 
   const value = {
@@ -1378,7 +1387,8 @@ export async function enqueueToDatabase(queueId, type, args, delay) {
     attempt: 0,
     created: Date.now(),
     status: JOB_PENDING_STATUS,
-    startAfter: Date.now() + delay
+    startAfter: Date.now() + delay,
+    prioritize
   };
   const store = await getReadWriteJobsObjectStore();
   const request = store.put(value);
@@ -1399,22 +1409,26 @@ export async function enqueueToDatabase(queueId, type, args, delay) {
   jobEmitter.emit('jobAdd', id, queueId, type);
   return id;
 }
-export async function restoreJobToDatabaseForCleanupAndRemove(id, queueId, type, args) {
+export async function restoreJobToDatabaseForCleanupAndRemove(id, queueId, type, args, prioritize) {
   // eslint-disable-line no-underscore-dangle
   if (typeof id !== 'number') {
-    throw new TypeError(`Unable to restore to database, received invalid "id" argument type "${typeof id}"`);
+    throw new TypeError(`Unable to restore to database, received invalid "id" argument type "${typeof id}", should be number`);
   }
 
   if (typeof queueId !== 'string') {
-    throw new TypeError(`Unable to restore to database, received invalid "queueId" argument type "${typeof queueId}"`);
+    throw new TypeError(`Unable to restore to database, received invalid "queueId" argument type "${typeof queueId}", should be string`);
   }
 
   if (typeof type !== 'string') {
-    throw new TypeError(`Unable to restore to database, received invalid "type" argument type "${typeof type}"`);
+    throw new TypeError(`Unable to restore to database, received invalid "type" argument type "${typeof type}", should be string`);
   }
 
   if (!Array.isArray(args)) {
-    throw new TypeError(`Unable to restore to database, received invalid "args" argument type "${typeof args}"`);
+    throw new TypeError(`Unable to restore to database, received invalid "args" argument type "${typeof args}", should be Array<any>`);
+  }
+
+  if (typeof prioritize !== 'boolean') {
+    throw new TypeError(`Unable to restore to database, received invalid "prioritize" argument type "${typeof prioritize}", should be boolean`);
   }
 
   const value = {
@@ -1425,7 +1439,8 @@ export async function restoreJobToDatabaseForCleanupAndRemove(id, queueId, type,
     attempt: 1,
     created: Date.now(),
     status: JOB_CLEANUP_AND_REMOVE_STATUS,
-    startAfter: Date.now()
+    startAfter: Date.now(),
+    prioritize
   };
   const store = await getReadWriteJobsObjectStore();
   const request = store.put(value);

@@ -74,8 +74,8 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const typeA = uuidv4();
     const typeB = uuidv4();
-    const idA = await enqueueToDatabase(queueId, typeA, [], 0);
-    const idB = await enqueueToDatabase(queueId, typeB, [], 0);
+    const idA = await enqueueToDatabase(queueId, typeA, [], 0, false);
+    const idB = await enqueueToDatabase(queueId, typeB, [], 0, false);
     await expectAsync(getJobsWithTypeFromDatabase(typeA)).toBeResolvedTo([{
       id: idA,
       queueId,
@@ -85,6 +85,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
     await expectAsync(getJobsWithTypeFromDatabase(typeB)).toBeResolvedTo([{
       id: idB,
@@ -95,6 +96,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
   });
 
@@ -103,7 +105,7 @@ describe('IndexedDB Database', () => {
     const type = uuidv4();
     const jobAddPromiseA = getNextEmit(jobEmitter, 'jobAdd');
 
-    const idA = await enqueueToDatabase(queueId, type, [], 0);
+    const idA = await enqueueToDatabase(queueId, type, [], 0, false);
 
     await expectAsync(jobAddPromiseA).toBeResolvedTo([idA, queueId, type]);
 
@@ -112,20 +114,20 @@ describe('IndexedDB Database', () => {
 
     await expectAsync(jobDeletePromiseA).toBeResolvedTo([idA, queueId]);
 
-    const idB = await enqueueToDatabase(queueId, type, [], 0);
+    const idB = await enqueueToDatabase(queueId, type, [], 0, false);
     const jobDeletePromiseB = getNextEmit(jobEmitter, 'jobDelete');
     await removeQueueFromDatabase(queueId);
 
     await expectAsync(jobDeletePromiseB).toBeResolvedTo([idB, queueId]);
 
-    const idC = await enqueueToDatabase(queueId, type, [], 0);
+    const idC = await enqueueToDatabase(queueId, type, [], 0, false);
     const jobDeletePromiseC = getNextEmit(jobEmitter, 'jobDelete');
     await markJobCompleteInDatabase(idC);
     await removeCompletedExpiredItemsFromDatabase(0);
 
     await expectAsync(jobDeletePromiseC).toBeResolvedTo([idC, queueId]);
 
-    const idD = await enqueueToDatabase(queueId, type, [], 0);
+    const idD = await enqueueToDatabase(queueId, type, [], 0, false);
     const jobUpdatePromiseA = getNextEmit(jobEmitter, 'jobUpdate');
     await updateJobInDatabase(idD, (x) => {
       if (typeof x === 'undefined') {
@@ -138,14 +140,14 @@ describe('IndexedDB Database', () => {
     await expectAsync(jobUpdatePromiseA).toBeResolvedTo([idD, queueId, type, JOB_ABORTED_STATUS]);
     await removeQueueFromDatabase(queueId);
 
-    const idE = await enqueueToDatabase(queueId, type, [], 0);
+    const idE = await enqueueToDatabase(queueId, type, [], 0, false);
     const jobUpdatePromiseB = getNextEmit(jobEmitter, 'jobUpdate');
     await markQueueForCleanupInDatabase(queueId);
 
     await expectAsync(jobUpdatePromiseB).toBeResolvedTo([idE, queueId, type, JOB_ABORTED_STATUS]);
 
     const jobAddPromiseB = getNextEmit(jobEmitter, 'jobAdd');
-    const [idF] = await bulkEnqueueToDatabase(queueId, [[type, []]], 0);
+    const [idF] = await bulkEnqueueToDatabase(queueId, [[type, [], false]], 0);
 
     await expectAsync(jobAddPromiseB).toBeResolvedTo([idF, queueId, type]);
 
@@ -158,7 +160,7 @@ describe('IndexedDB Database', () => {
   it('Emits a jobUpdate and followed by a jobDelete and removes from the database', async () => {
     const queueId = uuidv4();
     const type = uuidv4();
-    const id = await enqueueToDatabase(queueId, type, [], 0);
+    const id = await enqueueToDatabase(queueId, type, [], 0, false);
     markJobCompleteThenRemoveFromDatabase(id);
     const updatePromise = expectAsync(jobEmitter).toEmit('jobUpdate', id, queueId, type, JOB_COMPLETE_STATUS);
     const deletePromise = expectAsync(jobEmitter).toEmit('jobDelete', id, queueId);
@@ -211,9 +213,9 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     await expectAsync(getGreatestJobIdFromQueueInDatabase(queueId)).toBeResolvedTo(0);
-    const idA = await enqueueToDatabase(queueId, type, [], 0);
+    const idA = await enqueueToDatabase(queueId, type, [], 0, false);
     await expectAsync(getGreatestJobIdFromQueueInDatabase(queueId)).toBeResolvedTo(idA);
-    const idB = await enqueueToDatabase(queueId, type, [], 0);
+    const idB = await enqueueToDatabase(queueId, type, [], 0, false);
     await expectAsync(getGreatestJobIdFromQueueInDatabase(queueId)).toBeResolvedTo(idB);
     await expectAsync(getJobsInDatabase([idA, idB])).toBeResolvedTo([{
       id: idA,
@@ -224,6 +226,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }, {
       id: idB,
       queueId,
@@ -233,6 +236,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
     await removeJobFromDatabase(idA);
 
@@ -245,6 +249,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
     await removeJobFromDatabase(idB);
 
@@ -254,7 +259,7 @@ describe('IndexedDB Database', () => {
   it('Marks a job as aborted if it was in cleanup status', async () => {
     const queueId = uuidv4();
     const type = uuidv4();
-    const id = await enqueueToDatabase(queueId, type, [], 0);
+    const id = await enqueueToDatabase(queueId, type, [], 0, false);
     await markJobCleanupInDatabase(id);
 
     await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
@@ -266,6 +271,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
     await markJobAsAbortedOrRemoveFromDatabase(id);
 
@@ -278,13 +284,14 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_ABORTED_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
   });
 
   it('Removes a job if it was in cleanup and remove status', async () => {
     const queueId = uuidv4();
     const type = uuidv4();
-    const id = await enqueueToDatabase(queueId, type, [], 0);
+    const id = await enqueueToDatabase(queueId, type, [], 0, false);
     await markJobCompleteInDatabase(id);
     await markJobCleanupAndRemoveInDatabase(id);
 
@@ -297,6 +304,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_AND_REMOVE_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
     await markJobAsAbortedOrRemoveFromDatabase(id);
 
@@ -378,7 +386,7 @@ describe('IndexedDB Database', () => {
   it('Adds and removes jobs from the database', async () => {
     const queueId = uuidv4();
     const type = uuidv4();
-    const id = await enqueueToDatabase(queueId, type, [], 0);
+    const id = await enqueueToDatabase(queueId, type, [], 0, false);
 
     await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
       id,
@@ -389,6 +397,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
     await removeJobFromDatabase(id);
 
@@ -398,7 +407,7 @@ describe('IndexedDB Database', () => {
   it('Removes a job with aborted status from the database if marked as "cleanup and remove" ', async () => {
     const queueId = uuidv4();
     const type = uuidv4();
-    const id = await enqueueToDatabase(queueId, type, [], 0);
+    const id = await enqueueToDatabase(queueId, type, [], 0, false);
     await markJobAbortedInDatabase(id);
 
     await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
@@ -410,6 +419,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_ABORTED_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
     await markJobCleanupAndRemoveInDatabase(id);
 
@@ -419,7 +429,7 @@ describe('IndexedDB Database', () => {
   it('Removes a job with pending status from the database if marked as "cleanup and remove" ', async () => {
     const queueId = uuidv4();
     const type = uuidv4();
-    const id = await enqueueToDatabase(queueId, type, [], 0);
+    const id = await enqueueToDatabase(queueId, type, [], 0, false);
 
     await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
       id,
@@ -430,6 +440,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
     await markJobCleanupAndRemoveInDatabase(id);
 
@@ -441,12 +452,12 @@ describe('IndexedDB Database', () => {
     const type = uuidv4();
 
 
-    const idA = await enqueueToDatabase(queueId, type, [], 0);
-    const idB = await enqueueToDatabase(queueId, type, [], 0);
-    const idC = await enqueueToDatabase(queueId, type, [], 0);
-    const idD = await enqueueToDatabase(queueId, type, [], 0);
-    const idE = await enqueueToDatabase(queueId, type, [], 0);
-    const idF = await enqueueToDatabase(queueId, type, [], 0);
+    const idA = await enqueueToDatabase(queueId, type, [], 0, false);
+    const idB = await enqueueToDatabase(queueId, type, [], 0, false);
+    const idC = await enqueueToDatabase(queueId, type, [], 0, false);
+    const idD = await enqueueToDatabase(queueId, type, [], 0, false);
+    const idE = await enqueueToDatabase(queueId, type, [], 0, false);
+    const idF = await enqueueToDatabase(queueId, type, [], 0, false);
 
     await markJobCompleteInDatabase(idB);
     await markJobErrorInDatabase(idC);
@@ -465,6 +476,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }, {
       id: idB,
       queueId,
@@ -474,6 +486,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_COMPLETE_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }, {
       id: idC,
       queueId,
@@ -483,6 +496,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_ERROR_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }, {
       id: idD,
       queueId,
@@ -492,6 +506,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }, {
       id: idE,
       queueId,
@@ -501,6 +516,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_ABORTED_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }, {
       id: idF,
       queueId,
@@ -510,6 +526,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_AND_REMOVE_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
   });
 
@@ -517,7 +534,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
 
     await expectAsync(dequeueFromDatabase()).toBeResolvedTo([{
       id,
@@ -528,6 +545,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
   });
 
@@ -535,7 +553,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
     await markJobErrorInDatabase(id);
 
     await expectAsync(dequeueFromDatabase()).toBeResolvedTo([{
@@ -547,6 +565,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_ERROR_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
   });
 
@@ -554,7 +573,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
     await markJobCleanupInDatabase(id);
 
     await expectAsync(dequeueFromDatabase()).toBeResolvedTo([{
@@ -566,6 +585,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
   });
 
@@ -574,7 +594,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
     await markJobCompleteInDatabase(id);
     await markJobCleanupAndRemoveInDatabase(id);
 
@@ -587,6 +607,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_AND_REMOVE_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
   });
 
@@ -594,7 +615,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
     await markJobCompleteInDatabase(id);
 
     await expectAsync(dequeueFromDatabase()).toBeResolvedTo([]);
@@ -604,7 +625,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
     await markJobAbortedInDatabase(id);
 
     await expectAsync(dequeueFromDatabase()).toBeResolvedTo([]);
@@ -626,9 +647,9 @@ describe('IndexedDB Database', () => {
     const argsA = [uuidv4()];
     const argsB = [uuidv4()];
     const argsC = [uuidv4()];
-    const idA = await enqueueToDatabase(queueId, type, argsA, 0);
-    const idB = await enqueueToDatabase(queueId, type, argsB, 0);
-    const idC = await enqueueToDatabase(queueId, type, argsC, 0);
+    const idA = await enqueueToDatabase(queueId, type, argsA, 0, false);
+    const idB = await enqueueToDatabase(queueId, type, argsB, 0, false);
+    const idC = await enqueueToDatabase(queueId, type, argsC, 0, false);
 
     await expectAsync(dequeueFromDatabaseNotIn([])).toBeResolvedTo([{
       id: idA,
@@ -639,6 +660,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }, {
       id: idB,
       queueId,
@@ -648,6 +670,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }, {
       id: idC,
       queueId,
@@ -657,6 +680,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
 
     await expectAsync(dequeueFromDatabaseNotIn([idA])).toBeResolvedTo([{
@@ -668,6 +692,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }, {
       id: idC,
       queueId,
@@ -677,6 +702,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
 
     await expectAsync(dequeueFromDatabaseNotIn([idC])).toBeResolvedTo([{
@@ -688,6 +714,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }, {
       id: idB,
       queueId,
@@ -697,6 +724,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
 
     await expectAsync(dequeueFromDatabaseNotIn([idB])).toBeResolvedTo([{
@@ -708,6 +736,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }, {
       id: idC,
       queueId,
@@ -717,6 +746,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
 
     await expectAsync(dequeueFromDatabaseNotIn([idA, idC])).toBeResolvedTo([{
@@ -728,6 +758,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
 
     await expectAsync(dequeueFromDatabaseNotIn([idB, idC])).toBeResolvedTo([{
@@ -739,6 +770,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
 
     await expectAsync(dequeueFromDatabaseNotIn([idA, idB])).toBeResolvedTo([{
@@ -750,6 +782,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
 
     await expectAsync(dequeueFromDatabaseNotIn([idA, idB, idC])).toBeResolvedTo([]);
@@ -761,8 +794,8 @@ describe('IndexedDB Database', () => {
     const type = uuidv4();
     const argsA = [uuidv4()];
     const argsB = [uuidv4()];
-    const idA = await enqueueToDatabase(queueId, type, argsA, 0);
-    const idB = await enqueueToDatabase(queueId, type, argsB, 0);
+    const idA = await enqueueToDatabase(queueId, type, argsA, 0, false);
+    const idB = await enqueueToDatabase(queueId, type, argsB, 0, false);
 
     await markJobErrorInDatabase(idA);
     await markJobCompleteInDatabase(idB);
@@ -775,8 +808,8 @@ describe('IndexedDB Database', () => {
     const type = uuidv4();
     const argsA = [uuidv4()];
     const argsB = [uuidv4()];
-    const idA = await enqueueToDatabase(queueId, type, argsA, 0);
-    const idB = await enqueueToDatabase(queueId, type, argsB, 0);
+    const idA = await enqueueToDatabase(queueId, type, argsA, 0, false);
+    const idB = await enqueueToDatabase(queueId, type, argsB, 0, false);
 
     await markJobErrorInDatabase(idA);
     await markJobErrorInDatabase(idB);
@@ -790,6 +823,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_ERROR_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
 
     await expectAsync(dequeueFromDatabaseNotIn([idB])).toBeResolvedTo([{
@@ -801,6 +835,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_ERROR_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
 
     await expectAsync(dequeueFromDatabaseNotIn([idA, idB])).toBeResolvedTo([]);
@@ -811,8 +846,8 @@ describe('IndexedDB Database', () => {
     const type = uuidv4();
     const argsA = [uuidv4()];
     const argsB = [uuidv4()];
-    const idA = await enqueueToDatabase(queueId, type, argsA, 0);
-    const idB = await enqueueToDatabase(queueId, type, argsB, 0);
+    const idA = await enqueueToDatabase(queueId, type, argsA, 0, false);
+    const idB = await enqueueToDatabase(queueId, type, argsB, 0, false);
 
     await markJobCleanupInDatabase(idA);
     await markJobCleanupInDatabase(idB);
@@ -826,6 +861,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
 
     await expectAsync(dequeueFromDatabaseNotIn([idB])).toBeResolvedTo([{
@@ -837,6 +873,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
 
     await expectAsync(dequeueFromDatabaseNotIn([idA, idB])).toBeResolvedTo([]);
@@ -846,9 +883,10 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const prioritize = false;
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
     await removeJobFromDatabase(id);
-    await restoreJobToDatabaseForCleanupAndRemove(id, queueId, type, args);
+    await restoreJobToDatabaseForCleanupAndRemove(id, queueId, type, args, prioritize);
 
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
       id,
@@ -859,6 +897,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_AND_REMOVE_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize,
     });
   });
 
@@ -866,7 +905,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
     await incrementJobAttemptInDatabase(id);
 
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -878,6 +917,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
   });
 
@@ -885,7 +925,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
 
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
       id,
@@ -896,6 +936,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
     await markQueueForCleanupInDatabase(queueId);
 
@@ -908,6 +949,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_ABORTED_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
   });
 
@@ -916,7 +958,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
 
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
       id,
@@ -927,6 +969,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
 
     const greatestJobId = await getGreatestJobIdFromQueueInDatabase(queueId);
@@ -944,6 +987,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
 
     await markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase(queueId, 0);
@@ -955,7 +999,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
 
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
       id,
@@ -966,6 +1010,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
     await markQueueForCleanupAndRemoveInDatabase(queueId);
 
@@ -976,7 +1021,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
 
     await markJobAbortedInDatabase(id);
 
@@ -989,6 +1034,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_ABORTED_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
     await markQueueForCleanupAndRemoveInDatabase(queueId);
 
@@ -999,7 +1045,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
     await markJobCompleteInDatabase(id);
 
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1011,6 +1057,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_COMPLETE_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
     await markQueueForCleanupInDatabase(queueId);
 
@@ -1023,6 +1070,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
   });
 
@@ -1030,7 +1078,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
     await markJobCompleteInDatabase(id);
 
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1042,6 +1090,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_COMPLETE_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
     await markQueueForCleanupAndRemoveInDatabase(queueId);
 
@@ -1054,6 +1103,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_AND_REMOVE_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
   });
 
@@ -1061,7 +1111,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
     await markJobCompleteInDatabase(id);
 
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1073,6 +1123,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_COMPLETE_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
 
     const greatestJobId = await getGreatestJobIdFromQueueInDatabase(queueId);
@@ -1090,6 +1141,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_COMPLETE_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
 
     await markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase(queueId, 0);
@@ -1103,6 +1155,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_AND_REMOVE_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
   });
 
@@ -1110,7 +1163,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
     await markJobCompleteInDatabase(id);
     const jobBeforeUpdate = await getJobFromDatabase(id);
     if (typeof jobBeforeUpdate === 'undefined') {
@@ -1131,7 +1184,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
     await markJobErrorInDatabase(id);
 
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1143,6 +1196,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_ERROR_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
     await markQueueForCleanupInDatabase(queueId);
 
@@ -1155,6 +1209,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
   });
 
@@ -1162,7 +1217,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
     await markJobErrorInDatabase(id);
 
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1174,6 +1229,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_ERROR_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
     await markQueueForCleanupAndRemoveInDatabase(queueId);
 
@@ -1186,6 +1242,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_AND_REMOVE_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
   });
 
@@ -1193,7 +1250,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
     await incrementJobAttemptInDatabase(id);
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
       id,
@@ -1204,6 +1261,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
     await markQueuePendingInDatabase(queueId);
 
@@ -1216,6 +1274,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
   });
 
@@ -1223,7 +1282,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
 
     await markJobAbortedInDatabase(id);
     await incrementJobAttemptInDatabase(id);
@@ -1236,6 +1295,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_ABORTED_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
     await markQueuePendingInDatabase(queueId);
 
@@ -1248,6 +1308,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
   });
 
@@ -1255,7 +1316,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
     await markJobCompleteInDatabase(id);
     await incrementJobAttemptInDatabase(id);
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1267,6 +1328,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_COMPLETE_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
     await markQueuePendingInDatabase(queueId);
 
@@ -1279,6 +1341,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_COMPLETE_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
   });
 
@@ -1286,7 +1349,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
     await markJobErrorInDatabase(id);
     await incrementJobAttemptInDatabase(id);
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1298,6 +1361,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_ERROR_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
     await markQueuePendingInDatabase(queueId);
 
@@ -1310,6 +1374,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_ERROR_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
   });
 
@@ -1317,7 +1382,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
     await markJobCleanupInDatabase(id);
     await incrementJobAttemptInDatabase(id);
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1329,6 +1394,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
     await markQueuePendingInDatabase(queueId);
 
@@ -1341,6 +1407,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
   });
 
@@ -1348,7 +1415,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
     await markJobCompleteInDatabase(id);
     await markJobCleanupAndRemoveInDatabase(id);
     await incrementJobAttemptInDatabase(id);
@@ -1361,6 +1428,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_AND_REMOVE_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
     await markQueuePendingInDatabase(queueId);
 
@@ -1373,6 +1441,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_AND_REMOVE_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
   });
 
@@ -1380,7 +1449,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
     await incrementJobAttemptInDatabase(id);
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
       id,
@@ -1391,6 +1460,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
     await markQueueJobsGreaterThanIdPendingInDatabase(queueId, id);
 
@@ -1403,6 +1473,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
 
     await markQueueJobsGreaterThanIdPendingInDatabase(queueId, -1);
@@ -1416,6 +1487,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
   });
 
@@ -1423,7 +1495,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
 
     await markJobAbortedInDatabase(id);
     await incrementJobAttemptInDatabase(id);
@@ -1436,6 +1508,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_ABORTED_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
     await markQueueJobsGreaterThanIdPendingInDatabase(queueId, id);
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1447,6 +1520,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_ABORTED_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
     await markQueueJobsGreaterThanIdPendingInDatabase(queueId, -1);
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1458,6 +1532,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
   });
 
@@ -1465,7 +1540,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
     await markJobCompleteInDatabase(id);
     await incrementJobAttemptInDatabase(id);
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1477,6 +1552,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_COMPLETE_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
     await markQueueJobsGreaterThanIdPendingInDatabase(queueId, id);
 
@@ -1489,6 +1565,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_COMPLETE_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
     await markQueueJobsGreaterThanIdPendingInDatabase(queueId, -1);
 
@@ -1501,6 +1578,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_COMPLETE_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
   });
 
@@ -1508,7 +1586,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
     await markJobErrorInDatabase(id);
     await incrementJobAttemptInDatabase(id);
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1520,6 +1598,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_ERROR_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
     await markQueueJobsGreaterThanIdPendingInDatabase(queueId, id);
 
@@ -1532,6 +1611,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_ERROR_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
     await markQueueJobsGreaterThanIdPendingInDatabase(queueId, -1);
 
@@ -1544,6 +1624,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_ERROR_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
   });
 
@@ -1551,7 +1632,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
     await markJobCleanupInDatabase(id);
     await incrementJobAttemptInDatabase(id);
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1563,6 +1644,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
     await markQueueJobsGreaterThanIdPendingInDatabase(queueId, id);
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1574,6 +1656,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
     await markQueueJobsGreaterThanIdPendingInDatabase(queueId, -1);
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1585,6 +1668,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
   });
 
@@ -1592,7 +1676,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0);
+    const id = await enqueueToDatabase(queueId, type, args, 0, false);
     await markJobCompleteInDatabase(id);
     await markJobCleanupAndRemoveInDatabase(id);
     await incrementJobAttemptInDatabase(id);
@@ -1605,6 +1689,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_AND_REMOVE_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
     await markQueueJobsGreaterThanIdPendingInDatabase(queueId, id);
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1616,6 +1701,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_AND_REMOVE_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
     await markQueueJobsGreaterThanIdPendingInDatabase(queueId, -1);
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1627,6 +1713,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_AND_REMOVE_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     });
   });
 
@@ -1637,8 +1724,8 @@ describe('IndexedDB Database', () => {
     const valueA = uuidv4();
     const valueB = uuidv4();
     const items = [
-      [type, [valueA]],
-      [type, [valueB]],
+      [type, [valueA], false],
+      [type, [valueB], false],
     ];
     await bulkEnqueueToDatabase(queueId, items, 0);
 
@@ -1651,6 +1738,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }, {
       id: jasmine.any(Number),
       queueId,
@@ -1660,6 +1748,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
   });
 

@@ -44,7 +44,7 @@ describe('Queue Watcher in Worker', () => {
     const value = uuidv4();
     const args = [TRIGGER_NO_ERROR, value];
     const watcher = new BatteryQueueWatcher(queueId);
-    const id = await enqueueToDatabase(queueId, 'echo', args, 0);
+    const id = await enqueueToDatabase(queueId, 'echo', args, 0, false);
     await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
       id,
       queueId,
@@ -54,6 +54,7 @@ describe('Queue Watcher in Worker', () => {
       created: jasmine.any(Number),
       status: JOB_PENDING_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
     await expectAsync(watcher.getStatus()).toBeResolvedTo(QUEUE_PENDING_STATUS);
     await queueInterface.dequeue();
@@ -68,6 +69,7 @@ describe('Queue Watcher in Worker', () => {
       created: jasmine.any(Number),
       status: JOB_COMPLETE_STATUS,
       startAfter: jasmine.any(Number),
+      prioritize: false,
     }]);
     await expectAsync(watcher.getStatus()).toBeResolvedTo(QUEUE_COMPLETE_STATUS);
   });

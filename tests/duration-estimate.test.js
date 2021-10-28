@@ -51,8 +51,8 @@ describe('Time Estimation', () => {
     queue.disableStartOnJob();
 
     expect(queue.getDurationEstimate(queueId)).toEqual([0, 0]);
-    await enqueueToDatabase(queueId, type, argsA, 0);
-    await enqueueToDatabase(queueId, type, argsB, 0);
+    await enqueueToDatabase(queueId, type, argsA, 0, false);
+    await enqueueToDatabase(queueId, type, argsB, 0, false);
 
     const events = [];
     const handleQueueDuration = (...args) => {
@@ -143,8 +143,8 @@ describe('Time Estimation', () => {
 
     expect(queue.getDurationEstimate(queueId)).toEqual([0, 0]);
     queue.addListener('queueDuration', handleQueueDuration);
-    await enqueueToDatabase(queueId, type, argsA, 0);
-    await enqueueToDatabase(queueId, type, argsB, 0);
+    await enqueueToDatabase(queueId, type, argsA, 0, false);
+    await enqueueToDatabase(queueId, type, argsB, 0, false);
 
     await queue.dequeue();
     await queue.onIdle();
@@ -208,8 +208,8 @@ describe('Time Estimation', () => {
     queue.disableStartOnJob();
 
     expect(queue.getDurationEstimate(queueId)).toEqual([0, 0]);
-    await enqueueToDatabase(queueId, type, argsA, 0);
-    await enqueueToDatabase(queueId, type, argsB, 0);
+    await enqueueToDatabase(queueId, type, argsA, 0, false);
+    await enqueueToDatabase(queueId, type, argsB, 0, false);
     const events = [];
     const handleQueueDuration = (...args) => {
       events.push(args);

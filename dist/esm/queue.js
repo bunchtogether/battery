@@ -4,7 +4,8 @@ import makeLogger from './logger';
 import { jobEmitter, localJobEmitter, clearDatabase, dequeueFromDatabase, dequeueFromDatabaseNotIn, incrementJobAttemptInDatabase, incrementCleanupAttemptInDatabase, markJobCompleteInDatabase, markJobCompleteThenRemoveFromDatabase, markJobPendingInDatabase, markJobErrorInDatabase, markJobStartAfterInDatabase, markJobAsAbortedOrRemoveFromDatabase, markCleanupStartAfterInDatabase, markQueuePendingInDatabase, updateCleanupValuesInDatabase, getCleanupFromDatabase, removePathFromCleanupDataInDatabase, getJobFromDatabase, markQueueForCleanupInDatabase, markQueueForCleanupAndRemoveInDatabase, markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase, removeCleanupFromDatabase, restoreJobToDatabaseForCleanupAndRemove, getUnloadDataFromDatabase, clearUnloadDataInDatabase, getGreatestJobIdFromQueueInDatabase, JOB_PENDING_STATUS, JOB_ERROR_STATUS, JOB_CLEANUP_STATUS, JOB_CLEANUP_AND_REMOVE_STATUS } from './database';
 import { AbortError } from './errors';
 export const CLEANUP_JOB_TYPE = 'CLEANUP_JOB_TYPE';
-const PRIORITY_OFFSET = Math.floor(Number.MAX_SAFE_INTEGER / 2);
+const BASE_PRIORITY = Math.floor(Number.MAX_SAFE_INTEGER / 2);
+const HIGH_PRIORITY_OFFSET = Math.floor(Number.MAX_SAFE_INTEGER / 8);
 export default class BatteryQueue extends EventEmitter {
   constructor(options = {}) {
     super();
@@ -111,9 +112,10 @@ export default class BatteryQueue extends EventEmitter {
         }
 
         const {
-          args
+          args,
+          prioritize
         } = job;
-        this.startCleanup(id, queueId, args, type, true);
+        this.startCleanup(id, queueId, args, type, true, prioritize);
       }).catch(error => {
         this.logger.error(`Error while cleaning up and removing ${type} job #${id} in queue ${queueId}`);
         this.logger.errorStack(error);
@@ -473,7 +475,7 @@ export default class BatteryQueue extends EventEmitter {
   async retryQueue(queueId) {
     this.logger.info(`Retrying queue ${queueId}`);
     const lastJobId = await getGreatestJobIdFromQueueInDatabase(queueId);
-    const priority = PRIORITY_OFFSET - lastJobId - 0.5;
+    const priority = BASE_PRIORITY - lastJobId - 0.5;
     this.addToQueue(queueId, priority, true, async () => {
       // Resets job attempts. Changes:
       // * JOB_ABORTED_STATUS -> JOB_PENDING_STATUS
@@ -557,7 +559,8 @@ export default class BatteryQueue extends EventEmitter {
       type,
       status,
       attempt,
-      startAfter
+      startAfter,
+      prioritize
     } of jobs) {
       if (this.jobIds.has(id)) {
         continue;
@@ -575,13 +578,13 @@ export default class BatteryQueue extends EventEmitter {
       }
 
       if (status === JOB_PENDING_STATUS) {
-        this.startJob(id, queueId, args, type, attempt + 1, startAfter, false);
+        this.startJob(id, queueId, args, type, attempt + 1, startAfter, false, prioritize);
       } else if (status === JOB_ERROR_STATUS) {
-        this.startErrorHandler(id, queueId, args, type, attempt, startAfter, false);
+        this.startErrorHandler(id, queueId, args, type, attempt, startAfter, false, prioritize);
       } else if (status === JOB_CLEANUP_STATUS) {
-        this.startCleanup(id, queueId, args, type, false);
+        this.startCleanup(id, queueId, args, type, false, prioritize);
       } else if (status === JOB_CLEANUP_AND_REMOVE_STATUS) {
-        this.startCleanup(id, queueId, args, type, false);
+        this.startCleanup(id, queueId, args, type, false, prioritize);
       } else {
         throw new Error(`Unknown job status ${status} in job ${id} of queue ${queueId}`);
       }
@@ -800,11 +803,11 @@ export default class BatteryQueue extends EventEmitter {
     });
   }
 
-  startCleanup(id, queueId, args, type, autoStart) {
+  startCleanup(id, queueId, args, type, autoStart, prioritize) {
     this.logger.info(`Adding ${type} cleanup job #${id} to queue ${queueId}`);
     this.jobIds.add(id);
     this.removeDurationEstimate(queueId, id);
-    const priority = PRIORITY_OFFSET + id;
+    const priority = BASE_PRIORITY + id - (prioritize ? HIGH_PRIORITY_OFFSET : 0);
 
     const run = async () => {
       this.setCurrentJobType(queueId, CLEANUP_JOB_TYPE);
@@ -818,10 +821,10 @@ export default class BatteryQueue extends EventEmitter {
     this.addToQueue(queueId, priority, autoStart, run);
   }
 
-  startErrorHandler(id, queueId, args, type, attempt, startAfter, autoStart) {
+  startErrorHandler(id, queueId, args, type, attempt, startAfter, autoStart, prioritize) {
     this.logger.info(`Adding ${type} error handler job #${id} to queue ${queueId}`);
     this.jobIds.add(id);
-    const priority = PRIORITY_OFFSET + id;
+    const priority = BASE_PRIORITY + id - (prioritize ? HIGH_PRIORITY_OFFSET : 0);
     const abortController = this.getAbortController(id, queueId);
 
     const run = async () => {
@@ -840,7 +843,7 @@ export default class BatteryQueue extends EventEmitter {
         this.emit('retry', {
           id
         });
-        this.startJob(id, queueId, args, type, attempt + 1, startAfter, true);
+        this.startJob(id, queueId, args, type, attempt + 1, startAfter, true, prioritize);
       }
 
       this.logger.info(`Completed ${type} error handler #${id} in queue ${queueId}`);
@@ -875,10 +878,10 @@ export default class BatteryQueue extends EventEmitter {
     }
   }
 
-  startJob(id, queueId, args, type, attempt, startAfter, autoStart) {
+  startJob(id, queueId, args, type, attempt, startAfter, autoStart, prioritize) {
     this.logger.info(`Adding ${type} job #${id} to queue ${queueId}`);
     this.jobIds.add(id);
-    const priority = PRIORITY_OFFSET - id;
+    const priority = BASE_PRIORITY - id + (prioritize ? HIGH_PRIORITY_OFFSET : 0);
 
     const updateCleanupData = data => updateCleanupValuesInDatabase(id, queueId, data);
 
@@ -982,10 +985,10 @@ export default class BatteryQueue extends EventEmitter {
               queueId,
               error
             });
-            await restoreJobToDatabaseForCleanupAndRemove(id, queueId, type, args);
+            await restoreJobToDatabaseForCleanupAndRemove(id, queueId, type, args, prioritize);
             this.jobIds.delete(id);
             this.removeAbortController(id, queueId);
-            this.startCleanup(id, queueId, args, type, true);
+            this.startCleanup(id, queueId, args, type, true, prioritize);
           } else {
             this.emit('fatalError', {
               id,
@@ -1016,7 +1019,7 @@ export default class BatteryQueue extends EventEmitter {
             });
             this.jobIds.delete(id);
             this.removeAbortController(id, queueId);
-            this.startCleanup(id, queueId, args, type, true);
+            this.startCleanup(id, queueId, args, type, true, prioritize);
           } else {
             this.emit('fatalError', {
               id,
@@ -1076,10 +1079,10 @@ export default class BatteryQueue extends EventEmitter {
           const newStartAfter = Date.now() + retryDelay;
           await markJobStartAfterInDatabase(id, newStartAfter);
           this.jobIds.delete(id);
-          this.startErrorHandler(id, queueId, args, type, attempt, newStartAfter, true);
+          this.startErrorHandler(id, queueId, args, type, attempt, newStartAfter, true, prioritize);
         } else {
           this.jobIds.delete(id);
-          this.startErrorHandler(id, queueId, args, type, attempt, startAfter, true);
+          this.startErrorHandler(id, queueId, args, type, attempt, startAfter, true, prioritize);
         }
       }
     };
