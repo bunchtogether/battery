@@ -953,6 +953,7 @@ export default class BatteryQueue extends EventEmitter {
 
         if (shouldKeepJobInDatabase === false) {
           await markJobCompleteThenRemoveFromDatabase(id);
+          await removeCleanupFromDatabase(id);
         } else {
           await markJobCompleteInDatabase(id);
         }

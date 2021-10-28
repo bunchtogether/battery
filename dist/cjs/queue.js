@@ -1940,7 +1940,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
                 case 32:
                   if (!(shouldKeepJobInDatabase === false)) {
-                    _context22.next = 37;
+                    _context22.next = 39;
                     break;
                   }
 
@@ -1948,14 +1948,18 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   return (0, _database.markJobCompleteThenRemoveFromDatabase)(id);
 
                 case 35:
-                  _context22.next = 39;
-                  break;
+                  _context22.next = 37;
+                  return (0, _database.removeCleanupFromDatabase)(id);
 
                 case 37:
-                  _context22.next = 39;
-                  return (0, _database.markJobCompleteInDatabase)(id);
+                  _context22.next = 41;
+                  break;
 
                 case 39:
+                  _context22.next = 41;
+                  return (0, _database.markJobCompleteInDatabase)(id);
+
+                case 41:
                   _this9.removeAbortController(id, queueId);
 
                   _this9.jobIds.delete(id);
@@ -1976,19 +1980,19 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
                   return _context22.abrupt("return");
 
-                case 48:
-                  _context22.prev = 48;
+                case 50:
+                  _context22.prev = 50;
                   _context22.t0 = _context22["catch"](20);
 
                   if (!(_context22.t0.name === 'JobDoesNotExistError')) {
-                    _context22.next = 66;
+                    _context22.next = 68;
                     break;
                   }
 
                   _this9.logger.error("Job does not exist error for ".concat(type, " job #").concat(id, " in queue ").concat(queueId, " attempt ").concat(attempt));
 
                   if (!handlerDidRun) {
-                    _context22.next = 61;
+                    _context22.next = 63;
                     break;
                   }
 
@@ -1998,20 +2002,20 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                     error: _context22.t0
                   });
 
-                  _context22.next = 56;
+                  _context22.next = 58;
                   return (0, _database.restoreJobToDatabaseForCleanupAndRemove)(id, queueId, type, args);
 
-                case 56:
+                case 58:
                   _this9.jobIds.delete(id);
 
                   _this9.removeAbortController(id, queueId);
 
                   _this9.startCleanup(id, queueId, args, type, true);
 
-                  _context22.next = 65;
+                  _context22.next = 67;
                   break;
 
-                case 61:
+                case 63:
                   _this9.emit('fatalError', {
                     id: id,
                     queueId: queueId,
@@ -2024,12 +2028,12 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
                   _this9.removeDurationEstimate(queueId, id);
 
-                case 65:
+                case 67:
                   return _context22.abrupt("return");
 
-                case 66:
+                case 68:
                   if (!abortController.signal.aborted) {
-                    _context22.next = 82;
+                    _context22.next = 84;
                     break;
                   }
 
@@ -2042,7 +2046,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   }
 
                   if (!handlerDidRun) {
-                    _context22.next = 75;
+                    _context22.next = 77;
                     break;
                   }
 
@@ -2058,36 +2062,36 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
                   _this9.startCleanup(id, queueId, args, type, true);
 
-                  _context22.next = 81;
+                  _context22.next = 83;
                   break;
 
-                case 75:
+                case 77:
                   _this9.emit('fatalError', {
                     id: id,
                     queueId: queueId,
                     error: _context22.t0
                   });
 
-                  _context22.next = 78;
+                  _context22.next = 80;
                   return (0, _database.markJobAsAbortedOrRemoveFromDatabase)(id);
 
-                case 78:
+                case 80:
                   _this9.jobIds.delete(id);
 
                   _this9.removeAbortController(id, queueId);
 
                   _this9.removeDurationEstimate(queueId, id);
 
-                case 81:
+                case 83:
                   return _context22.abrupt("return");
 
-                case 82:
-                  _context22.next = 84;
+                case 84:
+                  _context22.next = 86;
                   return (0, _database.incrementJobAttemptInDatabase)(id);
 
-                case 84:
+                case 86:
                   if (!(_context22.t0.name === 'FatalError')) {
-                    _context22.next = 93;
+                    _context22.next = 95;
                     break;
                   }
 
@@ -2105,21 +2109,21 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
                   _this9.removeAbortController(id, queueId);
 
-                  _context22.next = 92;
+                  _context22.next = 94;
                   return _this9.abortQueue(queueId);
 
-                case 92:
+                case 94:
                   return _context22.abrupt("return");
 
-                case 93:
-                  _context22.next = 95;
+                case 95:
+                  _context22.next = 97;
                   return _this9.getRetryJobDelay(type, attempt, _context22.t0);
 
-                case 95:
+                case 97:
                   retryDelay = _context22.sent;
 
                   if (!(retryDelay === false)) {
-                    _context22.next = 105;
+                    _context22.next = 107;
                     break;
                   }
 
@@ -2137,19 +2141,19 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
 
                   _this9.removeAbortController(id, queueId);
 
-                  _context22.next = 104;
+                  _context22.next = 106;
                   return _this9.abortQueue(queueId);
 
-                case 104:
+                case 106:
                   return _context22.abrupt("return");
 
-                case 105:
+                case 107:
                   _this9.logger.error("Error in ".concat(type, " job #").concat(id, " in queue ").concat(queueId, " attempt ").concat(attempt, ", retrying ").concat(retryDelay > 0 ? "in ".concat(retryDelay, "ms") : 'immediately'));
 
                   _this9.emit('error', _context22.t0);
 
                   if (!(retryDelay > 0)) {
-                    _context22.next = 116;
+                    _context22.next = 118;
                     break;
                   }
 
@@ -2160,28 +2164,28 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   });
 
                   newStartAfter = Date.now() + retryDelay;
-                  _context22.next = 112;
+                  _context22.next = 114;
                   return (0, _database.markJobStartAfterInDatabase)(id, newStartAfter);
 
-                case 112:
+                case 114:
                   _this9.jobIds.delete(id);
 
                   _this9.startErrorHandler(id, queueId, args, type, attempt, newStartAfter, true);
 
-                  _context22.next = 118;
+                  _context22.next = 120;
                   break;
 
-                case 116:
+                case 118:
                   _this9.jobIds.delete(id);
 
                   _this9.startErrorHandler(id, queueId, args, type, attempt, startAfter, true);
 
-                case 118:
+                case 120:
                 case "end":
                   return _context22.stop();
               }
             }
-          }, _callee21, null, [[20, 48]]);
+          }, _callee21, null, [[20, 50]]);
         }));
 
         return function run() {
