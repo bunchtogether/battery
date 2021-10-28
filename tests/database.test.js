@@ -160,8 +160,10 @@ describe('IndexedDB Database', () => {
     const type = uuidv4();
     const id = await enqueueToDatabase(queueId, type, [], 0);
     markJobCompleteThenRemoveFromDatabase(id);
-    await expectAsync(jobEmitter).toEmit('jobUpdate', id, queueId, type, JOB_COMPLETE_STATUS);
-    await expectAsync(jobEmitter).toEmit('jobDelete', id, queueId);
+    const updatePromise = expectAsync(jobEmitter).toEmit('jobUpdate', id, queueId, type, JOB_COMPLETE_STATUS);
+    const deletePromise = expectAsync(jobEmitter).toEmit('jobDelete', id, queueId);
+    await updatePromise;
+    await deletePromise;
   });
 
   it('Increments cleanup attempts', async () => {

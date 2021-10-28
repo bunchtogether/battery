@@ -144,8 +144,10 @@ describe('Queue', () => {
     const queueId = uuidv4();
     const value = uuidv4();
     const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_HANDLER_RETURN_FALSE, value], 100);
-    await expectAsync(jobEmitter).toEmit('jobUpdate', id, queueId, 'echo', JOB_COMPLETE_STATUS);
-    await expectAsync(jobEmitter).toEmit('jobDelete', id, queueId);
+    const jobUpdatePromise = expectAsync(jobEmitter).toEmit('jobUpdate', id, queueId, 'echo', JOB_COMPLETE_STATUS);
+    const jobDeletePromise = expectAsync(jobEmitter).toEmit('jobDelete', id, queueId);
+    await jobUpdatePromise;
+    await jobDeletePromise;
     await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([]);
   });
 

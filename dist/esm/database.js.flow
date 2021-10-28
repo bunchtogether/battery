@@ -61,7 +61,7 @@ export const JOB_CLEANUP_STATUS = -2;
 export const JOB_CLEANUP_AND_REMOVE_STATUS = -3;
 
 export const databasePromise = (async () => {
-  const request = self.indexedDB.open('battery-queue-07', 1);
+  const request = self.indexedDB.open('battery-queue-08', 1);
 
   request.onupgradeneeded = function (e) {
     try {
@@ -71,7 +71,7 @@ export const databasePromise = (async () => {
       store.createIndex('queueIdTypeIndex', ['queueId', 'type'], { unique: false });
       store.createIndex('typeIndex', 'type', { unique: false });
       store.createIndex('statusQueueIdIndex', ['queueId', 'status'], { unique: false });
-      store.createIndex('createdIndex', 'created', { unique: false });
+      store.createIndex('statusCreatedIndex', ['status', 'created'], { unique: false });
     } catch (error) {
       if (!(error.name === 'ConstraintError')) {
         throw error;
@@ -192,26 +192,18 @@ function getReadOnlyCleanupsObjectStore() {
   return getReadOnlyObjectStore('cleanups');
 }
 
-async function getReadWriteObjectStoreAndTransactionPromise(name:string) {
+async function getReadWriteJobCleanupAndArgLookupStores() {
   const database = await databasePromise;
-  const transaction = database.transaction([name], 'readwrite', { durability: 'relaxed' });
-  const objectStore = transaction.objectStore(name);
-  const promise = new Promise((resolve, reject) => {
-    transaction.onabort = (event) => {
-      logger.error(`Read-write "${name}" transaction was aborted`);
-      logger.errorObject(event);
-      reject(new Error(`Read-write "${name}" transaction was aborted`));
-    };
-    transaction.onerror = (event) => {
-      logger.error(`Error in read-write "${name}" transaction`);
-      logger.errorObject(event);
-      reject(new Error(`Error in read-write "${name}" transaction`));
-    };
-    transaction.oncomplete = () => {
-      resolve();
-    };
-  });
-  return [objectStore, promise];
+  const transaction = database.transaction(['jobs', 'cleanups', 'arg-lookup'], 'readwrite', { durability: 'relaxed' });
+  transaction.onabort = (event) => {
+    logger.error('Read-write \'jobs\', \'cleanups\', and \'arg-lookup\' transaction was aborted');
+    logger.errorObject(event);
+  };
+  transaction.onerror = (event) => {
+    logger.error('Error in read-write \'jobs\', \'cleanups\', and \'arg-lookup\' transaction');
+    logger.errorObject(event);
+  };
+  return [transaction.objectStore('jobs'), transaction.objectStore('cleanups'), transaction.objectStore('arg-lookup')];
 }
 
 async function getReadOnlyObjectStoreAndTransactionPromise(name:string) {
@@ -237,28 +229,54 @@ async function getReadOnlyObjectStoreAndTransactionPromise(name:string) {
 }
 
 
-function getReadWriteJobsObjectStoreAndTransactionPromise() {
-  return getReadWriteObjectStoreAndTransactionPromise('jobs');
-}
-
 function getReadOnlyJobsObjectStoreAndTransactionPromise() {
   return getReadOnlyObjectStoreAndTransactionPromise('jobs');
 }
 
-function getReadWriteArgLookupObjectStoreAndTransactionPromise() {
-  return getReadWriteObjectStoreAndTransactionPromise('arg-lookup');
-}
 
-function removeJobFromObjectStore(store:IDBObjectStore, id:number, queueId:string) {
-  const deleteRequest = store.delete(id);
-  localJobEmitter.emit('jobDelete', id, queueId);
-  jobEmitter.emit('jobDelete', id, queueId);
-  deleteRequest.onsuccess = function () {
-    removeArgLookupsForJobAsMicrotask(id);
-  };
-  deleteRequest.onerror = function (event) {
-    logger.error(`Request error while removing job ${id} in queue ${queueId} from database`);
+function removeJobCleanupAndArgLookup(jobsObjectStore:IDBObjectStore, cleanupsObjectStore:IDBObjectStore, argLookupObjectStore:IDBObjectStore, jobId:number, queueId:string, onSuccess?:() => void, onError?:(Error) => void) {
+  const jobDeleteRequest = jobsObjectStore.delete(jobId);
+  localJobEmitter.emit('jobDelete', jobId, queueId);
+  jobEmitter.emit('jobDelete', jobId, queueId);
+  jobDeleteRequest.onerror = function (event) {
+    logger.error(`Request error while removing job ${jobId} in queue ${queueId} from database`);
     logger.errorObject(event);
+    if (typeof onError === 'function') {
+      onError(new Error(`Request error while removing job ${jobId} in queue ${queueId} from database`));
+    }
+  };
+  const cleanupDeleteRequest = cleanupsObjectStore.delete(jobId);
+  cleanupDeleteRequest.onerror = function (event) {
+    logger.error(`Request error while removing cleanup for job ${jobId} in queue ${queueId} from database`);
+    logger.errorObject(event);
+    if (typeof onError === 'function') {
+      onError(new Error(`Request error while removing cleanup for job ${jobId} in queue ${queueId} from database`));
+    }
+  };
+  const argLookupJobIdIndex = argLookupObjectStore.index('jobIdIndex');
+  // $FlowFixMe
+  const argLookupJobRequest = argLookupJobIdIndex.getAllKeys(IDBKeyRange.only(jobId));
+  argLookupJobRequest.onsuccess = function (event) {
+    for (const id of event.target.result) {
+      const argLookupDeleteRequest = argLookupObjectStore.delete(id);
+      argLookupDeleteRequest.onerror = function (deleteEvent) {
+        logger.error(`Delete request error while removing argument lookups for job ${jobId} in queue ${queueId} from database`);
+        logger.errorObject(deleteEvent);
+        if (typeof onError === 'function') {
+          onError(new Error(`Delete request error while removing argument lookups for job ${jobId} in queue ${queueId} from database`));
+        }
+      };
+    }
+    if (typeof onSuccess === 'function') {
+      onSuccess();
+    }
+  };
+  argLookupJobRequest.onerror = function (event) {
+    logger.error(`Request error while removing argument lookups for job ${jobId} in queue ${queueId} from database`);
+    logger.errorObject(event);
+    if (typeof onError === 'function') {
+      onError(new Error(`Request error while removing argument lookups for job ${jobId} in queue ${queueId} from database`));
+    }
   };
 }
 
@@ -319,104 +337,86 @@ export async function clearDatabase() {
 }
 
 export async function removeJobsWithQueueIdAndTypeFromDatabase(queueId:string, type:string) {
-  const [store, promise] = await getReadWriteJobsObjectStoreAndTransactionPromise();
-  const index = store.index('queueIdTypeIndex');
+  const [jobsObjectStore, cleanupsObjectStore, argLookupObjectStore] = await getReadWriteJobCleanupAndArgLookupStores();
+  const index = jobsObjectStore.index('queueIdTypeIndex');
   // $FlowFixMe
   const request = index.getAllKeys(IDBKeyRange.only([queueId, type]));
-  request.onsuccess = function (event) {
-    for (const id of event.target.result) {
-      removeJobFromObjectStore(store, id, queueId);
-    }
-  };
-  request.onerror = function (event) {
-    logger.error(`Request error while removing jobs with queue ${queueId} and type ${type} from jobs database`);
-    logger.errorObject(event);
-  };
-  await promise;
+  await new Promise((resolve, reject) => {
+    request.onsuccess = function (event) {
+      const jobIds = event.target.result;
+      for (let i = 0; i < jobIds.length; i += 1) {
+        const jobId = jobIds[i];
+        if (i === jobIds.length - 1) {
+          removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId, resolve, reject);
+        } else {
+          removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId);
+        }
+      }
+    };
+    request.onerror = function (event) {
+      logger.error(`Request error while removing jobs with queue ${queueId} and type ${type} from jobs database`);
+      logger.errorObject(event);
+    };
+  });
 }
 
 export async function removeQueueFromDatabase(queueId:string) {
-  const database = await databasePromise;
-  const transaction = database.transaction(['jobs', 'cleanups', 'arg-lookup'], 'readwrite', { durability: 'relaxed' });
-  const jobsObjectStore = transaction.objectStore('jobs');
-  const cleanupsObjectStore = transaction.objectStore('cleanups');
-  const argLookupObjectStore = transaction.objectStore('arg-lookup');
-  const promise = new Promise((resolve, reject) => {
-    transaction.onabort = (event) => {
-      logger.error('Read-write remove queue transaction was aborted');
-      logger.errorObject(event);
-      reject(new Error('Read-write emove queue transaction was aborted'));
+  const [jobsObjectStore, cleanupsObjectStore, argLookupObjectStore] = await getReadWriteJobCleanupAndArgLookupStores();
+  const index = jobsObjectStore.index('queueIdIndex');
+  // $FlowFixMe
+  const request = index.getAllKeys(IDBKeyRange.only(queueId));
+  await new Promise((resolve, reject) => {
+    request.onsuccess = function (event) {
+      const jobIds = event.target.result;
+      for (let i = 0; i < jobIds.length; i += 1) {
+        const jobId = jobIds[i];
+        if (i === jobIds.length - 1) {
+          removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId, () => {
+            jobsObjectStore.transaction.commit();
+            resolve();
+          }, reject);
+        } else {
+          removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId);
+        }
+      }
     };
-    transaction.onerror = (event) => {
-      logger.error('Error in read-write remove queue transaction');
+    request.onerror = function (event) {
+      logger.error(`Request error while removing queue ${queueId} from jobs database`);
       logger.errorObject(event);
-      reject(new Error('Error in read-write remove queue transaction'));
-    };
-    transaction.oncomplete = () => {
-      resolve();
+      reject(new Error(`Request error while removing queue ${queueId} from jobs database`));
     };
   });
-  const queueIdIndex = jobsObjectStore.index('queueIdIndex');
-  const argLookupJobIdIndex = argLookupObjectStore.index('jobIdIndex');
-  // $FlowFixMe
-  const request = queueIdIndex.getAllKeys(IDBKeyRange.only(queueId));
-
-  request.onsuccess = function ({ target: { result: jobIds } }) {
-    for (const jobId of jobIds) {
-      const jobDeleteRequest = jobsObjectStore.delete(jobId);
-      localJobEmitter.emit('jobDelete', jobId, queueId);
-      jobEmitter.emit('jobDelete', jobId, queueId);
-      jobDeleteRequest.onerror = function (event) {
-        logger.error(`Request error while removing job ${jobId} in queue ${queueId} from database`);
-        logger.errorObject(event);
-      };
-      const cleanupDeleteRequest = cleanupsObjectStore.delete(jobId);
-      cleanupDeleteRequest.onerror = function (event) {
-        logger.error(`Request error while removing cleanup for job ${jobId} in queue ${queueId} from database`);
-        logger.errorObject(event);
-      };
-      // $FlowFixMe
-      const argLookupJobRequest = argLookupJobIdIndex.getAllKeys(IDBKeyRange.only(jobId));
-      argLookupJobRequest.onsuccess = function (event) {
-        for (const id of event.target.result) {
-          const argLookupDeleteRequest = argLookupObjectStore.delete(id);
-          argLookupDeleteRequest.onerror = function (deleteEvent) {
-            logger.error(`Delete request error while removing argument lookups for job ${jobId} in queue ${queueId} from database`);
-            logger.errorObject(deleteEvent);
-          };
-        }
-      };
-      argLookupJobRequest.onerror = function (event) {
-        logger.error(`Request error while removing argument lookups for job ${jobId} in queue ${queueId} from database`);
-        logger.errorObject(event);
-      };
-    }
-  };
-  request.onerror = function (event) {
-    logger.error(`Request error while removing queue ${queueId} from jobs database`);
-    logger.errorObject(event);
-  };
-  await promise;
 }
 
 export async function removeCompletedExpiredItemsFromDatabase(maxAge:number) {
-  const [store, promise] = await getReadWriteJobsObjectStoreAndTransactionPromise();
-  const index = store.index('createdIndex');
+  const [jobsObjectStore, cleanupsObjectStore, argLookupObjectStore] = await getReadWriteJobCleanupAndArgLookupStores();
+  const index = jobsObjectStore.index('statusCreatedIndex');
   // $FlowFixMe
-  const request = index.getAll(IDBKeyRange.bound(0, Date.now() - maxAge));
-  request.onsuccess = function (event) {
-    for (const { id, queueId, status } of event.target.result) {
-      if (status !== JOB_COMPLETE_STATUS) {
-        continue;
+  const request = index.getAll(IDBKeyRange.bound([JOB_COMPLETE_STATUS, 0], [JOB_COMPLETE_STATUS, Date.now() - maxAge]));
+  await new Promise((resolve, reject) => {
+    request.onsuccess = function (event) {
+      const jobs = event.target.result;
+      for (let i = 0; i < jobs.length; i += 1) {
+        const { id: jobId, queueId } = jobs[i];
+        if (i === jobs.length - 1) {
+          removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId, () => {
+            jobsObjectStore.transaction.commit();
+            resolve();
+          }, reject);
+        } else {
+          removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId);
+        }
       }
-      removeJobFromObjectStore(store, id, queueId);
-    }
-  };
-  request.onerror = function (event) {
-    logger.error('Request error while removing completed exired items from jobs database');
-    logger.errorObject(event);
-  };
-  await promise;
+      if (jobs.length === 0) {
+        resolve();
+      }
+    };
+    request.onerror = function (event) {
+      logger.error(`Request error while removing completed jobs with age > ${maxAge}ms`);
+      logger.errorObject(event);
+      reject(new Error(`Request error while removing completed jobs with age > ${maxAge}ms`));
+    };
+  });
 }
 
 export async function updateJobInDatabase(id:number, transform:(Job | void) => Job | void | false):Promise<Job | void> {
@@ -441,7 +441,7 @@ export async function updateJobInDatabase(id:number, transform:(Job | void) => J
           localJobEmitter.emit('jobDelete', id, queueId);
           jobEmitter.emit('jobDelete', id, queueId);
           deleteRequest.onsuccess = function () {
-            removeArgLookupsForJobAsMicrotask(id);
+            removeArgLookupsAndCleanupsForJobAsMicrotask(id);
             resolve();
           };
           deleteRequest.onerror = function (event) {
@@ -582,35 +582,27 @@ export async function silentlyRemoveJobFromDatabase(id:number) {
   });
 }
 
-export async function removeJobFromDatabase(id:number) {
-  const store = await getReadWriteJobsObjectStore();
-  const request = store.get(id);
+
+export async function removeJobFromDatabase(jobId:number) {
+  const [jobsObjectStore, cleanupsObjectStore, argLookupObjectStore] = await getReadWriteJobCleanupAndArgLookupStores();
+  const request = jobsObjectStore.get(jobId);
   await new Promise((resolve, reject) => {
     request.onsuccess = function () {
       const job = request.result;
       if (typeof job === 'undefined') {
         resolve();
+        jobsObjectStore.transaction.commit();
         return;
       }
-      const { queueId, type } = job;
-      const deleteRequest = store.delete(id);
-      localJobEmitter.emit('jobDelete', id, queueId);
-      jobEmitter.emit('jobDelete', id, queueId);
-      deleteRequest.onsuccess = function () {
-        removeArgLookupsForJobAsMicrotask(id);
+      removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, job.id, job.queueId, () => {
         resolve();
-      };
-      deleteRequest.onerror = function (event) {
-        logger.error(`Delete request error while removing job ${id} in queue ${queueId} with type ${type} from database`);
-        logger.errorObject(event);
-        reject(new Error(`Delete request error while removing job ${id} in queue ${queueId} with type ${type} from database`));
-      };
-      store.transaction.commit();
+      }, reject);
+      jobsObjectStore.transaction.commit();
     };
     request.onerror = function (event) {
-      logger.error(`Request error while getting ${id} before removing from database`);
+      logger.error(`Request error while getting job ${jobId} before removing from database`);
       logger.errorObject(event);
-      reject(new Error(`Request error while getting ${id} before removing from database`));
+      reject(new Error(`Request error while getting job ${jobId} before removing from database`));
     };
   });
 }
@@ -782,8 +774,8 @@ export function markJobAbortedInDatabase(id:number) {
 }
 
 export async function markJobCompleteThenRemoveFromDatabase(id:number):Promise<void> {
-  const store = await getReadWriteJobsObjectStore();
-  const request = store.get(id);
+  const [jobsObjectStore, cleanupsObjectStore, argLookupObjectStore] = await getReadWriteJobCleanupAndArgLookupStores();
+  const request = jobsObjectStore.get(id);
   await new Promise((resolve, reject) => {
     request.onsuccess = function () {
       const value = request.result;
@@ -791,20 +783,11 @@ export async function markJobCompleteThenRemoveFromDatabase(id:number):Promise<v
         const { queueId, type } = value;
         localJobEmitter.emit('jobUpdate', id, queueId, type, JOB_COMPLETE_STATUS);
         jobEmitter.emit('jobUpdate', id, queueId, type, JOB_COMPLETE_STATUS);
-        const deleteRequest = store.delete(id);
-        deleteRequest.onsuccess = function () {
-          localJobEmitter.emit('jobDelete', id, queueId);
-          jobEmitter.emit('jobDelete', id, queueId);
-          removeArgLookupsForJobAsMicrotask(id);
+        removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, id, queueId, () => {
+          jobsObjectStore.transaction.commit();
           resolve();
-        };
-        deleteRequest.onerror = function (event) {
-          logger.error(`Delete request error while marking job ${id} in queue ${queueId} with type ${type} complete then removing from jobs database`);
-          logger.errorObject(event);
-          reject(new Error(`Delete request error while marking job ${id} in queue ${queueId} with type ${type} complete then removing from jobs database`));
-        };
+        });
       }
-      store.transaction.commit();
     };
     request.onerror = function (event) {
       logger.error(`Get request error while marking job ${id} complete then removing from jobs database`);
@@ -987,6 +970,7 @@ export async function markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase(queue
           const deleteRequest = store.delete(id);
           localJobEmitter.emit('jobDelete', id, queueId);
           jobEmitter.emit('jobDelete', id, queueId);
+          removeArgLookupsAndCleanupsForJobAsMicrotask(id);
           lastRequest = deleteRequest;
           deleteRequest.onerror = function (event2) {
             logger.error(`Delete request error while marking queue ${queueId} for cleanup and removal`);
@@ -1747,33 +1731,55 @@ export async function lookupArg(key:string) {
   return results[0];
 }
 
-function removeArgLookupsForJobAsMicrotask(jobId:number) {
-  self.queueMicrotask(() => removeArgLookupsForJob(jobId).catch((error) => {
-    logger.error(`Unable to remove argument lookups for job ${jobId} in microtask`);
-    logger.errorStack(error);
-  }));
-}
+const jobsArgLookupsAndCleanupsToRemove = [];
 
-export async function removeArgLookupsForJob(jobId:number) {
-  const [store, promise] = await getReadWriteArgLookupObjectStoreAndTransactionPromise();
-  const index = store.index('jobIdIndex');
-  // $FlowFixMe
-  const request = index.getAllKeys(IDBKeyRange.only(jobId));
-  request.onsuccess = function (event) {
-    for (const id of event.target.result) {
-      const deleteRequest = store.delete(id);
-      deleteRequest.onerror = function (deleteEvent) {
-        logger.error(`Delete request error while removing argument lookups for job ${jobId}`);
-        logger.errorObject(deleteEvent);
-      };
-    }
-    store.transaction.commit();
-  };
-  request.onerror = function (event) {
-    logger.error(`Request error while removing argument lookups for job ${jobId}`);
+async function removeArgLookupsAndCleanupsForJob() {
+  if (jobsArgLookupsAndCleanupsToRemove.length === 0) {
+    return;
+  }
+  const jobIds = jobsArgLookupsAndCleanupsToRemove.slice();
+  jobsArgLookupsAndCleanupsToRemove.length = 0;
+  const database = await databasePromise;
+  const transaction = database.transaction(['cleanups', 'arg-lookup'], 'readwrite', { durability: 'relaxed' });
+  transaction.onabort = (event) => {
+    logger.error('Read-write "cleanups", and "arg-lookup" transaction was aborted');
     logger.errorObject(event);
   };
-  await promise;
+  transaction.onerror = (event) => {
+    logger.error('Error in read-write "cleanups" and "arg-lookup" transaction');
+    logger.errorObject(event);
+  };
+  const cleanupsObjectStore = transaction.objectStore('cleanups');
+  const argLookupObjectStore = transaction.objectStore('arg-lookup');
+  const argLookupJobIdIndex = argLookupObjectStore.index('jobIdIndex');
+  for (const jobId of jobIds) {
+    const cleanupDeleteRequest = cleanupsObjectStore.delete(jobId);
+    cleanupDeleteRequest.onerror = function (event) {
+      logger.error(`Request error while removing cleanups for job ${jobId} from database`);
+      logger.errorObject(event);
+    };
+    // $FlowFixMe
+    const argLookupJobRequest = argLookupJobIdIndex.getAllKeys(IDBKeyRange.only(jobId));
+    argLookupJobRequest.onsuccess = function (event) {
+      for (const id of event.target.result) {
+        const argLookupDeleteRequest = argLookupObjectStore.delete(id);
+        argLookupDeleteRequest.onerror = function (deleteEvent) {
+          logger.error(`Delete request error while removing argument lookups for job ${jobId} from database`);
+          logger.errorObject(deleteEvent);
+        };
+      }
+      transaction.commit();
+    };
+    argLookupJobRequest.onerror = function (event) {
+      logger.error(`Request error while removing argument lookups for job ${jobId} from database`);
+      logger.errorObject(event);
+    };
+  }
+}
+
+export function removeArgLookupsAndCleanupsForJobAsMicrotask(jobId:number) {
+  jobsArgLookupsAndCleanupsToRemove.push(jobId);
+  self.queueMicrotask(removeArgLookupsAndCleanupsForJob);
 }
 
 const UNLOAD_DATA_ID = '_UNLOAD_DATA';

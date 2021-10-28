@@ -9,10 +9,10 @@ import {
   lookupArgs,
   lookupArg,
   getJobFromDatabase,
-  removeArgLookupsForJob,
   markJobCleanupAndRemoveInDatabase,
   markJobCompleteInDatabase,
   markJobsWithArgLookupKeyCleanupAndRemoveInDatabase,
+  removeArgLookupsAndCleanupsForJobAsMicrotask,
   JOB_COMPLETE_STATUS,
   JOB_CLEANUP_AND_REMOVE_STATUS,
 } from '../src/database';
@@ -33,7 +33,8 @@ describe('Argument Lookup', () => {
     const id = await enqueueToDatabase(queueId, type, args, 0);
     await addArgLookup(id, key, jsonPath);
     await expectAsync(getArgLookupJobPathMap(key)).toBeResolvedTo(new Map([[id, jsonPath]]));
-    await removeArgLookupsForJob(id);
+    removeArgLookupsAndCleanupsForJobAsMicrotask(id);
+    await new Promise((resolve) => setTimeout(resolve, 500));
     await expectAsync(getArgLookupJobPathMap(key)).toBeResolvedTo(new Map());
   });
 

@@ -59,7 +59,7 @@ exports.getArgLookupJobPathMap = _getArgLookupJobPathMap2;
 exports.markJobsWithArgLookupKeyCleanupAndRemoveInDatabase = _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase2;
 exports.lookupArgs = _lookupArgs2;
 exports.lookupArg = _lookupArg2;
-exports.removeArgLookupsForJob = _removeArgLookupsForJob2;
+exports.removeArgLookupsAndCleanupsForJobAsMicrotask = _removeArgLookupsAndCleanupsForJobAsMicrotask;
 exports.updateUnloadDataInDatabase = _updateUnloadDataInDatabase;
 exports.getUnloadDataFromDatabase = _getUnloadDataFromDatabase;
 exports.clearUnloadDataInDatabase = _clearUnloadDataInDatabase;
@@ -81,19 +81,19 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
 
-function _createForOfIteratorHelper(o, allowArrayLike) { var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"]; if (!it) { if (Array.isArray(o) || (it = _unsupportedIterableToArray(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e2) { throw _e2; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = it.call(o); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e3) { didErr = true; err = _e3; }, f: function f() { try { if (!normalCompletion && it.return != null) it.return(); } finally { if (didErr) throw err; } } }; }
-
 function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest(); }
 
 function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 
-function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
-
-function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
-
 function _iterableToArrayLimit(arr, i) { var _i = arr == null ? null : typeof Symbol !== "undefined" && arr[Symbol.iterator] || arr["@@iterator"]; if (_i == null) return; var _arr = []; var _n = true; var _d = false; var _s, _e; try { for (_i = _i.call(arr); !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"] != null) _i["return"](); } finally { if (_d) throw _e; } } return _arr; }
 
 function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
+
+function _createForOfIteratorHelper(o, allowArrayLike) { var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"]; if (!it) { if (Array.isArray(o) || (it = _unsupportedIterableToArray(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e2) { throw _e2; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = it.call(o); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e3) { didErr = true; err = _e3; }, f: function f() { try { if (!normalCompletion && it.return != null) it.return(); } finally { if (didErr) throw err; } } }; }
+
+function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
+
+function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
 
 function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { Promise.resolve(value).then(_next, _throw); } }
 
@@ -204,7 +204,7 @@ var _databasePromise = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(f
     while (1) {
       switch (_context.prev = _context.next) {
         case 0:
-          request = self.indexedDB.open('battery-queue-07', 1);
+          request = self.indexedDB.open('battery-queue-08', 1);
 
           request.onupgradeneeded = function (e) {
             try {
@@ -227,7 +227,7 @@ var _databasePromise = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(f
               store.createIndex('statusQueueIdIndex', ['queueId', 'status'], {
                 unique: false
               });
-              store.createIndex('createdIndex', 'created', {
+              store.createIndex('statusCreatedIndex', ['status', 'created'], {
                 unique: false
               });
             } catch (error) {
@@ -441,13 +441,13 @@ function getReadOnlyCleanupsObjectStore() {
   return getReadOnlyObjectStore('cleanups');
 }
 
-function getReadWriteObjectStoreAndTransactionPromise(_x3) {
-  return _getReadWriteObjectStoreAndTransactionPromise.apply(this, arguments);
+function getReadWriteJobCleanupAndArgLookupStores() {
+  return _getReadWriteJobCleanupAndArgLookupStores.apply(this, arguments);
 }
 
-function _getReadWriteObjectStoreAndTransactionPromise() {
-  _getReadWriteObjectStoreAndTransactionPromise = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee4(name) {
-    var database, transaction, objectStore, promise;
+function _getReadWriteJobCleanupAndArgLookupStores() {
+  _getReadWriteJobCleanupAndArgLookupStores = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee4() {
+    var database, transaction;
     return regeneratorRuntime.wrap(function _callee4$(_context4) {
       while (1) {
         switch (_context4.prev = _context4.next) {
@@ -457,28 +457,21 @@ function _getReadWriteObjectStoreAndTransactionPromise() {
 
           case 2:
             database = _context4.sent;
-            transaction = database.transaction([name], 'readwrite', {
+            transaction = database.transaction(['jobs', 'cleanups', 'arg-lookup'], 'readwrite', {
               durability: 'relaxed'
             });
-            objectStore = transaction.objectStore(name);
-            promise = new Promise(function (resolve, reject) {
-              transaction.onabort = function (event) {
-                logger.error("Read-write \"".concat(name, "\" transaction was aborted"));
-                logger.errorObject(event);
-                reject(new Error("Read-write \"".concat(name, "\" transaction was aborted")));
-              };
 
-              transaction.onerror = function (event) {
-                logger.error("Error in read-write \"".concat(name, "\" transaction"));
-                logger.errorObject(event);
-                reject(new Error("Error in read-write \"".concat(name, "\" transaction")));
-              };
+            transaction.onabort = function (event) {
+              logger.error('Read-write \'jobs\', \'cleanups\', and \'arg-lookup\' transaction was aborted');
+              logger.errorObject(event);
+            };
 
-              transaction.oncomplete = function () {
-                resolve();
-              };
-            });
-            return _context4.abrupt("return", [objectStore, promise]);
+            transaction.onerror = function (event) {
+              logger.error('Error in read-write \'jobs\', \'cleanups\', and \'arg-lookup\' transaction');
+              logger.errorObject(event);
+            };
+
+            return _context4.abrupt("return", [transaction.objectStore('jobs'), transaction.objectStore('cleanups'), transaction.objectStore('arg-lookup')]);
 
           case 7:
           case "end":
@@ -487,10 +480,10 @@ function _getReadWriteObjectStoreAndTransactionPromise() {
       }
     }, _callee4);
   }));
-  return _getReadWriteObjectStoreAndTransactionPromise.apply(this, arguments);
+  return _getReadWriteJobCleanupAndArgLookupStores.apply(this, arguments);
 }
 
-function getReadOnlyObjectStoreAndTransactionPromise(_x4) {
+function getReadOnlyObjectStoreAndTransactionPromise(_x3) {
   return _getReadOnlyObjectStoreAndTransactionPromise.apply(this, arguments);
 }
 
@@ -539,32 +532,77 @@ function _getReadOnlyObjectStoreAndTransactionPromise() {
   return _getReadOnlyObjectStoreAndTransactionPromise.apply(this, arguments);
 }
 
-function getReadWriteJobsObjectStoreAndTransactionPromise() {
-  return getReadWriteObjectStoreAndTransactionPromise('jobs');
-}
-
 function getReadOnlyJobsObjectStoreAndTransactionPromise() {
   return getReadOnlyObjectStoreAndTransactionPromise('jobs');
 }
 
-function getReadWriteArgLookupObjectStoreAndTransactionPromise() {
-  return getReadWriteObjectStoreAndTransactionPromise('arg-lookup');
-}
+function removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId, onSuccess, onError) {
+  var jobDeleteRequest = jobsObjectStore.delete(jobId);
 
-function removeJobFromObjectStore(store, id, queueId) {
-  var deleteRequest = store.delete(id);
+  _localJobEmitter.emit('jobDelete', jobId, queueId);
 
-  _localJobEmitter.emit('jobDelete', id, queueId);
+  _jobEmitter.emit('jobDelete', jobId, queueId);
 
-  _jobEmitter.emit('jobDelete', id, queueId);
+  jobDeleteRequest.onerror = function (event) {
+    logger.error("Request error while removing job ".concat(jobId, " in queue ").concat(queueId, " from database"));
+    logger.errorObject(event);
 
-  deleteRequest.onsuccess = function () {
-    removeArgLookupsForJobAsMicrotask(id);
+    if (typeof onError === 'function') {
+      onError(new Error("Request error while removing job ".concat(jobId, " in queue ").concat(queueId, " from database")));
+    }
   };
 
-  deleteRequest.onerror = function (event) {
-    logger.error("Request error while removing job ".concat(id, " in queue ").concat(queueId, " from database"));
+  var cleanupDeleteRequest = cleanupsObjectStore.delete(jobId);
+
+  cleanupDeleteRequest.onerror = function (event) {
+    logger.error("Request error while removing cleanup for job ".concat(jobId, " in queue ").concat(queueId, " from database"));
     logger.errorObject(event);
+
+    if (typeof onError === 'function') {
+      onError(new Error("Request error while removing cleanup for job ".concat(jobId, " in queue ").concat(queueId, " from database")));
+    }
+  };
+
+  var argLookupJobIdIndex = argLookupObjectStore.index('jobIdIndex'); // $FlowFixMe
+
+  var argLookupJobRequest = argLookupJobIdIndex.getAllKeys(IDBKeyRange.only(jobId));
+
+  argLookupJobRequest.onsuccess = function (event) {
+    var _iterator = _createForOfIteratorHelper(event.target.result),
+        _step;
+
+    try {
+      for (_iterator.s(); !(_step = _iterator.n()).done;) {
+        var id = _step.value;
+        var argLookupDeleteRequest = argLookupObjectStore.delete(id);
+
+        argLookupDeleteRequest.onerror = function (deleteEvent) {
+          logger.error("Delete request error while removing argument lookups for job ".concat(jobId, " in queue ").concat(queueId, " from database"));
+          logger.errorObject(deleteEvent);
+
+          if (typeof onError === 'function') {
+            onError(new Error("Delete request error while removing argument lookups for job ".concat(jobId, " in queue ").concat(queueId, " from database")));
+          }
+        };
+      }
+    } catch (err) {
+      _iterator.e(err);
+    } finally {
+      _iterator.f();
+    }
+
+    if (typeof onSuccess === 'function') {
+      onSuccess();
+    }
+  };
+
+  argLookupJobRequest.onerror = function (event) {
+    logger.error("Request error while removing argument lookups for job ".concat(jobId, " in queue ").concat(queueId, " from database"));
+    logger.errorObject(event);
+
+    if (typeof onError === 'function') {
+      onError(new Error("Request error while removing argument lookups for job ".concat(jobId, " in queue ").concat(queueId, " from database")));
+    }
   };
 }
 
@@ -730,55 +768,53 @@ function _clearDatabase() {
   return _clearDatabase.apply(this, arguments);
 }
 
-function _removeJobsWithQueueIdAndTypeFromDatabase2(_x5, _x6) {
+function _removeJobsWithQueueIdAndTypeFromDatabase2(_x4, _x5) {
   return _removeJobsWithQueueIdAndTypeFromDatabase.apply(this, arguments);
 }
 
 function _removeJobsWithQueueIdAndTypeFromDatabase() {
   _removeJobsWithQueueIdAndTypeFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee10(queueId, type) {
-    var _yield$getReadWriteJo, _yield$getReadWriteJo2, store, promise, index, request;
+    var _yield$getReadWriteJo, _yield$getReadWriteJo2, jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, index, request;
 
     return regeneratorRuntime.wrap(function _callee10$(_context10) {
       while (1) {
         switch (_context10.prev = _context10.next) {
           case 0:
             _context10.next = 2;
-            return getReadWriteJobsObjectStoreAndTransactionPromise();
+            return getReadWriteJobCleanupAndArgLookupStores();
 
           case 2:
             _yield$getReadWriteJo = _context10.sent;
-            _yield$getReadWriteJo2 = _slicedToArray(_yield$getReadWriteJo, 2);
-            store = _yield$getReadWriteJo2[0];
-            promise = _yield$getReadWriteJo2[1];
-            index = store.index('queueIdTypeIndex'); // $FlowFixMe
+            _yield$getReadWriteJo2 = _slicedToArray(_yield$getReadWriteJo, 3);
+            jobsObjectStore = _yield$getReadWriteJo2[0];
+            cleanupsObjectStore = _yield$getReadWriteJo2[1];
+            argLookupObjectStore = _yield$getReadWriteJo2[2];
+            index = jobsObjectStore.index('queueIdTypeIndex'); // $FlowFixMe
 
             request = index.getAllKeys(IDBKeyRange.only([queueId, type]));
+            _context10.next = 11;
+            return new Promise(function (resolve, reject) {
+              request.onsuccess = function (event) {
+                var jobIds = event.target.result;
 
-            request.onsuccess = function (event) {
-              var _iterator = _createForOfIteratorHelper(event.target.result),
-                  _step;
+                for (var i = 0; i < jobIds.length; i += 1) {
+                  var jobId = jobIds[i];
 
-              try {
-                for (_iterator.s(); !(_step = _iterator.n()).done;) {
-                  var id = _step.value;
-                  removeJobFromObjectStore(store, id, queueId);
+                  if (i === jobIds.length - 1) {
+                    removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId, resolve, reject);
+                  } else {
+                    removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId);
+                  }
                 }
-              } catch (err) {
-                _iterator.e(err);
-              } finally {
-                _iterator.f();
-              }
-            };
+              };
 
-            request.onerror = function (event) {
-              logger.error("Request error while removing jobs with queue ".concat(queueId, " and type ").concat(type, " from jobs database"));
-              logger.errorObject(event);
-            };
+              request.onerror = function (event) {
+                logger.error("Request error while removing jobs with queue ".concat(queueId, " and type ").concat(type, " from jobs database"));
+                logger.errorObject(event);
+              };
+            });
 
-            _context10.next = 12;
-            return promise;
-
-          case 12:
+          case 11:
           case "end":
             return _context10.stop();
         }
@@ -788,126 +824,57 @@ function _removeJobsWithQueueIdAndTypeFromDatabase() {
   return _removeJobsWithQueueIdAndTypeFromDatabase.apply(this, arguments);
 }
 
-function _removeQueueFromDatabase2(_x7) {
+function _removeQueueFromDatabase2(_x6) {
   return _removeQueueFromDatabase.apply(this, arguments);
 }
 
 function _removeQueueFromDatabase() {
   _removeQueueFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee11(queueId) {
-    var database, transaction, jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, promise, queueIdIndex, argLookupJobIdIndex, request;
+    var _yield$getReadWriteJo3, _yield$getReadWriteJo4, jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, index, request;
+
     return regeneratorRuntime.wrap(function _callee11$(_context11) {
       while (1) {
         switch (_context11.prev = _context11.next) {
           case 0:
             _context11.next = 2;
-            return _databasePromise;
+            return getReadWriteJobCleanupAndArgLookupStores();
 
           case 2:
-            database = _context11.sent;
-            transaction = database.transaction(['jobs', 'cleanups', 'arg-lookup'], 'readwrite', {
-              durability: 'relaxed'
-            });
-            jobsObjectStore = transaction.objectStore('jobs');
-            cleanupsObjectStore = transaction.objectStore('cleanups');
-            argLookupObjectStore = transaction.objectStore('arg-lookup');
-            promise = new Promise(function (resolve, reject) {
-              transaction.onabort = function (event) {
-                logger.error('Read-write remove queue transaction was aborted');
-                logger.errorObject(event);
-                reject(new Error('Read-write emove queue transaction was aborted'));
-              };
+            _yield$getReadWriteJo3 = _context11.sent;
+            _yield$getReadWriteJo4 = _slicedToArray(_yield$getReadWriteJo3, 3);
+            jobsObjectStore = _yield$getReadWriteJo4[0];
+            cleanupsObjectStore = _yield$getReadWriteJo4[1];
+            argLookupObjectStore = _yield$getReadWriteJo4[2];
+            index = jobsObjectStore.index('queueIdIndex'); // $FlowFixMe
 
-              transaction.onerror = function (event) {
-                logger.error('Error in read-write remove queue transaction');
-                logger.errorObject(event);
-                reject(new Error('Error in read-write remove queue transaction'));
-              };
+            request = index.getAllKeys(IDBKeyRange.only(queueId));
+            _context11.next = 11;
+            return new Promise(function (resolve, reject) {
+              request.onsuccess = function (event) {
+                var jobIds = event.target.result;
 
-              transaction.oncomplete = function () {
-                resolve();
-              };
-            });
-            queueIdIndex = jobsObjectStore.index('queueIdIndex');
-            argLookupJobIdIndex = argLookupObjectStore.index('jobIdIndex'); // $FlowFixMe
+                for (var i = 0; i < jobIds.length; i += 1) {
+                  var jobId = jobIds[i];
 
-            request = queueIdIndex.getAllKeys(IDBKeyRange.only(queueId));
-
-            request.onsuccess = function (_ref2) {
-              var jobIds = _ref2.target.result;
-
-              var _iterator2 = _createForOfIteratorHelper(jobIds),
-                  _step2;
-
-              try {
-                var _loop = function _loop() {
-                  var jobId = _step2.value;
-                  var jobDeleteRequest = jobsObjectStore.delete(jobId);
-
-                  _localJobEmitter.emit('jobDelete', jobId, queueId);
-
-                  _jobEmitter.emit('jobDelete', jobId, queueId);
-
-                  jobDeleteRequest.onerror = function (event) {
-                    logger.error("Request error while removing job ".concat(jobId, " in queue ").concat(queueId, " from database"));
-                    logger.errorObject(event);
-                  };
-
-                  var cleanupDeleteRequest = cleanupsObjectStore.delete(jobId);
-
-                  cleanupDeleteRequest.onerror = function (event) {
-                    logger.error("Request error while removing cleanup for job ".concat(jobId, " in queue ").concat(queueId, " from database"));
-                    logger.errorObject(event);
-                  }; // $FlowFixMe
-
-
-                  var argLookupJobRequest = argLookupJobIdIndex.getAllKeys(IDBKeyRange.only(jobId));
-
-                  argLookupJobRequest.onsuccess = function (event) {
-                    var _iterator3 = _createForOfIteratorHelper(event.target.result),
-                        _step3;
-
-                    try {
-                      for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
-                        var id = _step3.value;
-                        var argLookupDeleteRequest = argLookupObjectStore.delete(id);
-
-                        argLookupDeleteRequest.onerror = function (deleteEvent) {
-                          logger.error("Delete request error while removing argument lookups for job ".concat(jobId, " in queue ").concat(queueId, " from database"));
-                          logger.errorObject(deleteEvent);
-                        };
-                      }
-                    } catch (err) {
-                      _iterator3.e(err);
-                    } finally {
-                      _iterator3.f();
-                    }
-                  };
-
-                  argLookupJobRequest.onerror = function (event) {
-                    logger.error("Request error while removing argument lookups for job ".concat(jobId, " in queue ").concat(queueId, " from database"));
-                    logger.errorObject(event);
-                  };
-                };
-
-                for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
-                  _loop();
+                  if (i === jobIds.length - 1) {
+                    removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId, function () {
+                      jobsObjectStore.transaction.commit();
+                      resolve();
+                    }, reject);
+                  } else {
+                    removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId);
+                  }
                 }
-              } catch (err) {
-                _iterator2.e(err);
-              } finally {
-                _iterator2.f();
-              }
-            };
+              };
 
-            request.onerror = function (event) {
-              logger.error("Request error while removing queue ".concat(queueId, " from jobs database"));
-              logger.errorObject(event);
-            };
+              request.onerror = function (event) {
+                logger.error("Request error while removing queue ".concat(queueId, " from jobs database"));
+                logger.errorObject(event);
+                reject(new Error("Request error while removing queue ".concat(queueId, " from jobs database")));
+              };
+            });
 
-            _context11.next = 15;
-            return promise;
-
-          case 15:
+          case 11:
           case "end":
             return _context11.stop();
         }
@@ -917,63 +884,63 @@ function _removeQueueFromDatabase() {
   return _removeQueueFromDatabase.apply(this, arguments);
 }
 
-function _removeCompletedExpiredItemsFromDatabase2(_x8) {
+function _removeCompletedExpiredItemsFromDatabase2(_x7) {
   return _removeCompletedExpiredItemsFromDatabase.apply(this, arguments);
 }
 
 function _removeCompletedExpiredItemsFromDatabase() {
   _removeCompletedExpiredItemsFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee12(maxAge) {
-    var _yield$getReadWriteJo3, _yield$getReadWriteJo4, store, promise, index, request;
+    var _yield$getReadWriteJo5, _yield$getReadWriteJo6, jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, index, request;
 
     return regeneratorRuntime.wrap(function _callee12$(_context12) {
       while (1) {
         switch (_context12.prev = _context12.next) {
           case 0:
             _context12.next = 2;
-            return getReadWriteJobsObjectStoreAndTransactionPromise();
+            return getReadWriteJobCleanupAndArgLookupStores();
 
           case 2:
-            _yield$getReadWriteJo3 = _context12.sent;
-            _yield$getReadWriteJo4 = _slicedToArray(_yield$getReadWriteJo3, 2);
-            store = _yield$getReadWriteJo4[0];
-            promise = _yield$getReadWriteJo4[1];
-            index = store.index('createdIndex'); // $FlowFixMe
+            _yield$getReadWriteJo5 = _context12.sent;
+            _yield$getReadWriteJo6 = _slicedToArray(_yield$getReadWriteJo5, 3);
+            jobsObjectStore = _yield$getReadWriteJo6[0];
+            cleanupsObjectStore = _yield$getReadWriteJo6[1];
+            argLookupObjectStore = _yield$getReadWriteJo6[2];
+            index = jobsObjectStore.index('statusCreatedIndex'); // $FlowFixMe
 
-            request = index.getAll(IDBKeyRange.bound(0, Date.now() - maxAge));
+            request = index.getAll(IDBKeyRange.bound([_JOB_COMPLETE_STATUS, 0], [_JOB_COMPLETE_STATUS, Date.now() - maxAge]));
+            _context12.next = 11;
+            return new Promise(function (resolve, reject) {
+              request.onsuccess = function (event) {
+                var jobs = event.target.result;
 
-            request.onsuccess = function (event) {
-              var _iterator4 = _createForOfIteratorHelper(event.target.result),
-                  _step4;
+                for (var i = 0; i < jobs.length; i += 1) {
+                  var _jobs$i = jobs[i],
+                      jobId = _jobs$i.id,
+                      queueId = _jobs$i.queueId;
 
-              try {
-                for (_iterator4.s(); !(_step4 = _iterator4.n()).done;) {
-                  var _step4$value = _step4.value,
-                      id = _step4$value.id,
-                      queueId = _step4$value.queueId,
-                      status = _step4$value.status;
-
-                  if (status !== _JOB_COMPLETE_STATUS) {
-                    continue;
+                  if (i === jobs.length - 1) {
+                    removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId, function () {
+                      jobsObjectStore.transaction.commit();
+                      resolve();
+                    }, reject);
+                  } else {
+                    removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId);
                   }
-
-                  removeJobFromObjectStore(store, id, queueId);
                 }
-              } catch (err) {
-                _iterator4.e(err);
-              } finally {
-                _iterator4.f();
-              }
-            };
 
-            request.onerror = function (event) {
-              logger.error('Request error while removing completed exired items from jobs database');
-              logger.errorObject(event);
-            };
+                if (jobs.length === 0) {
+                  resolve();
+                }
+              };
 
-            _context12.next = 12;
-            return promise;
+              request.onerror = function (event) {
+                logger.error("Request error while removing completed jobs with age > ".concat(maxAge, "ms"));
+                logger.errorObject(event);
+                reject(new Error("Request error while removing completed jobs with age > ".concat(maxAge, "ms")));
+              };
+            });
 
-          case 12:
+          case 11:
           case "end":
             return _context12.stop();
         }
@@ -983,7 +950,7 @@ function _removeCompletedExpiredItemsFromDatabase() {
   return _removeCompletedExpiredItemsFromDatabase.apply(this, arguments);
 }
 
-function _updateJobInDatabase2(_x9, _x10) {
+function _updateJobInDatabase2(_x8, _x9) {
   return _updateJobInDatabase.apply(this, arguments);
 }
 
@@ -1026,7 +993,8 @@ function _updateJobInDatabase() {
                     _jobEmitter.emit('jobDelete', id, queueId);
 
                     deleteRequest.onsuccess = function () {
-                      removeArgLookupsForJobAsMicrotask(id);
+                      _removeArgLookupsAndCleanupsForJobAsMicrotask(id);
+
                       resolve();
                     };
 
@@ -1078,7 +1046,7 @@ function _updateJobInDatabase() {
   return _updateJobInDatabase.apply(this, arguments);
 }
 
-function _getJobFromDatabase2(_x11) {
+function _getJobFromDatabase2(_x10) {
   return _getJobFromDatabase.apply(this, arguments);
 }
 
@@ -1119,7 +1087,7 @@ function _getJobFromDatabase() {
   return _getJobFromDatabase.apply(this, arguments);
 }
 
-function _updateCleanupInDatabase2(_x12, _x13) {
+function _updateCleanupInDatabase2(_x11, _x12) {
   return _updateCleanupInDatabase.apply(this, arguments);
 }
 
@@ -1184,7 +1152,7 @@ function _updateCleanupInDatabase() {
   return _updateCleanupInDatabase.apply(this, arguments);
 }
 
-function _removePathFromCleanupDataInDatabase2(_x14, _x15) {
+function _removePathFromCleanupDataInDatabase2(_x13, _x14) {
   return _removePathFromCleanupDataInDatabase.apply(this, arguments);
 }
 
@@ -1225,7 +1193,7 @@ function _removePathFromCleanupDataInDatabase() {
   return _removePathFromCleanupDataInDatabase.apply(this, arguments);
 }
 
-function _updateCleanupValuesInDatabase2(_x16, _x17, _x18) {
+function _updateCleanupValuesInDatabase2(_x15, _x16, _x17) {
   return _updateCleanupValuesInDatabase.apply(this, arguments);
 }
 
@@ -1281,7 +1249,7 @@ function _updateCleanupValuesInDatabase() {
   return _updateCleanupValuesInDatabase.apply(this, arguments);
 }
 
-function _silentlyRemoveJobFromDatabase2(_x19) {
+function _silentlyRemoveJobFromDatabase2(_x18) {
   return _silentlyRemoveJobFromDatabase.apply(this, arguments);
 }
 
@@ -1323,63 +1291,53 @@ function _silentlyRemoveJobFromDatabase() {
   return _silentlyRemoveJobFromDatabase.apply(this, arguments);
 }
 
-function _removeJobFromDatabase2(_x20) {
+function _removeJobFromDatabase2(_x19) {
   return _removeJobFromDatabase.apply(this, arguments);
 }
 
 function _removeJobFromDatabase() {
-  _removeJobFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee19(id) {
-    var store, request;
+  _removeJobFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee19(jobId) {
+    var _yield$getReadWriteJo7, _yield$getReadWriteJo8, jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, request;
+
     return regeneratorRuntime.wrap(function _callee19$(_context19) {
       while (1) {
         switch (_context19.prev = _context19.next) {
           case 0:
             _context19.next = 2;
-            return getReadWriteJobsObjectStore();
+            return getReadWriteJobCleanupAndArgLookupStores();
 
           case 2:
-            store = _context19.sent;
-            request = store.get(id);
-            _context19.next = 6;
+            _yield$getReadWriteJo7 = _context19.sent;
+            _yield$getReadWriteJo8 = _slicedToArray(_yield$getReadWriteJo7, 3);
+            jobsObjectStore = _yield$getReadWriteJo8[0];
+            cleanupsObjectStore = _yield$getReadWriteJo8[1];
+            argLookupObjectStore = _yield$getReadWriteJo8[2];
+            request = jobsObjectStore.get(jobId);
+            _context19.next = 10;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 var job = request.result;
 
                 if (typeof job === 'undefined') {
                   resolve();
+                  jobsObjectStore.transaction.commit();
                   return;
                 }
 
-                var queueId = job.queueId,
-                    type = job.type;
-                var deleteRequest = store.delete(id);
-
-                _localJobEmitter.emit('jobDelete', id, queueId);
-
-                _jobEmitter.emit('jobDelete', id, queueId);
-
-                deleteRequest.onsuccess = function () {
-                  removeArgLookupsForJobAsMicrotask(id);
+                removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, job.id, job.queueId, function () {
                   resolve();
-                };
-
-                deleteRequest.onerror = function (event) {
-                  logger.error("Delete request error while removing job ".concat(id, " in queue ").concat(queueId, " with type ").concat(type, " from database"));
-                  logger.errorObject(event);
-                  reject(new Error("Delete request error while removing job ".concat(id, " in queue ").concat(queueId, " with type ").concat(type, " from database")));
-                };
-
-                store.transaction.commit();
+                }, reject);
+                jobsObjectStore.transaction.commit();
               };
 
               request.onerror = function (event) {
-                logger.error("Request error while getting ".concat(id, " before removing from database"));
+                logger.error("Request error while getting job ".concat(jobId, " before removing from database"));
                 logger.errorObject(event);
-                reject(new Error("Request error while getting ".concat(id, " before removing from database")));
+                reject(new Error("Request error while getting job ".concat(jobId, " before removing from database")));
               };
             });
 
-          case 6:
+          case 10:
           case "end":
             return _context19.stop();
         }
@@ -1389,7 +1347,7 @@ function _removeJobFromDatabase() {
   return _removeJobFromDatabase.apply(this, arguments);
 }
 
-function _removeCleanupFromDatabase2(_x21) {
+function _removeCleanupFromDatabase2(_x20) {
   return _removeCleanupFromDatabase.apply(this, arguments);
 }
 
@@ -1430,7 +1388,7 @@ function _removeCleanupFromDatabase() {
   return _removeCleanupFromDatabase.apply(this, arguments);
 }
 
-function _getCleanupFromDatabase2(_x22) {
+function _getCleanupFromDatabase2(_x21) {
   return _getCleanupFromDatabase.apply(this, arguments);
 }
 
@@ -1471,7 +1429,7 @@ function _getCleanupFromDatabase() {
   return _getCleanupFromDatabase.apply(this, arguments);
 }
 
-function _getMetadataFromDatabase2(_x23) {
+function _getMetadataFromDatabase2(_x22) {
   return _getMetadataFromDatabase.apply(this, arguments);
 }
 
@@ -1517,7 +1475,7 @@ function _getMetadataFromDatabase() {
   return _getMetadataFromDatabase.apply(this, arguments);
 }
 
-function _clearMetadataInDatabase2(_x24) {
+function _clearMetadataInDatabase2(_x23) {
   return _clearMetadataInDatabase.apply(this, arguments);
 }
 
@@ -1558,7 +1516,7 @@ function _clearMetadataInDatabase() {
   return _clearMetadataInDatabase.apply(this, arguments);
 }
 
-function _setMetadataInDatabase2(_x25, _x26) {
+function _setMetadataInDatabase2(_x24, _x25) {
   return _setMetadataInDatabase.apply(this, arguments);
 }
 
@@ -1602,7 +1560,7 @@ function _setMetadataInDatabase() {
   return _setMetadataInDatabase.apply(this, arguments);
 }
 
-function _updateMetadataInDatabase2(_x27, _x28) {
+function _updateMetadataInDatabase2(_x26, _x27) {
   return _updateMetadataInDatabase.apply(this, arguments);
 }
 
@@ -1718,24 +1676,29 @@ function _markJobAbortedInDatabase(id) {
   return _markJobStatusInDatabase(id, _JOB_ABORTED_STATUS);
 }
 
-function _markJobCompleteThenRemoveFromDatabase2(_x29) {
+function _markJobCompleteThenRemoveFromDatabase2(_x28) {
   return _markJobCompleteThenRemoveFromDatabase.apply(this, arguments);
 }
 
 function _markJobCompleteThenRemoveFromDatabase() {
   _markJobCompleteThenRemoveFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee26(id) {
-    var store, request;
+    var _yield$getReadWriteJo9, _yield$getReadWriteJo10, jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, request;
+
     return regeneratorRuntime.wrap(function _callee26$(_context26) {
       while (1) {
         switch (_context26.prev = _context26.next) {
           case 0:
             _context26.next = 2;
-            return getReadWriteJobsObjectStore();
+            return getReadWriteJobCleanupAndArgLookupStores();
 
           case 2:
-            store = _context26.sent;
-            request = store.get(id);
-            _context26.next = 6;
+            _yield$getReadWriteJo9 = _context26.sent;
+            _yield$getReadWriteJo10 = _slicedToArray(_yield$getReadWriteJo9, 3);
+            jobsObjectStore = _yield$getReadWriteJo10[0];
+            cleanupsObjectStore = _yield$getReadWriteJo10[1];
+            argLookupObjectStore = _yield$getReadWriteJo10[2];
+            request = jobsObjectStore.get(id);
+            _context26.next = 10;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 var value = request.result;
@@ -1748,25 +1711,11 @@ function _markJobCompleteThenRemoveFromDatabase() {
 
                   _jobEmitter.emit('jobUpdate', id, queueId, type, _JOB_COMPLETE_STATUS);
 
-                  var deleteRequest = store.delete(id);
-
-                  deleteRequest.onsuccess = function () {
-                    _localJobEmitter.emit('jobDelete', id, queueId);
-
-                    _jobEmitter.emit('jobDelete', id, queueId);
-
-                    removeArgLookupsForJobAsMicrotask(id);
+                  removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, id, queueId, function () {
+                    jobsObjectStore.transaction.commit();
                     resolve();
-                  };
-
-                  deleteRequest.onerror = function (event) {
-                    logger.error("Delete request error while marking job ".concat(id, " in queue ").concat(queueId, " with type ").concat(type, " complete then removing from jobs database"));
-                    logger.errorObject(event);
-                    reject(new Error("Delete request error while marking job ".concat(id, " in queue ").concat(queueId, " with type ").concat(type, " complete then removing from jobs database")));
-                  };
+                  });
                 }
-
-                store.transaction.commit();
               };
 
               request.onerror = function (event) {
@@ -1776,7 +1725,7 @@ function _markJobCompleteThenRemoveFromDatabase() {
               };
             });
 
-          case 6:
+          case 10:
           case "end":
             return _context26.stop();
         }
@@ -1864,7 +1813,7 @@ function _markCleanupStartAfterInDatabase(id, startAfter) {
   });
 }
 
-function _markQueueForCleanupInDatabase2(_x30) {
+function _markQueueForCleanupInDatabase2(_x29) {
   return _markQueueForCleanupInDatabase.apply(this, arguments);
 }
 
@@ -1970,7 +1919,7 @@ function _markQueueForCleanupInDatabase() {
   return _markQueueForCleanupInDatabase.apply(this, arguments);
 }
 
-function _markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase2(_x31, _x32) {
+function _markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase2(_x30, _x31) {
   return _markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase.apply(this, arguments);
 }
 
@@ -2049,6 +1998,8 @@ function _markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase() {
 
                     _jobEmitter.emit('jobDelete', id, queueId);
 
+                    _removeArgLookupsAndCleanupsForJobAsMicrotask(id);
+
                     lastRequest = deleteRequest;
 
                     deleteRequest.onerror = function (event2) {
@@ -2108,7 +2059,7 @@ function _markQueueForCleanupAndRemoveInDatabase(queueId) {
   return _markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase2(queueId, -1);
 }
 
-function _markQueueJobsGreaterThanIdPendingInDatabase2(_x33, _x34) {
+function _markQueueJobsGreaterThanIdPendingInDatabase2(_x32, _x33) {
   return _markQueueJobsGreaterThanIdPendingInDatabase.apply(this, arguments);
 }
 
@@ -2228,7 +2179,7 @@ function _markQueuePendingInDatabase(queueId) {
   return _markQueueJobsGreaterThanIdPendingInDatabase2(queueId, -1);
 }
 
-function _getGreatestJobIdFromQueueInDatabase2(_x35) {
+function _getGreatestJobIdFromQueueInDatabase2(_x34) {
   return _getGreatestJobIdFromQueueInDatabase.apply(this, arguments);
 }
 
@@ -2277,7 +2228,7 @@ function _getGreatestJobIdFromQueueInDatabase() {
   return _getGreatestJobIdFromQueueInDatabase.apply(this, arguments);
 }
 
-function _incrementJobAttemptInDatabase2(_x36) {
+function _incrementJobAttemptInDatabase2(_x35) {
   return _incrementJobAttemptInDatabase.apply(this, arguments);
 }
 
@@ -2309,7 +2260,7 @@ function _incrementJobAttemptInDatabase() {
   return _incrementJobAttemptInDatabase.apply(this, arguments);
 }
 
-function _incrementCleanupAttemptInDatabase2(_x37, _x38) {
+function _incrementCleanupAttemptInDatabase2(_x36, _x37) {
   return _incrementCleanupAttemptInDatabase.apply(this, arguments);
 }
 
@@ -2353,7 +2304,7 @@ function _incrementCleanupAttemptInDatabase() {
   return _incrementCleanupAttemptInDatabase.apply(this, arguments);
 }
 
-function _bulkEnqueueToDatabase2(_x39, _x40, _x41) {
+function _bulkEnqueueToDatabase2(_x38, _x39, _x40) {
   return _bulkEnqueueToDatabase.apply(this, arguments);
 }
 
@@ -2428,7 +2379,7 @@ function _bulkEnqueueToDatabase() {
             store = _context33.sent;
             _context33.next = 22;
             return new Promise(function (resolve, reject) {
-              var _loop2 = function _loop2(_i2) {
+              var _loop = function _loop(_i2) {
                 var _items$_i = _slicedToArray(items[_i2], 2),
                     type = _items$_i[0],
                     args = _items$_i[1];
@@ -2463,7 +2414,7 @@ function _bulkEnqueueToDatabase() {
               };
 
               for (var _i2 = 0; _i2 < items.length; _i2 += 1) {
-                _loop2(_i2);
+                _loop(_i2);
               }
 
               store.transaction.commit();
@@ -2482,7 +2433,7 @@ function _bulkEnqueueToDatabase() {
   return _bulkEnqueueToDatabase.apply(this, arguments);
 }
 
-function _enqueueToDatabase2(_x42, _x43, _x44, _x45) {
+function _enqueueToDatabase2(_x41, _x42, _x43, _x44) {
   return _enqueueToDatabase.apply(this, arguments);
 }
 
@@ -2574,7 +2525,7 @@ function _enqueueToDatabase() {
   return _enqueueToDatabase.apply(this, arguments);
 }
 
-function _restoreJobToDatabaseForCleanupAndRemove2(_x46, _x47, _x48, _x49) {
+function _restoreJobToDatabaseForCleanupAndRemove2(_x45, _x46, _x47, _x48) {
   return _restoreJobToDatabaseForCleanupAndRemove.apply(this, arguments);
 }
 
@@ -2732,7 +2683,7 @@ function _getContiguousIds(ids) {
   return points;
 }
 
-function _dequeueFromDatabaseNotIn2(_x50) {
+function _dequeueFromDatabaseNotIn2(_x49) {
   return _dequeueFromDatabaseNotIn.apply(this, arguments);
 }
 
@@ -2766,12 +2717,12 @@ function _dequeueFromDatabaseNotIn() {
             request = index.getAllKeys(IDBKeyRange.bound(_JOB_CLEANUP_AND_REMOVE_STATUS, _JOB_PENDING_STATUS));
 
             request.onsuccess = function (event) {
-              var _iterator5 = _createForOfIteratorHelper(event.target.result),
-                  _step5;
+              var _iterator2 = _createForOfIteratorHelper(event.target.result),
+                  _step2;
 
               try {
-                var _loop3 = function _loop3() {
-                  var id = _step5.value;
+                var _loop2 = function _loop2() {
+                  var id = _step2.value;
 
                   if (ids.includes(id)) {
                     return "continue";
@@ -2789,15 +2740,15 @@ function _dequeueFromDatabaseNotIn() {
                   };
                 };
 
-                for (_iterator5.s(); !(_step5 = _iterator5.n()).done;) {
-                  var _ret = _loop3();
+                for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
+                  var _ret = _loop2();
 
                   if (_ret === "continue") continue;
                 }
               } catch (err) {
-                _iterator5.e(err);
+                _iterator2.e(err);
               } finally {
-                _iterator5.f();
+                _iterator2.f();
               }
 
               store.transaction.commit();
@@ -2824,7 +2775,7 @@ function _dequeueFromDatabaseNotIn() {
   return _dequeueFromDatabaseNotIn.apply(this, arguments);
 }
 
-function _getJobsWithTypeFromDatabase2(_x51) {
+function _getJobsWithTypeFromDatabase2(_x50) {
   return _getJobsWithTypeFromDatabase.apply(this, arguments);
 }
 
@@ -2867,7 +2818,7 @@ function _getJobsWithTypeFromDatabase() {
   return _getJobsWithTypeFromDatabase.apply(this, arguments);
 }
 
-function _getJobsInQueueFromDatabase2(_x52) {
+function _getJobsInQueueFromDatabase2(_x51) {
   return _getJobsInQueueFromDatabase.apply(this, arguments);
 }
 
@@ -2923,13 +2874,13 @@ function _getJobsInQueueFromDatabase() {
   return _getJobsInQueueFromDatabase.apply(this, arguments);
 }
 
-function _getJobsInDatabase2(_x53) {
+function _getJobsInDatabase2(_x52) {
   return _getJobsInDatabase.apply(this, arguments);
 }
 
 function _getJobsInDatabase() {
   _getJobsInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee40(jobIds) {
-    var _yield$getReadOnlyJob3, _yield$getReadOnlyJob4, store, promise, jobs, _iterator6, _step6, _loop4;
+    var _yield$getReadOnlyJob3, _yield$getReadOnlyJob4, store, promise, jobs, _iterator3, _step3, _loop3;
 
     return regeneratorRuntime.wrap(function _callee40$(_context40) {
       while (1) {
@@ -2952,11 +2903,11 @@ function _getJobsInDatabase() {
             store = _yield$getReadOnlyJob4[0];
             promise = _yield$getReadOnlyJob4[1];
             jobs = [];
-            _iterator6 = _createForOfIteratorHelper(jobIds);
+            _iterator3 = _createForOfIteratorHelper(jobIds);
 
             try {
-              _loop4 = function _loop4() {
-                var jobId = _step6.value;
+              _loop3 = function _loop3() {
+                var jobId = _step3.value;
                 var request = store.get(jobId);
 
                 request.onsuccess = function () {
@@ -2971,13 +2922,13 @@ function _getJobsInDatabase() {
                 };
               };
 
-              for (_iterator6.s(); !(_step6 = _iterator6.n()).done;) {
-                _loop4();
+              for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
+                _loop3();
               }
             } catch (err) {
-              _iterator6.e(err);
+              _iterator3.e(err);
             } finally {
-              _iterator6.f();
+              _iterator3.f();
             }
 
             store.transaction.commit();
@@ -2997,7 +2948,7 @@ function _getJobsInDatabase() {
   return _getJobsInDatabase.apply(this, arguments);
 }
 
-function _getCompletedJobsCountFromDatabase2(_x54) {
+function _getCompletedJobsCountFromDatabase2(_x53) {
   return _getCompletedJobsCountFromDatabase.apply(this, arguments);
 }
 
@@ -3025,7 +2976,7 @@ function _getCompletedJobsCountFromDatabase() {
   return _getCompletedJobsCountFromDatabase.apply(this, arguments);
 }
 
-function _getCompletedJobsFromDatabase2(_x55) {
+function _getCompletedJobsFromDatabase2(_x54) {
   return _getCompletedJobsFromDatabase.apply(this, arguments);
 }
 
@@ -3081,7 +3032,7 @@ function _getCompletedJobsFromDatabase() {
   return _getCompletedJobsFromDatabase.apply(this, arguments);
 }
 
-function _storeAuthDataInDatabase2(_x56, _x57) {
+function _storeAuthDataInDatabase2(_x55, _x56) {
   return _storeAuthDataInDatabase.apply(this, arguments);
 }
 
@@ -3142,7 +3093,7 @@ function _storeAuthDataInDatabase() {
   return _storeAuthDataInDatabase.apply(this, arguments);
 }
 
-function _getAuthDataFromDatabase2(_x58) {
+function _getAuthDataFromDatabase2(_x57) {
   return _getAuthDataFromDatabase.apply(this, arguments);
 }
 
@@ -3196,7 +3147,7 @@ function _getAuthDataFromDatabase() {
   return _getAuthDataFromDatabase.apply(this, arguments);
 }
 
-function _removeAuthDataFromDatabase2(_x59) {
+function _removeAuthDataFromDatabase2(_x58) {
   return _removeAuthDataFromDatabase.apply(this, arguments);
 }
 
@@ -3245,7 +3196,7 @@ function _removeAuthDataFromDatabase() {
   return _removeAuthDataFromDatabase.apply(this, arguments);
 }
 
-function _getQueueStatus2(_x60) {
+function _getQueueStatus2(_x59) {
   return _getQueueStatus.apply(this, arguments);
 }
 
@@ -3391,7 +3342,7 @@ function _getQueueStatus() {
   return _getQueueStatus.apply(this, arguments);
 }
 
-function _addArgLookup2(_x61, _x62, _x63) {
+function _addArgLookup2(_x60, _x61, _x62) {
   return _addArgLookup.apply(this, arguments);
 }
 
@@ -3460,7 +3411,7 @@ function _addArgLookup() {
   return _addArgLookup.apply(this, arguments);
 }
 
-function _getArgLookupJobPathMap2(_x64) {
+function _getArgLookupJobPathMap2(_x63) {
   return _getArgLookupJobPathMap.apply(this, arguments);
 }
 
@@ -3514,7 +3465,7 @@ function _getArgLookupJobPathMap() {
   return _getArgLookupJobPathMap.apply(this, arguments);
 }
 
-function _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase2(_x65) {
+function _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase2(_x64) {
   return _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase.apply(this, arguments);
 }
 
@@ -3573,7 +3524,7 @@ function _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase() {
   return _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase.apply(this, arguments);
 }
 
-function _lookupArgs2(_x66) {
+function _lookupArgs2(_x65) {
   return _lookupArgs.apply(this, arguments);
 }
 
@@ -3620,7 +3571,7 @@ function _lookupArgs() {
 
                 var jobsObjectStore = transaction.objectStore('jobs');
 
-                var _loop5 = function _loop5(i) {
+                var _loop4 = function _loop4(i) {
                   var _argLookups$i = argLookups[i],
                       jobId = _argLookups$i.jobId,
                       jsonPath = _argLookups$i.jsonPath;
@@ -3633,21 +3584,21 @@ function _lookupArgs() {
 
                     var args = jobRequest.result.args;
 
-                    var _iterator7 = _createForOfIteratorHelper((0, _jsonpathPlus.JSONPath)({
+                    var _iterator4 = _createForOfIteratorHelper((0, _jsonpathPlus.JSONPath)({
                       path: jsonPath,
                       json: args
                     })),
-                        _step7;
+                        _step4;
 
                     try {
-                      for (_iterator7.s(); !(_step7 = _iterator7.n()).done;) {
-                        var result = _step7.value;
+                      for (_iterator4.s(); !(_step4 = _iterator4.n()).done;) {
+                        var result = _step4.value;
                         results.push(result);
                       }
                     } catch (err) {
-                      _iterator7.e(err);
+                      _iterator4.e(err);
                     } finally {
-                      _iterator7.f();
+                      _iterator4.f();
                     }
 
                     if (i === argLookups.length - 1) {
@@ -3663,7 +3614,7 @@ function _lookupArgs() {
                 };
 
                 for (var i = 0; i < argLookups.length; i += 1) {
-                  _loop5(i);
+                  _loop4(i);
                 }
 
                 transaction.commit();
@@ -3686,7 +3637,7 @@ function _lookupArgs() {
   return _lookupArgs.apply(this, arguments);
 }
 
-function _lookupArg2(_x67) {
+function _lookupArg2(_x66) {
   return _lookupArg.apply(this, arguments);
 }
 
@@ -3714,78 +3665,118 @@ function _lookupArg() {
   return _lookupArg.apply(this, arguments);
 }
 
-function removeArgLookupsForJobAsMicrotask(jobId) {
-  self.queueMicrotask(function () {
-    return _removeArgLookupsForJob2(jobId).catch(function (error) {
-      logger.error("Unable to remove argument lookups for job ".concat(jobId, " in microtask"));
-      logger.errorStack(error);
-    });
-  });
+var jobsArgLookupsAndCleanupsToRemove = [];
+
+function removeArgLookupsAndCleanupsForJob() {
+  return _removeArgLookupsAndCleanupsForJob.apply(this, arguments);
 }
 
-function _removeArgLookupsForJob2(_x68) {
-  return _removeArgLookupsForJob.apply(this, arguments);
-}
-
-function _removeArgLookupsForJob() {
-  _removeArgLookupsForJob = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee52(jobId) {
-    var _yield$getReadWriteAr, _yield$getReadWriteAr2, store, promise, index, request;
+function _removeArgLookupsAndCleanupsForJob() {
+  _removeArgLookupsAndCleanupsForJob = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee52() {
+    var jobIds, database, transaction, cleanupsObjectStore, argLookupObjectStore, argLookupJobIdIndex, _iterator5, _step5, _loop5;
 
     return regeneratorRuntime.wrap(function _callee52$(_context52) {
       while (1) {
         switch (_context52.prev = _context52.next) {
           case 0:
-            _context52.next = 2;
-            return getReadWriteArgLookupObjectStoreAndTransactionPromise();
+            if (!(jobsArgLookupsAndCleanupsToRemove.length === 0)) {
+              _context52.next = 2;
+              break;
+            }
+
+            return _context52.abrupt("return");
 
           case 2:
-            _yield$getReadWriteAr = _context52.sent;
-            _yield$getReadWriteAr2 = _slicedToArray(_yield$getReadWriteAr, 2);
-            store = _yield$getReadWriteAr2[0];
-            promise = _yield$getReadWriteAr2[1];
-            index = store.index('jobIdIndex'); // $FlowFixMe
+            jobIds = jobsArgLookupsAndCleanupsToRemove.slice();
+            jobsArgLookupsAndCleanupsToRemove.length = 0;
+            _context52.next = 6;
+            return _databasePromise;
 
-            request = index.getAllKeys(IDBKeyRange.only(jobId));
+          case 6:
+            database = _context52.sent;
+            transaction = database.transaction(['cleanups', 'arg-lookup'], 'readwrite', {
+              durability: 'relaxed'
+            });
 
-            request.onsuccess = function (event) {
-              var _iterator8 = _createForOfIteratorHelper(event.target.result),
-                  _step8;
-
-              try {
-                for (_iterator8.s(); !(_step8 = _iterator8.n()).done;) {
-                  var id = _step8.value;
-                  var deleteRequest = store.delete(id);
-
-                  deleteRequest.onerror = function (deleteEvent) {
-                    logger.error("Delete request error while removing argument lookups for job ".concat(jobId));
-                    logger.errorObject(deleteEvent);
-                  };
-                }
-              } catch (err) {
-                _iterator8.e(err);
-              } finally {
-                _iterator8.f();
-              }
-
-              store.transaction.commit();
-            };
-
-            request.onerror = function (event) {
-              logger.error("Request error while removing argument lookups for job ".concat(jobId));
+            transaction.onabort = function (event) {
+              logger.error('Read-write "cleanups", and "arg-lookup" transaction was aborted');
               logger.errorObject(event);
             };
 
-            _context52.next = 12;
-            return promise;
+            transaction.onerror = function (event) {
+              logger.error('Error in read-write "cleanups" and "arg-lookup" transaction');
+              logger.errorObject(event);
+            };
 
-          case 12:
+            cleanupsObjectStore = transaction.objectStore('cleanups');
+            argLookupObjectStore = transaction.objectStore('arg-lookup');
+            argLookupJobIdIndex = argLookupObjectStore.index('jobIdIndex');
+            _iterator5 = _createForOfIteratorHelper(jobIds);
+
+            try {
+              _loop5 = function _loop5() {
+                var jobId = _step5.value;
+                var cleanupDeleteRequest = cleanupsObjectStore.delete(jobId);
+
+                cleanupDeleteRequest.onerror = function (event) {
+                  logger.error("Request error while removing cleanups for job ".concat(jobId, " from database"));
+                  logger.errorObject(event);
+                }; // $FlowFixMe
+
+
+                var argLookupJobRequest = argLookupJobIdIndex.getAllKeys(IDBKeyRange.only(jobId));
+
+                argLookupJobRequest.onsuccess = function (event) {
+                  var _iterator6 = _createForOfIteratorHelper(event.target.result),
+                      _step6;
+
+                  try {
+                    for (_iterator6.s(); !(_step6 = _iterator6.n()).done;) {
+                      var id = _step6.value;
+                      var argLookupDeleteRequest = argLookupObjectStore.delete(id);
+
+                      argLookupDeleteRequest.onerror = function (deleteEvent) {
+                        logger.error("Delete request error while removing argument lookups for job ".concat(jobId, " from database"));
+                        logger.errorObject(deleteEvent);
+                      };
+                    }
+                  } catch (err) {
+                    _iterator6.e(err);
+                  } finally {
+                    _iterator6.f();
+                  }
+
+                  transaction.commit();
+                };
+
+                argLookupJobRequest.onerror = function (event) {
+                  logger.error("Request error while removing argument lookups for job ".concat(jobId, " from database"));
+                  logger.errorObject(event);
+                };
+              };
+
+              for (_iterator5.s(); !(_step5 = _iterator5.n()).done;) {
+                _loop5();
+              }
+            } catch (err) {
+              _iterator5.e(err);
+            } finally {
+              _iterator5.f();
+            }
+
+          case 15:
           case "end":
             return _context52.stop();
         }
       }
     }, _callee52);
   }));
-  return _removeArgLookupsForJob.apply(this, arguments);
+  return _removeArgLookupsAndCleanupsForJob.apply(this, arguments);
+}
+
+function _removeArgLookupsAndCleanupsForJobAsMicrotask(jobId) {
+  jobsArgLookupsAndCleanupsToRemove.push(jobId);
+  self.queueMicrotask(removeArgLookupsAndCleanupsForJob);
 }
 
 var UNLOAD_DATA_ID = '_UNLOAD_DATA';
@@ -3873,7 +3864,7 @@ export var getArgLookupJobPathMap = exports.getArgLookupJobPathMap;
 export var markJobsWithArgLookupKeyCleanupAndRemoveInDatabase = exports.markJobsWithArgLookupKeyCleanupAndRemoveInDatabase;
 export var lookupArgs = exports.lookupArgs;
 export var lookupArg = exports.lookupArg;
-export var removeArgLookupsForJob = exports.removeArgLookupsForJob;
+export var removeArgLookupsAndCleanupsForJobAsMicrotask = exports.removeArgLookupsAndCleanupsForJobAsMicrotask;
 export var updateUnloadDataInDatabase = exports.updateUnloadDataInDatabase;
 export var getUnloadDataFromDatabase = exports.getUnloadDataFromDatabase;
 export var clearUnloadDataInDatabase = exports.clearUnloadDataInDatabase;
