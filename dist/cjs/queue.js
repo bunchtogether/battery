@@ -922,6 +922,9 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 return this.startJobs(jobs);
 
               case 9:
+                this.emit('abortAndRemoveQueue', queueId);
+
+              case 10:
               case "end":
                 return _context9.stop();
             }
@@ -983,6 +986,9 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                 return this.startJobs(jobs);
 
               case 8:
+                this.emit('abortAndRemoveQueueJobs', queueId, id);
+
+              case 9:
               case "end":
                 return _context10.stop();
             }
@@ -1969,7 +1975,7 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   if (typeof durationEstimate === 'number') {
                     estimatedToActualRatio = durationEstimate / duration;
 
-                    if (estimatedToActualRatio < 0.8 || estimatedToActualRatio > 1.25) {
+                    if (duration > 250 && (estimatedToActualRatio < 0.8 || estimatedToActualRatio > 1.25)) {
                       _this9.logger.warn("Duration estimate of ".concat(type, " job #").concat(id, " (").concat(durationEstimate, "ms) was ").concat(Math.round(100 * estimatedToActualRatio), "% of actual value (").concat(duration, "ms)"));
                     }
                   }

@@ -970,7 +970,8 @@ describe('Queue', () => {
       startAfter: jasmine.any(Number),
       prioritize: false,
     }]);
-    await queue.abortAndRemoveQueue(queueId);
+    queue.abortAndRemoveQueue(queueId);
+    await expectAsync(queue).toEmit('abortAndRemoveQueue', queueId);
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value: valueB, cleanupData: { value: valueB } });
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value: valueA, cleanupData: { value: valueA } });
     await queue.onIdle();
@@ -1027,8 +1028,8 @@ describe('Queue', () => {
       prioritize: false,
     }]);
 
-    await queue.abortAndRemoveQueueJobsGreaterThanId(queueId, idA);
-
+    queue.abortAndRemoveQueueJobsGreaterThanId(queueId, idA);
+    await expectAsync(queue).toEmit('abortAndRemoveQueueJobs', queueId, idA);
     queue.dequeue();
 
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value: valueC, cleanupData: { value: valueC } });

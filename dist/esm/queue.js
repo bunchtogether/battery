@@ -508,6 +508,7 @@ export default class BatteryQueue extends EventEmitter {
 
     const jobs = await markQueueForCleanupAndRemoveInDatabase(queueId);
     await this.startJobs(jobs);
+    this.emit('abortAndRemoveQueue', queueId);
   }
 
   async abortAndRemoveQueueJobsGreaterThanId(queueId, id) {
@@ -532,6 +533,7 @@ export default class BatteryQueue extends EventEmitter {
 
     const jobs = await markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase(queueId, id);
     await this.startJobs(jobs);
+    this.emit('abortAndRemoveQueueJobs', queueId, id);
   }
 
   async dequeue() {
@@ -968,7 +970,7 @@ export default class BatteryQueue extends EventEmitter {
         if (typeof durationEstimate === 'number') {
           const estimatedToActualRatio = durationEstimate / duration;
 
-          if (estimatedToActualRatio < 0.8 || estimatedToActualRatio > 1.25) {
+          if (duration > 250 && (estimatedToActualRatio < 0.8 || estimatedToActualRatio > 1.25)) {
             this.logger.warn(`Duration estimate of ${type} job #${id} (${durationEstimate}ms) was ${Math.round(100 * estimatedToActualRatio)}% of actual value (${duration}ms)`);
           }
         }

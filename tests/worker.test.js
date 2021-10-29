@@ -123,8 +123,12 @@ describe('Worker', () => {
     await expectAsync(jobEmitter).toEmit('jobUpdate', id, queueId, 'echo', JOB_COMPLETE_STATUS);
     await queueInterface.onIdle(5000);
     queueInterface.abortAndRemoveQueue(queueId);
-    await expectAsync(jobEmitter).toEmit('jobUpdate', id, queueId, 'echo', JOB_CLEANUP_AND_REMOVE_STATUS);
-    await expectAsync(jobEmitter).toEmit('jobDelete', id, queueId);
+    const abortPromise = expectAsync(queueInterface).toEmit('abortAndRemoveQueue', queueId);
+    const jobUpdatePromise = expectAsync(jobEmitter).toEmit('jobUpdate', id, queueId, 'echo', JOB_CLEANUP_AND_REMOVE_STATUS);
+    const jobDeletePromise = expectAsync(jobEmitter).toEmit('jobDelete', id, queueId);
+    await abortPromise;
+    await jobUpdatePromise;
+    await jobDeletePromise;
   });
 
   it('Aborts and removes a queue with a job greater than a specified number from the database', async () => {
@@ -146,6 +150,7 @@ describe('Worker', () => {
       prioritize: false,
     }]);
     queueInterface.abortAndRemoveQueueJobsGreaterThanId(queueId, id);
+    await expectAsync(queueInterface).toEmit('abortAndRemoveQueueJobs', queueId, id);
     await queueInterface.onIdle(5000);
     await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
       id,
@@ -159,8 +164,12 @@ describe('Worker', () => {
       prioritize: false,
     }]);
     queueInterface.abortAndRemoveQueueJobsGreaterThanId(queueId, 0);
-    await expectAsync(jobEmitter).toEmit('jobUpdate', id, queueId, 'echo', JOB_CLEANUP_AND_REMOVE_STATUS);
-    await expectAsync(jobEmitter).toEmit('jobDelete', id, queueId);
+    const abortPromise = expectAsync(queueInterface).toEmit('abortAndRemoveQueueJobs', queueId, 0);
+    const jobUpdatePromise = expectAsync(jobEmitter).toEmit('jobUpdate', id, queueId, 'echo', JOB_CLEANUP_AND_REMOVE_STATUS);
+    const jobDeletePromise = expectAsync(jobEmitter).toEmit('jobDelete', id, queueId);
+    await abortPromise;
+    await jobUpdatePromise;
+    await jobDeletePromise;
     await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([]);
   });
 
