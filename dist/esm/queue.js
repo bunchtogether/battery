@@ -988,7 +988,9 @@ export default class BatteryQueue extends EventEmitter {
               queueId,
               error
             });
-            await restoreJobToDatabaseForCleanupAndRemove(id, queueId, type, args, prioritize);
+            await restoreJobToDatabaseForCleanupAndRemove(id, queueId, type, args, {
+              prioritize
+            });
             this.jobIds.delete(id);
             this.removeAbortController(id, queueId);
             this.startCleanup(id, queueId, args, type, true, prioritize);

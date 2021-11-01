@@ -74,8 +74,8 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const typeA = uuidv4();
     const typeB = uuidv4();
-    const idA = await enqueueToDatabase(queueId, typeA, [], 0, false);
-    const idB = await enqueueToDatabase(queueId, typeB, [], 0, false);
+    const idA = await enqueueToDatabase(queueId, typeA, []);
+    const idB = await enqueueToDatabase(queueId, typeB, []);
     await expectAsync(getJobsWithTypeFromDatabase(typeA)).toBeResolvedTo([{
       id: idA,
       queueId,
@@ -105,7 +105,7 @@ describe('IndexedDB Database', () => {
     const type = uuidv4();
     const jobAddPromiseA = getNextEmit(jobEmitter, 'jobAdd');
 
-    const idA = await enqueueToDatabase(queueId, type, [], 0, false);
+    const idA = await enqueueToDatabase(queueId, type, []);
 
     await expectAsync(jobAddPromiseA).toBeResolvedTo([idA, queueId, type]);
 
@@ -114,20 +114,20 @@ describe('IndexedDB Database', () => {
 
     await expectAsync(jobDeletePromiseA).toBeResolvedTo([idA, queueId]);
 
-    const idB = await enqueueToDatabase(queueId, type, [], 0, false);
+    const idB = await enqueueToDatabase(queueId, type, []);
     const jobDeletePromiseB = getNextEmit(jobEmitter, 'jobDelete');
     await removeQueueFromDatabase(queueId);
 
     await expectAsync(jobDeletePromiseB).toBeResolvedTo([idB, queueId]);
 
-    const idC = await enqueueToDatabase(queueId, type, [], 0, false);
+    const idC = await enqueueToDatabase(queueId, type, []);
     const jobDeletePromiseC = getNextEmit(jobEmitter, 'jobDelete');
     await markJobCompleteInDatabase(idC);
     await removeCompletedExpiredItemsFromDatabase(0);
 
     await expectAsync(jobDeletePromiseC).toBeResolvedTo([idC, queueId]);
 
-    const idD = await enqueueToDatabase(queueId, type, [], 0, false);
+    const idD = await enqueueToDatabase(queueId, type, []);
     const jobUpdatePromiseA = getNextEmit(jobEmitter, 'jobUpdate');
     await updateJobInDatabase(idD, (x) => {
       if (typeof x === 'undefined') {
@@ -140,14 +140,14 @@ describe('IndexedDB Database', () => {
     await expectAsync(jobUpdatePromiseA).toBeResolvedTo([idD, queueId, type, JOB_ABORTED_STATUS]);
     await removeQueueFromDatabase(queueId);
 
-    const idE = await enqueueToDatabase(queueId, type, [], 0, false);
+    const idE = await enqueueToDatabase(queueId, type, []);
     const jobUpdatePromiseB = getNextEmit(jobEmitter, 'jobUpdate');
     await markQueueForCleanupInDatabase(queueId);
 
     await expectAsync(jobUpdatePromiseB).toBeResolvedTo([idE, queueId, type, JOB_ABORTED_STATUS]);
 
     const jobAddPromiseB = getNextEmit(jobEmitter, 'jobAdd');
-    const [idF] = await bulkEnqueueToDatabase(queueId, [[type, [], false]], 0);
+    const [idF] = await bulkEnqueueToDatabase([[queueId, type, [], {}]]);
 
     await expectAsync(jobAddPromiseB).toBeResolvedTo([idF, queueId, type]);
 
@@ -160,7 +160,7 @@ describe('IndexedDB Database', () => {
   it('Emits a jobUpdate and followed by a jobDelete and removes from the database', async () => {
     const queueId = uuidv4();
     const type = uuidv4();
-    const id = await enqueueToDatabase(queueId, type, [], 0, false);
+    const id = await enqueueToDatabase(queueId, type, []);
     markJobCompleteThenRemoveFromDatabase(id);
     const updatePromise = expectAsync(jobEmitter).toEmit('jobUpdate', id, queueId, type, JOB_COMPLETE_STATUS);
     const deletePromise = expectAsync(jobEmitter).toEmit('jobDelete', id, queueId);
@@ -213,9 +213,9 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     await expectAsync(getGreatestJobIdFromQueueInDatabase(queueId)).toBeResolvedTo(0);
-    const idA = await enqueueToDatabase(queueId, type, [], 0, false);
+    const idA = await enqueueToDatabase(queueId, type, []);
     await expectAsync(getGreatestJobIdFromQueueInDatabase(queueId)).toBeResolvedTo(idA);
-    const idB = await enqueueToDatabase(queueId, type, [], 0, false);
+    const idB = await enqueueToDatabase(queueId, type, []);
     await expectAsync(getGreatestJobIdFromQueueInDatabase(queueId)).toBeResolvedTo(idB);
     await expectAsync(getJobsInDatabase([idA, idB])).toBeResolvedTo([{
       id: idA,
@@ -259,7 +259,7 @@ describe('IndexedDB Database', () => {
   it('Marks a job as aborted if it was in cleanup status', async () => {
     const queueId = uuidv4();
     const type = uuidv4();
-    const id = await enqueueToDatabase(queueId, type, [], 0, false);
+    const id = await enqueueToDatabase(queueId, type, []);
     await markJobCleanupInDatabase(id);
 
     await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
@@ -291,7 +291,7 @@ describe('IndexedDB Database', () => {
   it('Removes a job if it was in cleanup and remove status', async () => {
     const queueId = uuidv4();
     const type = uuidv4();
-    const id = await enqueueToDatabase(queueId, type, [], 0, false);
+    const id = await enqueueToDatabase(queueId, type, []);
     await markJobCompleteInDatabase(id);
     await markJobCleanupAndRemoveInDatabase(id);
 
@@ -386,7 +386,7 @@ describe('IndexedDB Database', () => {
   it('Adds and removes jobs from the database', async () => {
     const queueId = uuidv4();
     const type = uuidv4();
-    const id = await enqueueToDatabase(queueId, type, [], 0, false);
+    const id = await enqueueToDatabase(queueId, type, []);
 
     await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
       id,
@@ -407,7 +407,7 @@ describe('IndexedDB Database', () => {
   it('Removes a job with aborted status from the database if marked as "cleanup and remove" ', async () => {
     const queueId = uuidv4();
     const type = uuidv4();
-    const id = await enqueueToDatabase(queueId, type, [], 0, false);
+    const id = await enqueueToDatabase(queueId, type, []);
     await markJobAbortedInDatabase(id);
 
     await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
@@ -429,7 +429,7 @@ describe('IndexedDB Database', () => {
   it('Removes a job with pending status from the database if marked as "cleanup and remove" ', async () => {
     const queueId = uuidv4();
     const type = uuidv4();
-    const id = await enqueueToDatabase(queueId, type, [], 0, false);
+    const id = await enqueueToDatabase(queueId, type, []);
 
     await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
       id,
@@ -452,12 +452,12 @@ describe('IndexedDB Database', () => {
     const type = uuidv4();
 
 
-    const idA = await enqueueToDatabase(queueId, type, [], 0, false);
-    const idB = await enqueueToDatabase(queueId, type, [], 0, false);
-    const idC = await enqueueToDatabase(queueId, type, [], 0, false);
-    const idD = await enqueueToDatabase(queueId, type, [], 0, false);
-    const idE = await enqueueToDatabase(queueId, type, [], 0, false);
-    const idF = await enqueueToDatabase(queueId, type, [], 0, false);
+    const idA = await enqueueToDatabase(queueId, type, []);
+    const idB = await enqueueToDatabase(queueId, type, []);
+    const idC = await enqueueToDatabase(queueId, type, []);
+    const idD = await enqueueToDatabase(queueId, type, []);
+    const idE = await enqueueToDatabase(queueId, type, []);
+    const idF = await enqueueToDatabase(queueId, type, []);
 
     await markJobCompleteInDatabase(idB);
     await markJobErrorInDatabase(idC);
@@ -534,7 +534,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
 
     await expectAsync(dequeueFromDatabase()).toBeResolvedTo([{
       id,
@@ -553,7 +553,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
     await markJobErrorInDatabase(id);
 
     await expectAsync(dequeueFromDatabase()).toBeResolvedTo([{
@@ -573,7 +573,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
     await markJobCleanupInDatabase(id);
 
     await expectAsync(dequeueFromDatabase()).toBeResolvedTo([{
@@ -594,7 +594,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
     await markJobCompleteInDatabase(id);
     await markJobCleanupAndRemoveInDatabase(id);
 
@@ -615,7 +615,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
     await markJobCompleteInDatabase(id);
 
     await expectAsync(dequeueFromDatabase()).toBeResolvedTo([]);
@@ -625,7 +625,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
     await markJobAbortedInDatabase(id);
 
     await expectAsync(dequeueFromDatabase()).toBeResolvedTo([]);
@@ -647,9 +647,9 @@ describe('IndexedDB Database', () => {
     const argsA = [uuidv4()];
     const argsB = [uuidv4()];
     const argsC = [uuidv4()];
-    const idA = await enqueueToDatabase(queueId, type, argsA, 0, false);
-    const idB = await enqueueToDatabase(queueId, type, argsB, 0, false);
-    const idC = await enqueueToDatabase(queueId, type, argsC, 0, false);
+    const idA = await enqueueToDatabase(queueId, type, argsA);
+    const idB = await enqueueToDatabase(queueId, type, argsB);
+    const idC = await enqueueToDatabase(queueId, type, argsC);
 
     await expectAsync(dequeueFromDatabaseNotIn([])).toBeResolvedTo([{
       id: idA,
@@ -794,8 +794,8 @@ describe('IndexedDB Database', () => {
     const type = uuidv4();
     const argsA = [uuidv4()];
     const argsB = [uuidv4()];
-    const idA = await enqueueToDatabase(queueId, type, argsA, 0, false);
-    const idB = await enqueueToDatabase(queueId, type, argsB, 0, false);
+    const idA = await enqueueToDatabase(queueId, type, argsA);
+    const idB = await enqueueToDatabase(queueId, type, argsB);
 
     await markJobErrorInDatabase(idA);
     await markJobCompleteInDatabase(idB);
@@ -808,8 +808,8 @@ describe('IndexedDB Database', () => {
     const type = uuidv4();
     const argsA = [uuidv4()];
     const argsB = [uuidv4()];
-    const idA = await enqueueToDatabase(queueId, type, argsA, 0, false);
-    const idB = await enqueueToDatabase(queueId, type, argsB, 0, false);
+    const idA = await enqueueToDatabase(queueId, type, argsA);
+    const idB = await enqueueToDatabase(queueId, type, argsB);
 
     await markJobErrorInDatabase(idA);
     await markJobErrorInDatabase(idB);
@@ -846,8 +846,8 @@ describe('IndexedDB Database', () => {
     const type = uuidv4();
     const argsA = [uuidv4()];
     const argsB = [uuidv4()];
-    const idA = await enqueueToDatabase(queueId, type, argsA, 0, false);
-    const idB = await enqueueToDatabase(queueId, type, argsB, 0, false);
+    const idA = await enqueueToDatabase(queueId, type, argsA);
+    const idB = await enqueueToDatabase(queueId, type, argsB);
 
     await markJobCleanupInDatabase(idA);
     await markJobCleanupInDatabase(idB);
@@ -883,10 +883,9 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const prioritize = false;
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
     await removeJobFromDatabase(id);
-    await restoreJobToDatabaseForCleanupAndRemove(id, queueId, type, args, prioritize);
+    await restoreJobToDatabaseForCleanupAndRemove(id, queueId, type, args);
 
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
       id,
@@ -897,7 +896,7 @@ describe('IndexedDB Database', () => {
       created: jasmine.any(Number),
       status: JOB_CLEANUP_AND_REMOVE_STATUS,
       startAfter: jasmine.any(Number),
-      prioritize,
+      prioritize: false,
     });
   });
 
@@ -905,7 +904,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
     await incrementJobAttemptInDatabase(id);
 
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -925,7 +924,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
 
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
       id,
@@ -958,7 +957,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
 
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
       id,
@@ -999,7 +998,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
 
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
       id,
@@ -1021,7 +1020,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
 
     await markJobAbortedInDatabase(id);
 
@@ -1045,7 +1044,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
     await markJobCompleteInDatabase(id);
 
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1078,7 +1077,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
     await markJobCompleteInDatabase(id);
 
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1111,7 +1110,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
     await markJobCompleteInDatabase(id);
 
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1163,7 +1162,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
     await markJobCompleteInDatabase(id);
     const jobBeforeUpdate = await getJobFromDatabase(id);
     if (typeof jobBeforeUpdate === 'undefined') {
@@ -1184,7 +1183,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
     await markJobErrorInDatabase(id);
 
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1217,7 +1216,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
     await markJobErrorInDatabase(id);
 
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1250,7 +1249,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
     await incrementJobAttemptInDatabase(id);
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
       id,
@@ -1282,7 +1281,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
 
     await markJobAbortedInDatabase(id);
     await incrementJobAttemptInDatabase(id);
@@ -1316,7 +1315,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
     await markJobCompleteInDatabase(id);
     await incrementJobAttemptInDatabase(id);
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1349,7 +1348,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
     await markJobErrorInDatabase(id);
     await incrementJobAttemptInDatabase(id);
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1382,7 +1381,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
     await markJobCleanupInDatabase(id);
     await incrementJobAttemptInDatabase(id);
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1415,7 +1414,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
     await markJobCompleteInDatabase(id);
     await markJobCleanupAndRemoveInDatabase(id);
     await incrementJobAttemptInDatabase(id);
@@ -1449,7 +1448,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
     await incrementJobAttemptInDatabase(id);
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
       id,
@@ -1495,7 +1494,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
 
     await markJobAbortedInDatabase(id);
     await incrementJobAttemptInDatabase(id);
@@ -1540,7 +1539,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
     await markJobCompleteInDatabase(id);
     await incrementJobAttemptInDatabase(id);
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1586,7 +1585,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
     await markJobErrorInDatabase(id);
     await incrementJobAttemptInDatabase(id);
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1632,7 +1631,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
     await markJobCleanupInDatabase(id);
     await incrementJobAttemptInDatabase(id);
     await expectAsync(getJobFromDatabase(id)).toBeResolvedTo({
@@ -1676,7 +1675,7 @@ describe('IndexedDB Database', () => {
     const queueId = uuidv4();
     const type = uuidv4();
     const args = [uuidv4()];
-    const id = await enqueueToDatabase(queueId, type, args, 0, false);
+    const id = await enqueueToDatabase(queueId, type, args);
     await markJobCompleteInDatabase(id);
     await markJobCleanupAndRemoveInDatabase(id);
     await incrementJobAttemptInDatabase(id);
@@ -1724,10 +1723,10 @@ describe('IndexedDB Database', () => {
     const valueA = uuidv4();
     const valueB = uuidv4();
     const items = [
-      [type, [valueA], false],
-      [type, [valueB], false],
+      [queueId, type, [valueA], {}],
+      [queueId, type, [valueB], {}],
     ];
-    await bulkEnqueueToDatabase(queueId, items, 0);
+    await bulkEnqueueToDatabase(items);
 
     await expectAsync(dequeueFromDatabase()).toBeResolvedTo([{
       id: jasmine.any(Number),

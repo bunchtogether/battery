@@ -35,7 +35,7 @@ describe('Queue Watcher', () => {
     const watcher = new BatteryQueueWatcher(queueId);
     //
     const pendingEmitPromiseA = expectAsync(watcher).toEmit('status', QUEUE_PENDING_STATUS);
-    const id = await enqueueToDatabase(queueId, type, [], 0, false);
+    const id = await enqueueToDatabase(queueId, type, []);
     await pendingEmitPromiseA;
     await expectAsync(watcher.getStatus()).toBeResolvedTo(QUEUE_PENDING_STATUS);
 

@@ -2306,95 +2306,121 @@ function _incrementCleanupAttemptInDatabase() {
   return _incrementCleanupAttemptInDatabase.apply(this, arguments);
 }
 
-function _bulkEnqueueToDatabase2(_x38, _x39, _x40) {
+function _bulkEnqueueToDatabase2(_x38) {
   return _bulkEnqueueToDatabase.apply(this, arguments);
 }
 
 function _bulkEnqueueToDatabase() {
-  _bulkEnqueueToDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee33(queueId, items, delay) {
-    var i, _items$i, type, args, prioritize, ids, store;
+  _bulkEnqueueToDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee33(items) {
+    var _iterator2, _step2, _step2$value, queueId, type, args, _step2$value$, options, delay, prioritize, ids, store;
 
     return regeneratorRuntime.wrap(function _callee33$(_context33) {
       while (1) {
         switch (_context33.prev = _context33.next) {
           case 0:
-            if (!(typeof queueId !== 'string')) {
-              _context33.next = 2;
-              break;
-            }
-
-            throw new TypeError("Unable to bulk enqueue in database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\""));
-
-          case 2:
             if (Array.isArray(items)) {
-              _context33.next = 4;
+              _context33.next = 2;
               break;
             }
 
             throw new TypeError("Unable to bulk enqueue in database, received invalid \"items\" argument type \"".concat(_typeof(items), "\""));
 
-          case 4:
-            i = 0;
+          case 2:
+            _iterator2 = _createForOfIteratorHelper(items);
+            _context33.prev = 3;
+
+            _iterator2.s();
 
           case 5:
-            if (!(i < items.length)) {
-              _context33.next = 16;
+            if ((_step2 = _iterator2.n()).done) {
+              _context33.next = 21;
               break;
             }
 
-            _items$i = _slicedToArray(items[i], 3), type = _items$i[0], args = _items$i[1], prioritize = _items$i[2];
+            _step2$value = _slicedToArray(_step2.value, 4), queueId = _step2$value[0], type = _step2$value[1], args = _step2$value[2], _step2$value$ = _step2$value[3], options = _step2$value$ === void 0 ? {} : _step2$value$;
 
-            if (!(typeof type !== 'string')) {
+            if (!(typeof queueId !== 'string')) {
               _context33.next = 9;
               break;
             }
 
-            throw new TypeError("Unable to bulk enqueue in database, received invalid items[".concat(i, "] \"type\" argument type \"").concat(_typeof(type), "\""));
+            throw new TypeError("Unable to enqueue in database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\", should be string"));
 
           case 9:
-            if (Array.isArray(args)) {
+            if (!(typeof type !== 'string')) {
               _context33.next = 11;
               break;
             }
 
-            throw new TypeError("Unable to bulk enqueue in database, received invalid items[".concat(i, "] \"args\" argument type \"").concat(_typeof(args), "\""));
+            throw new TypeError("Unable to enqueue in database, received invalid \"type\" argument type \"".concat(_typeof(type), "\", should be string"));
 
           case 11:
-            if (!(typeof prioritize !== 'boolean')) {
+            if (Array.isArray(args)) {
               _context33.next = 13;
               break;
             }
 
-            throw new TypeError("Unable to enqueue in database, received invalid \"prioritize\" argument type \"".concat(_typeof(prioritize), "\", should be boolean"));
+            throw new TypeError("Unable to enqueue in database, received invalid \"args\" argument type \"".concat(_typeof(args), "\", should be Array<any>"));
 
           case 13:
-            i += 1;
-            _context33.next = 5;
-            break;
+            delay = options.delay || 0;
+            prioritize = options.prioritize || false;
 
-          case 16:
             if (!(typeof delay !== 'number')) {
-              _context33.next = 18;
+              _context33.next = 17;
               break;
             }
 
-            throw new TypeError("Unable to bulk enqueue in database, received invalid \"delay\" argument type \"".concat(_typeof(delay), "\""));
+            throw new TypeError("Unable to enqueue in database, received invalid \"options.delay\" argument type \"".concat(_typeof(delay), "\", should be number"));
 
-          case 18:
-            ids = [];
-            _context33.next = 21;
-            return getReadWriteJobsObjectStore();
+          case 17:
+            if (!(typeof prioritize !== 'boolean')) {
+              _context33.next = 19;
+              break;
+            }
+
+            throw new TypeError("Unable to enqueue in database, received invalid \"options.prioritize\" argument type \"".concat(_typeof(prioritize), "\", should be boolean"));
+
+          case 19:
+            _context33.next = 5;
+            break;
 
           case 21:
-            store = _context33.sent;
-            _context33.next = 24;
-            return new Promise(function (resolve, reject) {
-              var _loop = function _loop(_i2) {
-                var _items$_i = _slicedToArray(items[_i2], 3),
-                    type = _items$_i[0],
-                    args = _items$_i[1],
-                    prioritize = _items$_i[2];
+            _context33.next = 26;
+            break;
 
+          case 23:
+            _context33.prev = 23;
+            _context33.t0 = _context33["catch"](3);
+
+            _iterator2.e(_context33.t0);
+
+          case 26:
+            _context33.prev = 26;
+
+            _iterator2.f();
+
+            return _context33.finish(26);
+
+          case 29:
+            ids = [];
+            _context33.next = 32;
+            return getReadWriteJobsObjectStore();
+
+          case 32:
+            store = _context33.sent;
+            _context33.next = 35;
+            return new Promise(function (resolve, reject) {
+              var _loop = function _loop(i) {
+                var _items$i = _slicedToArray(items[i], 4),
+                    queueId = _items$i[0],
+                    type = _items$i[1],
+                    args = _items$i[2],
+                    _items$i$ = _items$i[3],
+                    options = _items$i$ === void 0 ? {} : _items$i$;
+
+                var delay = typeof options.delay === 'number' ? options.delay : 0;
+                var prioritize = typeof options.prioritize === 'boolean' ? options.prioritize : false;
                 var value = {
                   queueId: queueId,
                   type: type,
@@ -2425,77 +2451,89 @@ function _bulkEnqueueToDatabase() {
                 };
               };
 
-              for (var _i2 = 0; _i2 < items.length; _i2 += 1) {
-                _loop(_i2);
+              for (var i = 0; i < items.length; i += 1) {
+                _loop(i);
               }
 
               store.transaction.commit();
             });
 
-          case 24:
+          case 35:
             return _context33.abrupt("return", ids);
 
-          case 25:
+          case 36:
           case "end":
             return _context33.stop();
         }
       }
-    }, _callee33);
+    }, _callee33, null, [[3, 23, 26, 29]]);
   }));
   return _bulkEnqueueToDatabase.apply(this, arguments);
 }
 
-function _enqueueToDatabase2(_x41, _x42, _x43, _x44, _x45) {
+function _enqueueToDatabase2(_x39, _x40, _x41) {
   return _enqueueToDatabase.apply(this, arguments);
 }
 
 function _enqueueToDatabase() {
-  _enqueueToDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee34(queueId, type, args, delay, prioritize) {
-    var value, store, request, id;
+  _enqueueToDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee34(queueId, type, args) {
+    var options,
+        delay,
+        prioritize,
+        value,
+        store,
+        request,
+        id,
+        _args34 = arguments;
     return regeneratorRuntime.wrap(function _callee34$(_context34) {
       while (1) {
         switch (_context34.prev = _context34.next) {
           case 0:
+            options = _args34.length > 3 && _args34[3] !== undefined ? _args34[3] : {};
+
             if (!(typeof queueId !== 'string')) {
-              _context34.next = 2;
+              _context34.next = 3;
               break;
             }
 
             throw new TypeError("Unable to enqueue in database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\", should be string"));
 
-          case 2:
+          case 3:
             if (!(typeof type !== 'string')) {
-              _context34.next = 4;
+              _context34.next = 5;
               break;
             }
 
             throw new TypeError("Unable to enqueue in database, received invalid \"type\" argument type \"".concat(_typeof(type), "\", should be string"));
 
-          case 4:
+          case 5:
             if (Array.isArray(args)) {
-              _context34.next = 6;
+              _context34.next = 7;
               break;
             }
 
             throw new TypeError("Unable to enqueue in database, received invalid \"args\" argument type \"".concat(_typeof(args), "\", should be Array<any>"));
 
-          case 6:
+          case 7:
+            delay = options.delay || 0;
+            prioritize = options.prioritize || false;
+
             if (!(typeof delay !== 'number')) {
-              _context34.next = 8;
+              _context34.next = 11;
               break;
             }
 
-            throw new TypeError("Unable to enqueue in database, received invalid \"delay\" argument type \"".concat(_typeof(delay), "\", should be number"));
+            throw new TypeError("Unable to enqueue in database, received invalid \"options.delay\" argument type \"".concat(_typeof(delay), "\", should be number"));
 
-          case 8:
+          case 11:
             if (!(typeof prioritize !== 'boolean')) {
-              _context34.next = 10;
+              _context34.next = 13;
               break;
             }
 
-            throw new TypeError("Unable to enqueue in database, received invalid \"prioritize\" argument type \"".concat(_typeof(prioritize), "\", should be boolean"));
+            throw new TypeError("Unable to enqueue in database, received invalid \"options.prioritize\" argument type \"".concat(_typeof(prioritize), "\", should be boolean"));
 
-          case 10:
+          case 13:
             value = {
               queueId: queueId,
               type: type,
@@ -2506,13 +2544,13 @@ function _enqueueToDatabase() {
               startAfter: Date.now() + delay,
               prioritize: prioritize
             };
-            _context34.next = 13;
+            _context34.next = 16;
             return getReadWriteJobsObjectStore();
 
-          case 13:
+          case 16:
             store = _context34.sent;
             request = store.put(value);
-            _context34.next = 17;
+            _context34.next = 20;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve(request.result);
@@ -2527,7 +2565,7 @@ function _enqueueToDatabase() {
               store.transaction.commit();
             });
 
-          case 17:
+          case 20:
             id = _context34.sent;
 
             _localJobEmitter.emit('jobAdd', id, queueId, type);
@@ -2536,7 +2574,7 @@ function _enqueueToDatabase() {
 
             return _context34.abrupt("return", id);
 
-          case 21:
+          case 24:
           case "end":
             return _context34.stop();
         }
@@ -2546,57 +2584,76 @@ function _enqueueToDatabase() {
   return _enqueueToDatabase.apply(this, arguments);
 }
 
-function _restoreJobToDatabaseForCleanupAndRemove2(_x46, _x47, _x48, _x49, _x50) {
+function _restoreJobToDatabaseForCleanupAndRemove2(_x42, _x43, _x44, _x45) {
   return _restoreJobToDatabaseForCleanupAndRemove.apply(this, arguments);
 }
 
 function _restoreJobToDatabaseForCleanupAndRemove() {
-  _restoreJobToDatabaseForCleanupAndRemove = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee35(id, queueId, type, args, prioritize) {
-    var value, store, request;
+  _restoreJobToDatabaseForCleanupAndRemove = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee35(id, queueId, type, args) {
+    var options,
+        delay,
+        prioritize,
+        value,
+        store,
+        request,
+        _args35 = arguments;
     return regeneratorRuntime.wrap(function _callee35$(_context35) {
       while (1) {
         switch (_context35.prev = _context35.next) {
           case 0:
+            options = _args35.length > 4 && _args35[4] !== undefined ? _args35[4] : {};
+
             if (!(typeof id !== 'number')) {
-              _context35.next = 2;
+              _context35.next = 3;
               break;
             }
 
             throw new TypeError("Unable to restore to database, received invalid \"id\" argument type \"".concat(_typeof(id), "\", should be number"));
 
-          case 2:
+          case 3:
             if (!(typeof queueId !== 'string')) {
-              _context35.next = 4;
+              _context35.next = 5;
               break;
             }
 
             throw new TypeError("Unable to restore to database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\", should be string"));
 
-          case 4:
+          case 5:
             if (!(typeof type !== 'string')) {
-              _context35.next = 6;
+              _context35.next = 7;
               break;
             }
 
             throw new TypeError("Unable to restore to database, received invalid \"type\" argument type \"".concat(_typeof(type), "\", should be string"));
 
-          case 6:
+          case 7:
             if (Array.isArray(args)) {
-              _context35.next = 8;
+              _context35.next = 9;
               break;
             }
 
             throw new TypeError("Unable to restore to database, received invalid \"args\" argument type \"".concat(_typeof(args), "\", should be Array<any>"));
 
-          case 8:
-            if (!(typeof prioritize !== 'boolean')) {
-              _context35.next = 10;
+          case 9:
+            delay = options.delay || 0;
+            prioritize = options.prioritize || false;
+
+            if (!(typeof delay !== 'number')) {
+              _context35.next = 13;
               break;
             }
 
-            throw new TypeError("Unable to restore to database, received invalid \"prioritize\" argument type \"".concat(_typeof(prioritize), "\", should be boolean"));
+            throw new TypeError("Unable to enqueue in database, received invalid \"options.delay\" argument type \"".concat(_typeof(delay), "\", should be number"));
 
-          case 10:
+          case 13:
+            if (!(typeof prioritize !== 'boolean')) {
+              _context35.next = 15;
+              break;
+            }
+
+            throw new TypeError("Unable to enqueue in database, received invalid \"options.prioritize\" argument type \"".concat(_typeof(prioritize), "\", should be boolean"));
+
+          case 15:
             value = {
               id: id,
               queueId: queueId,
@@ -2605,16 +2662,16 @@ function _restoreJobToDatabaseForCleanupAndRemove() {
               attempt: 1,
               created: Date.now(),
               status: _JOB_CLEANUP_AND_REMOVE_STATUS,
-              startAfter: Date.now(),
+              startAfter: Date.now() + delay,
               prioritize: prioritize
             };
-            _context35.next = 13;
+            _context35.next = 18;
             return getReadWriteJobsObjectStore();
 
-          case 13:
+          case 18:
             store = _context35.sent;
             request = store.put(value);
-            _context35.next = 17;
+            _context35.next = 22;
             return new Promise(function (resolve, reject) {
               request.onsuccess = function () {
                 resolve(request.result);
@@ -2629,14 +2686,14 @@ function _restoreJobToDatabaseForCleanupAndRemove() {
               store.transaction.commit();
             });
 
-          case 17:
+          case 22:
             _localJobEmitter.emit('jobAdd', id, queueId, type);
 
             _jobEmitter.emit('jobAdd', id, queueId, type);
 
             return _context35.abrupt("return", id);
 
-          case 20:
+          case 25:
           case "end":
             return _context35.stop();
         }
@@ -2713,7 +2770,7 @@ function _getContiguousIds(ids) {
   return points;
 }
 
-function _dequeueFromDatabaseNotIn2(_x51) {
+function _dequeueFromDatabaseNotIn2(_x46) {
   return _dequeueFromDatabaseNotIn.apply(this, arguments);
 }
 
@@ -2747,12 +2804,12 @@ function _dequeueFromDatabaseNotIn() {
             request = index.getAllKeys(IDBKeyRange.bound(_JOB_CLEANUP_AND_REMOVE_STATUS, _JOB_PENDING_STATUS));
 
             request.onsuccess = function (event) {
-              var _iterator2 = _createForOfIteratorHelper(event.target.result),
-                  _step2;
+              var _iterator3 = _createForOfIteratorHelper(event.target.result),
+                  _step3;
 
               try {
                 var _loop2 = function _loop2() {
-                  var id = _step2.value;
+                  var id = _step3.value;
 
                   if (ids.includes(id)) {
                     return "continue";
@@ -2770,15 +2827,15 @@ function _dequeueFromDatabaseNotIn() {
                   };
                 };
 
-                for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
+                for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
                   var _ret = _loop2();
 
                   if (_ret === "continue") continue;
                 }
               } catch (err) {
-                _iterator2.e(err);
+                _iterator3.e(err);
               } finally {
-                _iterator2.f();
+                _iterator3.f();
               }
 
               store.transaction.commit();
@@ -2805,7 +2862,7 @@ function _dequeueFromDatabaseNotIn() {
   return _dequeueFromDatabaseNotIn.apply(this, arguments);
 }
 
-function _getJobsWithTypeFromDatabase2(_x52) {
+function _getJobsWithTypeFromDatabase2(_x47) {
   return _getJobsWithTypeFromDatabase.apply(this, arguments);
 }
 
@@ -2848,7 +2905,7 @@ function _getJobsWithTypeFromDatabase() {
   return _getJobsWithTypeFromDatabase.apply(this, arguments);
 }
 
-function _getJobsInQueueFromDatabase2(_x53) {
+function _getJobsInQueueFromDatabase2(_x48) {
   return _getJobsInQueueFromDatabase.apply(this, arguments);
 }
 
@@ -2904,13 +2961,13 @@ function _getJobsInQueueFromDatabase() {
   return _getJobsInQueueFromDatabase.apply(this, arguments);
 }
 
-function _getJobsInDatabase2(_x54) {
+function _getJobsInDatabase2(_x49) {
   return _getJobsInDatabase.apply(this, arguments);
 }
 
 function _getJobsInDatabase() {
   _getJobsInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee40(jobIds) {
-    var _yield$getReadOnlyJob3, _yield$getReadOnlyJob4, store, promise, jobs, _iterator3, _step3, _loop3;
+    var _yield$getReadOnlyJob3, _yield$getReadOnlyJob4, store, promise, jobs, _iterator4, _step4, _loop3;
 
     return regeneratorRuntime.wrap(function _callee40$(_context40) {
       while (1) {
@@ -2933,11 +2990,11 @@ function _getJobsInDatabase() {
             store = _yield$getReadOnlyJob4[0];
             promise = _yield$getReadOnlyJob4[1];
             jobs = [];
-            _iterator3 = _createForOfIteratorHelper(jobIds);
+            _iterator4 = _createForOfIteratorHelper(jobIds);
 
             try {
               _loop3 = function _loop3() {
-                var jobId = _step3.value;
+                var jobId = _step4.value;
                 var request = store.get(jobId);
 
                 request.onsuccess = function () {
@@ -2952,13 +3009,13 @@ function _getJobsInDatabase() {
                 };
               };
 
-              for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
+              for (_iterator4.s(); !(_step4 = _iterator4.n()).done;) {
                 _loop3();
               }
             } catch (err) {
-              _iterator3.e(err);
+              _iterator4.e(err);
             } finally {
-              _iterator3.f();
+              _iterator4.f();
             }
 
             store.transaction.commit();
@@ -2978,7 +3035,7 @@ function _getJobsInDatabase() {
   return _getJobsInDatabase.apply(this, arguments);
 }
 
-function _getCompletedJobsCountFromDatabase2(_x55) {
+function _getCompletedJobsCountFromDatabase2(_x50) {
   return _getCompletedJobsCountFromDatabase.apply(this, arguments);
 }
 
@@ -3006,7 +3063,7 @@ function _getCompletedJobsCountFromDatabase() {
   return _getCompletedJobsCountFromDatabase.apply(this, arguments);
 }
 
-function _getCompletedJobsFromDatabase2(_x56) {
+function _getCompletedJobsFromDatabase2(_x51) {
   return _getCompletedJobsFromDatabase.apply(this, arguments);
 }
 
@@ -3062,7 +3119,7 @@ function _getCompletedJobsFromDatabase() {
   return _getCompletedJobsFromDatabase.apply(this, arguments);
 }
 
-function _storeAuthDataInDatabase2(_x57, _x58) {
+function _storeAuthDataInDatabase2(_x52, _x53) {
   return _storeAuthDataInDatabase.apply(this, arguments);
 }
 
@@ -3123,7 +3180,7 @@ function _storeAuthDataInDatabase() {
   return _storeAuthDataInDatabase.apply(this, arguments);
 }
 
-function _getAuthDataFromDatabase2(_x59) {
+function _getAuthDataFromDatabase2(_x54) {
   return _getAuthDataFromDatabase.apply(this, arguments);
 }
 
@@ -3177,7 +3234,7 @@ function _getAuthDataFromDatabase() {
   return _getAuthDataFromDatabase.apply(this, arguments);
 }
 
-function _removeAuthDataFromDatabase2(_x60) {
+function _removeAuthDataFromDatabase2(_x55) {
   return _removeAuthDataFromDatabase.apply(this, arguments);
 }
 
@@ -3226,7 +3283,7 @@ function _removeAuthDataFromDatabase() {
   return _removeAuthDataFromDatabase.apply(this, arguments);
 }
 
-function _getQueueStatus2(_x61) {
+function _getQueueStatus2(_x56) {
   return _getQueueStatus.apply(this, arguments);
 }
 
@@ -3372,7 +3429,7 @@ function _getQueueStatus() {
   return _getQueueStatus.apply(this, arguments);
 }
 
-function _addArgLookup2(_x62, _x63, _x64) {
+function _addArgLookup2(_x57, _x58, _x59) {
   return _addArgLookup.apply(this, arguments);
 }
 
@@ -3441,7 +3498,7 @@ function _addArgLookup() {
   return _addArgLookup.apply(this, arguments);
 }
 
-function _getArgLookupJobPathMap2(_x65) {
+function _getArgLookupJobPathMap2(_x60) {
   return _getArgLookupJobPathMap.apply(this, arguments);
 }
 
@@ -3495,7 +3552,7 @@ function _getArgLookupJobPathMap() {
   return _getArgLookupJobPathMap.apply(this, arguments);
 }
 
-function _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase2(_x66) {
+function _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase2(_x61) {
   return _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase.apply(this, arguments);
 }
 
@@ -3554,7 +3611,7 @@ function _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase() {
   return _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase.apply(this, arguments);
 }
 
-function _lookupArgs2(_x67) {
+function _lookupArgs2(_x62) {
   return _lookupArgs.apply(this, arguments);
 }
 
@@ -3614,21 +3671,21 @@ function _lookupArgs() {
 
                     var args = jobRequest.result.args;
 
-                    var _iterator4 = _createForOfIteratorHelper((0, _jsonpathPlus.JSONPath)({
+                    var _iterator5 = _createForOfIteratorHelper((0, _jsonpathPlus.JSONPath)({
                       path: jsonPath,
                       json: args
                     })),
-                        _step4;
+                        _step5;
 
                     try {
-                      for (_iterator4.s(); !(_step4 = _iterator4.n()).done;) {
-                        var result = _step4.value;
+                      for (_iterator5.s(); !(_step5 = _iterator5.n()).done;) {
+                        var result = _step5.value;
                         results.push(result);
                       }
                     } catch (err) {
-                      _iterator4.e(err);
+                      _iterator5.e(err);
                     } finally {
-                      _iterator4.f();
+                      _iterator5.f();
                     }
 
                     if (i === argLookups.length - 1) {
@@ -3667,7 +3724,7 @@ function _lookupArgs() {
   return _lookupArgs.apply(this, arguments);
 }
 
-function _lookupArg2(_x68) {
+function _lookupArg2(_x63) {
   return _lookupArg.apply(this, arguments);
 }
 
@@ -3703,7 +3760,7 @@ function removeArgLookupsAndCleanupsForJob() {
 
 function _removeArgLookupsAndCleanupsForJob() {
   _removeArgLookupsAndCleanupsForJob = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee52() {
-    var jobIds, database, transaction, cleanupsObjectStore, argLookupObjectStore, argLookupJobIdIndex, _iterator5, _step5, _loop5;
+    var jobIds, database, transaction, cleanupsObjectStore, argLookupObjectStore, argLookupJobIdIndex, _iterator6, _step6, _loop5;
 
     return regeneratorRuntime.wrap(function _callee52$(_context52) {
       while (1) {
@@ -3741,11 +3798,11 @@ function _removeArgLookupsAndCleanupsForJob() {
             cleanupsObjectStore = transaction.objectStore('cleanups');
             argLookupObjectStore = transaction.objectStore('arg-lookup');
             argLookupJobIdIndex = argLookupObjectStore.index('jobIdIndex');
-            _iterator5 = _createForOfIteratorHelper(jobIds);
+            _iterator6 = _createForOfIteratorHelper(jobIds);
 
             try {
               _loop5 = function _loop5() {
-                var jobId = _step5.value;
+                var jobId = _step6.value;
                 var cleanupDeleteRequest = cleanupsObjectStore.delete(jobId);
 
                 cleanupDeleteRequest.onerror = function (event) {
@@ -3757,12 +3814,12 @@ function _removeArgLookupsAndCleanupsForJob() {
                 var argLookupJobRequest = argLookupJobIdIndex.getAllKeys(IDBKeyRange.only(jobId));
 
                 argLookupJobRequest.onsuccess = function (event) {
-                  var _iterator6 = _createForOfIteratorHelper(event.target.result),
-                      _step6;
+                  var _iterator7 = _createForOfIteratorHelper(event.target.result),
+                      _step7;
 
                   try {
-                    for (_iterator6.s(); !(_step6 = _iterator6.n()).done;) {
-                      var id = _step6.value;
+                    for (_iterator7.s(); !(_step7 = _iterator7.n()).done;) {
+                      var id = _step7.value;
                       var argLookupDeleteRequest = argLookupObjectStore.delete(id);
 
                       argLookupDeleteRequest.onerror = function (deleteEvent) {
@@ -3771,9 +3828,9 @@ function _removeArgLookupsAndCleanupsForJob() {
                       };
                     }
                   } catch (err) {
-                    _iterator6.e(err);
+                    _iterator7.e(err);
                   } finally {
-                    _iterator6.f();
+                    _iterator7.f();
                   }
                 };
 
@@ -3783,13 +3840,13 @@ function _removeArgLookupsAndCleanupsForJob() {
                 };
               };
 
-              for (_iterator5.s(); !(_step5 = _iterator5.n()).done;) {
+              for (_iterator6.s(); !(_step6 = _iterator6.n()).done;) {
                 _loop5();
               }
             } catch (err) {
-              _iterator5.e(err);
+              _iterator6.e(err);
             } finally {
-              _iterator5.f();
+              _iterator6.f();
             }
 
           case 15:

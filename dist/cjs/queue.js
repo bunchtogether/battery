@@ -2009,7 +2009,9 @@ var BatteryQueue = /*#__PURE__*/function (_EventEmitter) {
                   });
 
                   _context22.next = 56;
-                  return (0, _database.restoreJobToDatabaseForCleanupAndRemove)(id, queueId, type, args, prioritize);
+                  return (0, _database.restoreJobToDatabaseForCleanupAndRemove)(id, queueId, type, args, {
+                    prioritize: prioritize
+                  });
 
                 case 56:
                   _this9.jobIds.delete(id);

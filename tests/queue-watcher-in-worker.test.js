@@ -44,7 +44,7 @@ describe('Queue Watcher in Worker', () => {
     const value = uuidv4();
     const args = [TRIGGER_NO_ERROR, value];
     const watcher = new BatteryQueueWatcher(queueId);
-    const id = await enqueueToDatabase(queueId, 'echo', args, 0, false);
+    const id = await enqueueToDatabase(queueId, 'echo', args);
     await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
       id,
       queueId,

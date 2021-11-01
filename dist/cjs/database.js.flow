@@ -1142,33 +1142,41 @@ export async function incrementCleanupAttemptInDatabase(id:number, queueId:strin
   return attempt;
 }
 
-export async function bulkEnqueueToDatabase(queueId: string, items:Array<[string, Array<any>, boolean]>, delay: number) { // eslint-disable-line no-underscore-dangle
-  if (typeof queueId !== 'string') {
-    throw new TypeError(`Unable to bulk enqueue in database, received invalid "queueId" argument type "${typeof queueId}"`);
-  }
+type EnqueueOptions = {
+  delay?: number,
+  prioritize?: boolean
+}
+
+export async function bulkEnqueueToDatabase(items:Array<[string, string, Array<any>, EnqueueOptions]>) { // eslint-disable-line no-underscore-dangle
   if (!Array.isArray(items)) {
     throw new TypeError(`Unable to bulk enqueue in database, received invalid "items" argument type "${typeof items}"`);
   }
-  for (let i = 0; i < items.length; i += 1) {
-    const [type, args, prioritize] = items[i];
+  for (const [queueId, type, args, options = {}] of items) {
+    if (typeof queueId !== 'string') {
+      throw new TypeError(`Unable to enqueue in database, received invalid "queueId" argument type "${typeof queueId}", should be string`);
+    }
     if (typeof type !== 'string') {
-      throw new TypeError(`Unable to bulk enqueue in database, received invalid items[${i}] "type" argument type "${typeof type}"`);
+      throw new TypeError(`Unable to enqueue in database, received invalid "type" argument type "${typeof type}", should be string`);
     }
     if (!Array.isArray(args)) {
-      throw new TypeError(`Unable to bulk enqueue in database, received invalid items[${i}] "args" argument type "${typeof args}"`);
+      throw new TypeError(`Unable to enqueue in database, received invalid "args" argument type "${typeof args}", should be Array<any>`);
+    }
+    const delay = options.delay || 0;
+    const prioritize = options.prioritize || false;
+    if (typeof delay !== 'number') {
+      throw new TypeError(`Unable to enqueue in database, received invalid "options.delay" argument type "${typeof delay}", should be number`);
     }
     if (typeof prioritize !== 'boolean') {
-      throw new TypeError(`Unable to enqueue in database, received invalid "prioritize" argument type "${typeof prioritize}", should be boolean`);
+      throw new TypeError(`Unable to enqueue in database, received invalid "options.prioritize" argument type "${typeof prioritize}", should be boolean`);
     }
-  }
-  if (typeof delay !== 'number') {
-    throw new TypeError(`Unable to bulk enqueue in database, received invalid "delay" argument type "${typeof delay}"`);
   }
   const ids = [];
   const store = await getReadWriteJobsObjectStore();
   await new Promise((resolve, reject) => {
     for (let i = 0; i < items.length; i += 1) {
-      const [type, args, prioritize] = items[i];
+      const [queueId, type, args, options = {}] = items[i];
+      const delay = typeof options.delay === 'number' ? options.delay : 0;
+      const prioritize = typeof options.prioritize === 'boolean' ? options.prioritize : false;
       const value = {
         queueId,
         type,
@@ -1198,7 +1206,7 @@ export async function bulkEnqueueToDatabase(queueId: string, items:Array<[string
   return ids;
 }
 
-export async function enqueueToDatabase(queueId: string, type: string, args: Array<any>, delay: number, prioritize: boolean) { // eslint-disable-line no-underscore-dangle
+export async function enqueueToDatabase(queueId: string, type: string, args: Array<any>, options?:EnqueueOptions = {}) { // eslint-disable-line no-underscore-dangle
   if (typeof queueId !== 'string') {
     throw new TypeError(`Unable to enqueue in database, received invalid "queueId" argument type "${typeof queueId}", should be string`);
   }
@@ -1208,11 +1216,13 @@ export async function enqueueToDatabase(queueId: string, type: string, args: Arr
   if (!Array.isArray(args)) {
     throw new TypeError(`Unable to enqueue in database, received invalid "args" argument type "${typeof args}", should be Array<any>`);
   }
+  const delay = options.delay || 0;
+  const prioritize = options.prioritize || false;
   if (typeof delay !== 'number') {
-    throw new TypeError(`Unable to enqueue in database, received invalid "delay" argument type "${typeof delay}", should be number`);
+    throw new TypeError(`Unable to enqueue in database, received invalid "options.delay" argument type "${typeof delay}", should be number`);
   }
   if (typeof prioritize !== 'boolean') {
-    throw new TypeError(`Unable to enqueue in database, received invalid "prioritize" argument type "${typeof prioritize}", should be boolean`);
+    throw new TypeError(`Unable to enqueue in database, received invalid "options.prioritize" argument type "${typeof prioritize}", should be boolean`);
   }
   const value = {
     queueId,
@@ -1244,7 +1254,7 @@ export async function enqueueToDatabase(queueId: string, type: string, args: Arr
   return id;
 }
 
-export async function restoreJobToDatabaseForCleanupAndRemove(id:number, queueId: string, type: string, args: Array<any>, prioritize: boolean) { // eslint-disable-line no-underscore-dangle
+export async function restoreJobToDatabaseForCleanupAndRemove(id:number, queueId: string, type: string, args: Array<any>, options?:EnqueueOptions = {}) { // eslint-disable-line no-underscore-dangle
   if (typeof id !== 'number') {
     throw new TypeError(`Unable to restore to database, received invalid "id" argument type "${typeof id}", should be number`);
   }
@@ -1257,8 +1267,13 @@ export async function restoreJobToDatabaseForCleanupAndRemove(id:number, queueId
   if (!Array.isArray(args)) {
     throw new TypeError(`Unable to restore to database, received invalid "args" argument type "${typeof args}", should be Array<any>`);
   }
+  const delay = options.delay || 0;
+  const prioritize = options.prioritize || false;
+  if (typeof delay !== 'number') {
+    throw new TypeError(`Unable to enqueue in database, received invalid "options.delay" argument type "${typeof delay}", should be number`);
+  }
   if (typeof prioritize !== 'boolean') {
-    throw new TypeError(`Unable to restore to database, received invalid "prioritize" argument type "${typeof prioritize}", should be boolean`);
+    throw new TypeError(`Unable to enqueue in database, received invalid "options.prioritize" argument type "${typeof prioritize}", should be boolean`);
   }
   const value = {
     id,
@@ -1268,7 +1283,7 @@ export async function restoreJobToDatabaseForCleanupAndRemove(id:number, queueId
     attempt: 1,
     created: Date.now(),
     status: JOB_CLEANUP_AND_REMOVE_STATUS,
-    startAfter: Date.now(),
+    startAfter: Date.now() + delay,
     prioritize,
   };
   const store = await getReadWriteJobsObjectStore();

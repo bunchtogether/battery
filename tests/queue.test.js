@@ -59,7 +59,7 @@ describe('Queue', () => {
     const queueId = uuidv4();
     const value = uuidv4();
     const args = [TRIGGER_NO_ERROR, value];
-    const id = await enqueueToDatabase(queueId, 'echo', args, 0, false);
+    const id = await enqueueToDatabase(queueId, 'echo', args);
     await expectAsync(queue).toEmit('dequeue', { id });
     await expectAsync(echoEmitter).toEmit('echo', { value });
   });
@@ -70,9 +70,9 @@ describe('Queue', () => {
     const valueA = uuidv4();
     const valueB = uuidv4();
     const valueC = uuidv4();
-    await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueA], 0, false);
-    await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueB], 0, false);
-    await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueC], 0, true);
+    await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueA]);
+    await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueB]);
+    await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueC], { prioritize: true });
     queue.dequeue();
     await expectAsync(echoEmitter).toEmit('echo', { value: valueC });
     await expectAsync(echoEmitter).toEmit('echo', { value: valueA });
@@ -89,7 +89,7 @@ describe('Queue', () => {
     const queueId = uuidv4();
     const value = uuidv4();
     const args = [TRIGGER_NO_ERROR, value];
-    await enqueueToDatabase(queueId, 'echo', args, 0, false);
+    await enqueueToDatabase(queueId, 'echo', args);
 
     await expectAsync(queue.getQueueIds()).toBeResolvedTo(new Set([queueId]));
     await queue.onIdle();
@@ -102,7 +102,7 @@ describe('Queue', () => {
     queue.disableStartOnJob();
     const queueId = uuidv4();
     const value = uuidv4();
-    await enqueueToDatabase(queueId, 'echo', [TRIGGER_100MS_DELAY, value], 0, false);
+    await enqueueToDatabase(queueId, 'echo', [TRIGGER_100MS_DELAY, value]);
 
     expect(queue.getCurrentJobType(queueId)).toBeUndefined();
     queue.dequeue();
@@ -113,7 +113,7 @@ describe('Queue', () => {
 
     expect(queue.getCurrentJobType(queueId)).toBeUndefined();
     await queue.onIdle();
-    await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value], 0, false);
+    await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value]);
     queue.dequeue();
     await expectAsync(queue).toEmit('queueJobType', queueId, 'echo');
 
@@ -132,7 +132,7 @@ describe('Queue', () => {
     const queueId = uuidv4();
     const value = uuidv4();
     let retries = 0;
-    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value], 0, false);
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value]);
     const handleRetry = ({ id: retryId }) => {
       if (retryId === id) {
         retries += 1;
@@ -152,8 +152,8 @@ describe('Queue', () => {
     const queueId = uuidv4();
     const valueA = uuidv4();
     const valueB = uuidv4();
-    await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueA], 0, false);
-    const idB = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ABORT_ERROR, valueB], 0, false);
+    await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueA]);
+    const idB = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ABORT_ERROR, valueB]);
     await expectAsync(echoEmitter).toEmit('echo', { value: valueA });
     await expectAsync(queue).toEmit('fatalError', { queueId, id: idB, error: jasmine.any(AbortError) });
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value: valueB, cleanupData: { value: valueB } });
@@ -164,7 +164,7 @@ describe('Queue', () => {
   it('Emits jobUpdate and jobDelete events, then removes a job from the database if the handler returns false', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
-    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_HANDLER_RETURN_FALSE, value], 100, false);
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_HANDLER_RETURN_FALSE, value], { delay: 100 });
     const jobUpdatePromise = expectAsync(jobEmitter).toEmit('jobUpdate', id, queueId, 'echo', JOB_COMPLETE_STATUS);
     const jobDeletePromise = expectAsync(jobEmitter).toEmit('jobDelete', id, queueId);
     await jobUpdatePromise;
@@ -175,7 +175,7 @@ describe('Queue', () => {
   it('Emits fatalError if the queue is aborted before starting', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
-    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, value], 100, false);
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, value], { delay: 100 });
     await expectAsync(queue).toEmit('dequeue', { id });
     queue.abortQueue(queueId);
     await expectAsync(queue).toEmit('fatalError', { queueId, id, error: jasmine.any(AbortError) });
@@ -184,7 +184,7 @@ describe('Queue', () => {
   it('Emits fatalError if the queue is aborted while running', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
-    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_100MS_DELAY, value], 0, false);
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_100MS_DELAY, value]);
     // Jobs are put into error status in case the process stops during execution
     // to trigger subsequent cleanup
     await expectAsync(jobEmitter).toEmit('jobUpdate', id, queueId, 'echo', JOB_ERROR_STATUS);
@@ -200,7 +200,7 @@ describe('Queue', () => {
       expect(error).toBeInstanceOf(Error);
       return 120000;
     });
-    await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value], 0, false);
+    await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value]);
 
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value, cleanupData: { value } });
     await queue.abortQueue(queueId);
@@ -217,7 +217,7 @@ describe('Queue', () => {
       expect(error).toBeInstanceOf(Error);
       return false;
     });
-    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value], 0, false);
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value]);
     const handleRetry = ({ id: retryId }) => {
       if (retryId === id) {
         retries += 1;
@@ -242,7 +242,7 @@ describe('Queue', () => {
       expect(error).toBeInstanceOf(Error);
       throw new Error('RetryJobDelay synchronous error');
     });
-    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value], 0, false);
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value]);
     const handleRetry = ({ id: retryId }) => {
       if (retryId === id) {
         retries += 1;
@@ -268,7 +268,7 @@ describe('Queue', () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
       throw new Error('RetryJobDelay asynchronous error');
     });
-    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value], 0, false);
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value]);
     const handleRetry = ({ id: retryId }) => {
       if (retryId === id) {
         retries += 1;
@@ -301,7 +301,7 @@ describe('Queue', () => {
       expect(error).toBeInstanceOf(Error);
       return false;
     });
-    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value], 0, false);
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value]);
     const handleRetry = ({ id: retryId }) => {
       if (retryId === id) {
         retries += 1;
@@ -327,7 +327,7 @@ describe('Queue', () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
       return false;
     });
-    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value], 0, false);
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value]);
     const handleRetry = ({ id: retryId }) => {
       if (retryId === id) {
         retries += 1;
@@ -361,7 +361,7 @@ describe('Queue', () => {
       expect(error).toBeInstanceOf(Error);
       return false;
     });
-    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value], 0, false);
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value]);
     const handleRetry = ({ id: retryId }) => {
       if (retryId === id) {
         retries += 1;
@@ -381,7 +381,7 @@ describe('Queue', () => {
     const queueId = uuidv4();
     const value = uuidv4();
     let retries = 0;
-    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_FATAL_ERROR, value], 0, false);
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_FATAL_ERROR, value]);
     const handleRetry = ({ id: retryId }) => {
       if (retryId === id) {
         retries += 1;
@@ -401,7 +401,7 @@ describe('Queue', () => {
     const expectedCleanupValues = [];
     for (let i = 0; i < 10; i += 1) {
       const value = uuidv4();
-      await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, value], 0, false);
+      await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, value]);
       expectedCleanupValues.push(value);
     }
     await queue.onIdle();
@@ -417,7 +417,7 @@ describe('Queue', () => {
     const expectedCleanupValues = [];
     for (let i = 0; i < 10; i += 1) {
       const value = uuidv4();
-      await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, value], 0, true);
+      await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, value], { prioritize: true });
       expectedCleanupValues.push(value);
     }
     await queue.onIdle();
@@ -432,8 +432,8 @@ describe('Queue', () => {
     const queueId = uuidv4();
     const valueA = uuidv4();
     const valueB = uuidv4();
-    await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueA], 0, false);
-    await enqueueToDatabase(queueId, 'echo', [TRIGGER_FATAL_ERROR, valueB], 0, false);
+    await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueA]);
+    await enqueueToDatabase(queueId, 'echo', [TRIGGER_FATAL_ERROR, valueB]);
 
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value: valueB, cleanupData: { value: valueB } });
     await expectAsync(echoEmitter).toEmit('echoCleanupComplete', { value: valueA, cleanupData: { value: valueA } });
@@ -457,7 +457,7 @@ describe('Queue', () => {
       expect(error).toBeInstanceOf(Error);
       return false;
     });
-    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value], 0, false);
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR, value]);
     const handleRetry = ({ id: retryId }) => {
       if (retryId === id) {
         retries += 1;
@@ -479,7 +479,7 @@ describe('Queue', () => {
     const value = uuidv4();
     const args = [TRIGGER_NO_ERROR, value];
 
-    await enqueueToDatabase(queueId, 'echo', args, 0, false);
+    await enqueueToDatabase(queueId, 'echo', args);
 
     await expectAsync(getCompletedJobsCountFromDatabase(queueId)).toBeResolvedTo(0);
 
@@ -500,7 +500,7 @@ describe('Queue', () => {
     const value = uuidv4();
     let echoReceivedTime = -1;
     const start = Date.now();
-    await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, value], 250, false);
+    await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, value], { delay: 250 });
     const handleEcho = ({ value: echoValue }) => {
       if (echoValue === value) {
         echoReceivedTime = Date.now();
@@ -518,7 +518,7 @@ describe('Queue', () => {
     const queueId = uuidv4();
     const value = uuidv4();
     const args = [TRIGGER_NO_ERROR, value];
-    const id = await enqueueToDatabase(queueId, 'echo', args, 0, false);
+    const id = await enqueueToDatabase(queueId, 'echo', args);
 
     await queue.onIdle();
     const start = Date.now();
@@ -541,7 +541,7 @@ describe('Queue', () => {
     const queueId = uuidv4();
     const value = uuidv4();
     const args = [TRIGGER_FATAL_ERROR_IN_CLEANUP, value];
-    const id = await enqueueToDatabase(queueId, 'echo', args, 0, false);
+    const id = await enqueueToDatabase(queueId, 'echo', args);
 
     await queue.onIdle();
     await queue.abortQueue(queueId);
@@ -552,7 +552,7 @@ describe('Queue', () => {
     const queueId = uuidv4();
     const value = uuidv4();
     const args = [TRIGGER_ERROR_IN_CLEANUP, value];
-    const id = await enqueueToDatabase(queueId, 'echo', args, 0, false);
+    const id = await enqueueToDatabase(queueId, 'echo', args);
 
     await queue.onIdle();
     await queue.abortQueue(queueId);
@@ -569,7 +569,7 @@ describe('Queue', () => {
       expect(error).toBeInstanceOf(Error);
       return false;
     });
-    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR_IN_CLEANUP, value], 0, false);
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR_IN_CLEANUP, value]);
 
     await queue.onIdle();
     const handleCleanupStart = ({ id: cleanupId }) => {
@@ -595,7 +595,7 @@ describe('Queue', () => {
       expect(error).toBeInstanceOf(Error);
       throw new Error('RetryCleanupDelay error');
     });
-    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR_IN_CLEANUP, value], 0, false);
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR_IN_CLEANUP, value]);
 
     await queue.onIdle();
     const handleCleanupStart = ({ id: cleanupId }) => {
@@ -630,7 +630,7 @@ describe('Queue', () => {
       expect(error).toBeInstanceOf(Error);
       return false;
     });
-    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR_IN_CLEANUP, value], 0, false);
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR_IN_CLEANUP, value]);
 
     await queue.onIdle();
     const handleCleanupStart = ({ id: cleanupId }) => {
@@ -658,7 +658,7 @@ describe('Queue', () => {
       expect(error).toBeInstanceOf(Error);
       return false;
     });
-    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR_IN_CLEANUP, value], 0, false);
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR_IN_CLEANUP, value]);
 
     await queue.onIdle();
     const handleCleanupStart = ({ id: cleanupId }) => {
@@ -686,7 +686,7 @@ describe('Queue', () => {
       expect(error).toBeInstanceOf(Error);
       throw new Error('RetryCleanupDelay error');
     });
-    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR_IN_CLEANUP, value], 0, false);
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR_IN_CLEANUP, value]);
 
     await queue.onIdle();
     const handleCleanupStart = ({ id: cleanupId }) => {
@@ -722,7 +722,7 @@ describe('Queue', () => {
       expect(error).toBeInstanceOf(Error);
       return false;
     });
-    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR_IN_CLEANUP, value], 0, false);
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR_IN_CLEANUP, value]);
 
     await queue.onIdle();
     const handleCleanupStart = ({ id: cleanupId }) => {
@@ -758,7 +758,7 @@ describe('Queue', () => {
       expect(error).toBeInstanceOf(Error);
       return false;
     });
-    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR_IN_CLEANUP, value], 0, false);
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_ERROR_IN_CLEANUP, value]);
 
     await queue.onIdle();
 
@@ -798,7 +798,7 @@ describe('Queue', () => {
     queue.setHandler(type, handler);
     queue.setCleanup(type, cleanup);
     queue.setRetryJobDelay(type, retryJobDelay);
-    await enqueueToDatabase(queueId, type, [], 0, false);
+    await enqueueToDatabase(queueId, type, []);
 
     await queue.onIdle();
     queue.removeHandler(type);
@@ -832,7 +832,7 @@ describe('Queue', () => {
     queue.setHandler(type, handler);
     queue.setCleanup(type, cleanup);
     queue.setRetryJobDelay(type, retryJobDelay);
-    await enqueueToDatabase(queueId, type, [], 0, false);
+    await enqueueToDatabase(queueId, type, []);
 
     await queue.onIdle();
     queue.removeHandler(type);
@@ -868,8 +868,8 @@ describe('Queue', () => {
     queue.setHandler(type, handler);
     queue.setCleanup(type, cleanup);
     queue.setRetryJobDelay(type, retryJobDelay);
-    await enqueueToDatabase(queueId, type, [true], 0, false);
-    await enqueueToDatabase(queueId, type, [false], 1000, false);
+    await enqueueToDatabase(queueId, type, [true]);
+    await enqueueToDatabase(queueId, type, [false], { delay: 1000 });
 
     await queue.onIdle();
     queue.removeHandler(type);
@@ -884,7 +884,7 @@ describe('Queue', () => {
   it('Emits queueActive and queueInactive events when a queue becomes active or inactive', async () => {
     const queueId = uuidv4();
     const value = uuidv4();
-    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, value], 0, false);
+    const id = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, value]);
 
     await expectAsync(queue).toEmit('queueActive', queueId);
     await expectAsync(jobEmitter).toEmit('jobUpdate', id, queueId, 'echo', JOB_COMPLETE_STATUS);
@@ -896,8 +896,8 @@ describe('Queue', () => {
     const queueId = uuidv4();
     const valueA = uuidv4();
     const valueB = uuidv4();
-    const idA = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueA], 0, false);
-    const idB = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueB], 0, false);
+    const idA = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueA]);
+    const idB = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueB]);
     await expectAsync(echoEmitter).toEmit('echo', { value: valueA });
     await expectAsync(echoEmitter).toEmit('echo', { value: valueB });
 
@@ -944,8 +944,8 @@ describe('Queue', () => {
     const queueId = uuidv4();
     const valueA = uuidv4();
     const valueB = uuidv4();
-    const idA = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueA], 0, false);
-    const idB = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueB], 0, false);
+    const idA = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueA]);
+    const idB = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueB]);
     await expectAsync(echoEmitter).toEmit('echo', { value: valueA });
     await expectAsync(echoEmitter).toEmit('echo', { value: valueB });
 
@@ -984,9 +984,9 @@ describe('Queue', () => {
     const valueA = uuidv4();
     const valueB = uuidv4();
     const valueC = uuidv4();
-    const idA = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueA], 0, false);
-    const idB = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueB], 0, false);
-    const idC = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueC], 0, false);
+    const idA = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueA]);
+    const idB = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueB]);
+    const idC = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueC]);
 
     await queue.dequeue();
 
@@ -1054,8 +1054,8 @@ describe('Queue', () => {
     const queueId = uuidv4();
     const valueA = uuidv4();
     const valueB = uuidv4();
-    const idA = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueA], 0, false);
-    const idB = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueB], 0, false);
+    const idA = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueA]);
+    const idB = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueB]);
     queue.dequeue();
     await expectAsync(echoEmitter).toEmit('echo', { value: valueA });
     await expectAsync(echoEmitter).toEmit('echo', { value: valueB });
@@ -1162,7 +1162,7 @@ describe('Queue', () => {
     queue.setHandler(type, handler);
     queue.setCleanup(type, cleanup);
     const queueId = uuidv4();
-    id = await enqueueToDatabase(queueId, type, [], 0, false);
+    id = await enqueueToDatabase(queueId, type, []);
     await queue.onIdle();
 
     expect(didRunCleanup).toEqual(true);
@@ -1210,7 +1210,7 @@ describe('Queue', () => {
     queue.setHandler(type, handler);
     queue.setCleanup(type, cleanup);
     const queueId = uuidv4();
-    id = await enqueueToDatabase(queueId, type, [], 0, false);
+    id = await enqueueToDatabase(queueId, type, []);
     await queue.onIdle();
 
     expect(didRunCleanup).toEqual(true);
@@ -1270,7 +1270,7 @@ describe('Queue', () => {
     queue.setCleanup(type, cleanup);
     queue.setRetryJobDelay(type, retryJobDelay);
     const queueId = uuidv4();
-    id = await enqueueToDatabase(queueId, type, [], 0, false);
+    id = await enqueueToDatabase(queueId, type, []);
     await queue.onIdle();
 
     expect(handlerCount).toEqual(1);
@@ -1301,8 +1301,8 @@ describe('Queue', () => {
     queue.setHandler(type, handler);
     queue.setCleanup(type, cleanup);
     const queueId = uuidv4();
-    const idA = await enqueueToDatabase(queueId, type, [], 0, false);
-    idB = await enqueueToDatabase(queueId, type, [], 0, false);
+    const idA = await enqueueToDatabase(queueId, type, []);
+    idB = await enqueueToDatabase(queueId, type, []);
     await queue.onIdle();
 
     expect(handlerCount).toEqual(1);
@@ -1335,7 +1335,7 @@ describe('Queue', () => {
     queue.setHandler(type, handler);
     queue.setCleanup(type, cleanup);
     const queueId = uuidv4();
-    const id = await enqueueToDatabase(queueId, type, [], 0, false);
+    const id = await enqueueToDatabase(queueId, type, []);
     await markJobCleanupAndRemoveInDatabase(id);
     await queue.onIdle();
 
@@ -1363,7 +1363,7 @@ describe('Queue', () => {
     queue.setHandler(type, handler);
     queue.setCleanup(type, cleanup);
     const queueId = uuidv4();
-    id = await enqueueToDatabase(queueId, type, [], 0, false);
+    id = await enqueueToDatabase(queueId, type, []);
     await queue.onIdle();
 
     expect(handlerCount).toEqual(1);
@@ -1390,7 +1390,7 @@ describe('Queue', () => {
     queue.setHandler(type, handler);
     queue.setCleanup(type, cleanup);
     const queueId = uuidv4();
-    id = await enqueueToDatabase(queueId, type, [], 0, false);
+    id = await enqueueToDatabase(queueId, type, []);
     await queue.onIdle();
 
     expect(handlerCount).toEqual(1);
@@ -1413,7 +1413,7 @@ describe('Queue', () => {
     queue.setHandler(type, handler);
     queue.setCleanup(type, cleanup);
     const queueId = uuidv4();
-    const id = await enqueueToDatabase(queueId, type, [], 1000, false);
+    const id = await enqueueToDatabase(queueId, type, [], { delay: 1000 });
     await expectAsync(queue).toEmit('dequeue', { id });
     await markJobCleanupAndRemoveInDatabase(id);
     await queue.onIdle();
@@ -1447,7 +1447,7 @@ describe('Queue', () => {
     queue.setHandler(type, handler);
     queue.setCleanup(type, cleanup);
     queue.setRetryJobDelay(type, retryJobDelay);
-    id = await enqueueToDatabase(queueId, type, [], 0, false);
+    id = await enqueueToDatabase(queueId, type, []);
     await queue.onIdle();
     queue.removeHandler(type);
     queue.removeCleanup(type);
@@ -1473,7 +1473,7 @@ describe('Queue', () => {
     };
     queue.setHandler(type, handler);
     queue.setCleanup(type, cleanup);
-    await enqueueToDatabase(queueId, type, [], 0, false);
+    await enqueueToDatabase(queueId, type, []);
     await queue.onIdle();
     await expectAsync(getQueueStatus(queueId)).toBeResolvedTo(QUEUE_ERROR_STATUS);
 
@@ -1503,7 +1503,7 @@ describe('Queue', () => {
     };
     queue.setHandler(type, handler);
     queue.setCleanup(type, cleanup);
-    await enqueueToDatabase(queueId, type, [], 0, false);
+    await enqueueToDatabase(queueId, type, []);
     await queue.onIdle();
     await expectAsync(getQueueStatus(queueId)).toBeResolvedTo(QUEUE_COMPLETE_STATUS);
 
@@ -1538,7 +1538,7 @@ describe('Queue', () => {
     };
     queue.setHandler(type, handler);
     queue.setCleanup(type, cleanup);
-    await enqueueToDatabase(queueId, type, [], 0, false);
+    await enqueueToDatabase(queueId, type, []);
     await queue.onIdle();
     await expectAsync(getQueueStatus(queueId)).toBeResolvedTo(QUEUE_COMPLETE_STATUS);
 

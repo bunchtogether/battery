@@ -36,8 +36,8 @@ describe('Queue (Graceful Stop)', () => {
     };
     queue.setHandler(type, handler);
     queue.disableStartOnJob();
-    const idA = await enqueueToDatabase(queueId, type, [], 0, false);
-    const idB = await enqueueToDatabase(queueId, type, [], 0, false);
+    const idA = await enqueueToDatabase(queueId, type, []);
+    const idB = await enqueueToDatabase(queueId, type, []);
     queue.dequeue();
     const dequeueAPromise = expectAsync(queue).toEmit('dequeue', { id: idA });
     const dequeueBPromise = expectAsync(queue).toEmit('dequeue', { id: idB });

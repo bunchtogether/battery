@@ -35,9 +35,9 @@ describe('Fuzz', () => {
       const queueId = queueIds[Math.floor(Math.random() * queueIds.length)];
       const args = [];
       if (oneOutOf(2)) {
-        enqueueToDatabase(queueId, 'fuzz', args, 0, false);
+        enqueueToDatabase(queueId, 'fuzz', args);
       } else {
-        await enqueueToDatabase(queueId, 'fuzz', args, 0, false);
+        await enqueueToDatabase(queueId, 'fuzz', args);
       }
     }
     await queue.onIdle();
@@ -53,7 +53,7 @@ describe('Fuzz', () => {
     for (let i = 0; i < JOB_COUNT; i += 1) {
       const queueId = queueIds[Math.floor(Math.random() * queueIds.length)];
       const args = [];
-      enqueueToDatabase(queueId, 'fuzz', args, 0, false);
+      enqueueToDatabase(queueId, 'fuzz', args);
     }
     await queue.onIdle();
 
@@ -68,7 +68,7 @@ describe('Fuzz', () => {
     for (let i = 0; i < JOB_COUNT; i += 1) {
       const queueId = queueIds[Math.floor(Math.random() * queueIds.length)];
       const args = [];
-      await enqueueToDatabase(queueId, 'fuzz', args, 0, false);
+      await enqueueToDatabase(queueId, 'fuzz', args);
     }
     await queue.onIdle();
 
