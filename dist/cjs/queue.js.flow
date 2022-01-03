@@ -49,7 +49,6 @@ type HandlerFunction = (Array<any>, AbortSignal, (Object) => Promise<void>, (num
 type CleanupFunction = (Object | void, Array<any>, Array<string> => Promise<void>) => Promise<void>;
 type DurationEstimateFunction = (Array<any>) => number;
 type RetryDelayFunction = (number, Error) => number | false | Promise<number | false>;
-type EmitCallback = (string, Array<any>) => void;
 type UnloadFunction = (Object | void) => Promise<void> | void;
 
 type Options = {
@@ -73,17 +72,23 @@ export default class BatteryQueue extends EventEmitter {
   declare handleUnload: void | UnloadFunction;
   declare abortControllerMap: Map<string, Map<number, AbortController>>;
   declare isClearing: boolean;
+  declare isUnloading: boolean;
   declare onIdlePromise: Promise<void> | void;
   declare stopPromise: Promise<void> | void;
   declare jobIds: Set<number>;
+  declare heartbeatExpiresTimestamp: number | void;
 
-  declare emitCallbacks: Array<EmitCallback>;
-  declare port: MessagePort | void;
+  declare ports: Map<MessagePort, {
+    handleJobAdd: (Event) => void,
+    handleJobUpdate: (Event) => void,
+    handleJobDelete: (Event) => void,
+    handleJobsClear: (Event) => void,
+    heartbeatExpiresTimeout?: TimeoutID
+  }>;
+
   declare handleJobAdd: void | () => void;
   declare handleJobUpdate: void | (number, string, string, number) => void;
   declare handleJobDelete: void | (number, string) => void;
-  declare heartbeatExpiresTimestamp: void | number;
-  declare heartbeatExpiresTimeout: void | TimeoutID;
   declare stopped: boolean;
 
   constructor(options?: Options = {}) {
@@ -104,21 +109,11 @@ export default class BatteryQueue extends EventEmitter {
     this.durationEstimateUpdaterMap = new Map();
     this.abortControllerMap = new Map();
     this.isClearing = false;
-    this.emitCallbacks = [];
+    this.isUnloading = false;
+    this.ports = new Map();
     this.logger = options.logger || makeLogger('Battery Queue');
     this.addListener('error', (error) => {
       this.logger.errorStack(error);
-    });
-    this.addListener('heartbeat', (interval:number) => {
-      clearTimeout(this.heartbeatExpiresTimeout);
-      this.heartbeatExpiresTimestamp = Date.now() + Math.round(interval * 2.5);
-      this.heartbeatExpiresTimeout = setTimeout(() => {
-        if (typeof this.heartbeatExpiresTimestamp !== 'number') {
-          return;
-        }
-        this.logger.warn(`Heartbeat timeout after ${Math.round(interval * 2.1)}ms`);
-        this.unloadClient();
-      }, Math.round(interval * 2.1));
     });
   }
 
@@ -201,8 +196,8 @@ export default class BatteryQueue extends EventEmitter {
   }
 
   emit(type:string, ...args:Array<any>) {
-    for (const emitCallback of this.emitCallbacks) {
-      emitCallback(type, args);
+    for (const port of this.ports.keys()) {
+      port.postMessage({ type, args });
     }
     return super.emit(type, ...args);
   }
@@ -943,10 +938,19 @@ export default class BatteryQueue extends EventEmitter {
     this.emit('dequeue', { id });
   }
 
-  async handlePortMessage(event:MessageEvent) {
+  async handlePortMessage(port: MessagePort, event:MessageEvent) {
     if (!(event instanceof MessageEvent)) {
       return;
     }
+
+    const portHandlers = this.ports.get(port);
+
+    if (typeof portHandlers !== 'object') {
+      this.logger.warn('Port handlers do not exist');
+      this.logger.warnObject(event);
+      return;
+    }
+
     const { data } = event;
     if (!data || typeof data !== 'object') {
       this.logger.warn('Invalid message data');
@@ -964,10 +968,29 @@ export default class BatteryQueue extends EventEmitter {
       this.logger.warnObject(event);
       return;
     }
-    const port = this.port;
+    const emit = (t:string, ...messageArgs:Array<any>) => {
+      port.postMessage({ type: t, args: messageArgs });
+    };
     switch (type) {
       case 'heartbeat':
-        this.emit('heartbeat', ...args);
+        try {
+          const [interval] = args;
+          if (typeof interval !== 'number') {
+            throw new Error(`Invalid "interval" argument with type ${typeof interval}, should be type number`);
+          }
+          clearTimeout(portHandlers.heartbeatExpiresTimeout);
+          this.heartbeatExpiresTimestamp = Date.now() + Math.round(interval * 2.5);
+          portHandlers.heartbeatExpiresTimeout = setTimeout(async () => {
+            this.logger.warn(`Heartbeat timeout after ${Math.round(interval * 2.1)}ms`);
+            await this.unloadClient();
+            this.removePort(port);
+          }, Math.round(interval * 2.1));
+          emit('heartbeat', ...args);
+          super.emit('heartbeat', ...args);
+        } catch (error) {
+          this.logger.error('Heartbeat error');
+          this.logger.errorStack(error);
+        }
         return;
       case 'jobAdd':
         jobEmitter.emit('jobAdd', ...args);
@@ -992,24 +1015,23 @@ export default class BatteryQueue extends EventEmitter {
       case 'unlink':
         this.logger.warn('Unlinking worker interface');
         try {
-          await this.stop();
-          this.emit('unlinkComplete', requestId);
+          if (this.ports.size === 1) {
+            await this.stop();
+          }
+          emit('unlinkComplete', requestId);
+          this.removePort(port);
         } catch (error) {
-          this.emit('unlinkError', requestId, error);
+          emit('unlinkError', requestId, error);
           this.logger.error('Unable to handle unlink message');
           this.emit('error', error);
-        }
-        if (port instanceof MessagePort) {
-          port.onmessage = null;
-          delete this.port;
         }
         break;
       case 'clear':
         try {
           await this.clear();
-          this.emit('clearComplete', requestId);
+          emit('clearComplete', requestId);
         } catch (error) {
-          this.emit('clearError', requestId, error);
+          emit('clearError', requestId, error);
           this.logger.error('Unable to handle clear message');
           this.emit('error', error);
         }
@@ -1024,9 +1046,9 @@ export default class BatteryQueue extends EventEmitter {
             throw new Error(`Invalid "id" argument with type ${typeof id}, should be type number`);
           }
           await this.abortAndRemoveQueueJobsGreaterThanId(queueId, id);
-          this.emit('abortAndRemoveQueueJobsGreaterThanIdComplete', requestId);
+          emit('abortAndRemoveQueueJobsGreaterThanIdComplete', requestId);
         } catch (error) {
-          this.emit('abortAndRemoveQueueJobsGreaterThanIdError', requestId, error);
+          emit('abortAndRemoveQueueJobsGreaterThanIdError', requestId, error);
           this.logger.error('Unable to handle abort and remove queue jobs greater than ID message');
           this.emit('error', error);
         }
@@ -1038,9 +1060,9 @@ export default class BatteryQueue extends EventEmitter {
             throw new Error(`Invalid "queueId" argument with type ${typeof queueId}, should be type string`);
           }
           await this.abortAndRemoveQueue(queueId);
-          this.emit('abortAndRemoveQueueComplete', requestId);
+          emit('abortAndRemoveQueueComplete', requestId);
         } catch (error) {
-          this.emit('abortAndRemoveQueueError', requestId, error);
+          emit('abortAndRemoveQueueError', requestId, error);
           this.logger.error('Unable to handle abort and remove queue message');
           this.emit('error', error);
         }
@@ -1048,9 +1070,9 @@ export default class BatteryQueue extends EventEmitter {
       case 'updateDurationEstimates':
         try {
           await this.updateDurationEstimates();
-          this.emit('updateDurationEstimatesComplete', requestId);
+          emit('updateDurationEstimatesComplete', requestId);
         } catch (error) {
-          this.emit('updateDurationEstimatesError', requestId, error);
+          emit('updateDurationEstimatesError', requestId, error);
           this.logger.error('Unable to handle update duration estimates message');
           this.emit('error', error);
         }
@@ -1062,9 +1084,9 @@ export default class BatteryQueue extends EventEmitter {
             throw new Error(`Invalid "queueId" argument with type ${typeof queueId}, should be type string`);
           }
           await this.abortQueue(queueId);
-          this.emit('abortQueueComplete', requestId);
+          emit('abortQueueComplete', requestId);
         } catch (error) {
-          this.emit('abortQueueError', requestId, error);
+          emit('abortQueueError', requestId, error);
           this.logger.error('Unable to handle abort queue message');
           this.emit('error', error);
         }
@@ -1076,9 +1098,9 @@ export default class BatteryQueue extends EventEmitter {
             throw new Error(`Invalid "queueId" argument with type ${typeof queueId}, should be type string`);
           }
           await this.retryQueue(queueId);
-          this.emit('retryQueueComplete', requestId);
+          emit('retryQueueComplete', requestId);
         } catch (error) {
-          this.emit('retryQueueError', requestId, error);
+          emit('retryQueueError', requestId, error);
           this.logger.error('Unable to handle retry queue message');
           this.emit('error', error);
         }
@@ -1086,9 +1108,9 @@ export default class BatteryQueue extends EventEmitter {
       case 'dequeue':
         try {
           await this.dequeue();
-          this.emit('dequeueComplete', requestId);
+          emit('dequeueComplete', requestId);
         } catch (error) {
-          this.emit('dequeueError', requestId, error);
+          emit('dequeueError', requestId, error);
           this.logger.error('Unable to handle dequeue message');
           this.emit('error', error);
         }
@@ -1096,9 +1118,9 @@ export default class BatteryQueue extends EventEmitter {
       case 'enableStartOnJob':
         try {
           this.enableStartOnJob();
-          this.emit('enableStartOnJobComplete', requestId);
+          emit('enableStartOnJobComplete', requestId);
         } catch (error) {
-          this.emit('enableStartOnJobError', requestId, error);
+          emit('enableStartOnJobError', requestId, error);
           this.logger.error('Unable to handle enableStartOnJob message');
           this.emit('error', error);
         }
@@ -1106,9 +1128,9 @@ export default class BatteryQueue extends EventEmitter {
       case 'disableStartOnJob':
         try {
           this.disableStartOnJob();
-          this.emit('disableStartOnJobComplete', requestId);
+          emit('disableStartOnJobComplete', requestId);
         } catch (error) {
-          this.emit('disableStartOnJobError', requestId, error);
+          emit('disableStartOnJobError', requestId, error);
           this.logger.error('Unable to handle disableStartOnJob message');
           this.emit('error', error);
         }
@@ -1116,9 +1138,9 @@ export default class BatteryQueue extends EventEmitter {
       case 'getQueueIds':
         try {
           const queueIds = await this.getQueueIds();
-          this.emit('getQueuesComplete', requestId, [...queueIds]);
+          emit('getQueuesComplete', requestId, [...queueIds]);
         } catch (error) {
-          this.emit('getQueuesError', requestId, error);
+          emit('getQueuesError', requestId, error);
           this.logger.error('Unable to handle getQueueIds message');
           this.emit('error', error);
         }
@@ -1130,9 +1152,9 @@ export default class BatteryQueue extends EventEmitter {
             throw new Error(`Invalid "queueId" argument with type ${typeof queueId}, should be type string`);
           }
           const values = await this.getDurationEstimate(queueId);
-          this.emit('getDurationEstimateComplete', requestId, values);
+          emit('getDurationEstimateComplete', requestId, values);
         } catch (error) {
-          this.emit('getDurationEstimateError', requestId, error);
+          emit('getDurationEstimateError', requestId, error);
           this.logger.error('Unable to handle get duration estimate message');
           this.emit('error', error);
         }
@@ -1144,9 +1166,9 @@ export default class BatteryQueue extends EventEmitter {
             throw new Error(`Invalid "queueId" argument with type ${typeof queueId}, should be type string`);
           }
           const currentJobType = this.getCurrentJobType(queueId);
-          this.emit('getCurrentJobTypeComplete', requestId, currentJobType);
+          emit('getCurrentJobTypeComplete', requestId, currentJobType);
         } catch (error) {
-          this.emit('getCurrentJobTypeError', requestId, error);
+          emit('getCurrentJobTypeError', requestId, error);
           this.logger.error('Unable to handle get current job type message');
           this.emit('error', error);
         }
@@ -1154,9 +1176,9 @@ export default class BatteryQueue extends EventEmitter {
       case 'runUnloadHandlers':
         try {
           await this.runUnloadHandlers();
-          this.emit('runUnloadHandlersComplete', requestId);
+          emit('runUnloadHandlersComplete', requestId);
         } catch (error) {
-          this.emit('runUnloadHandlersError', requestId, error);
+          emit('runUnloadHandlersError', requestId, error);
           this.logger.error('Unable to run unload handlers message');
           this.emit('error', error);
         }
@@ -1171,9 +1193,9 @@ export default class BatteryQueue extends EventEmitter {
             throw new Error(`Invalid "queueId" argument with type ${typeof start}, should be type number`);
           }
           await this.onIdle(maxDuration - (Date.now() - start));
-          this.emit('idleComplete', requestId);
+          emit('idleComplete', requestId);
         } catch (error) {
-          this.emit('idleError', requestId, error);
+          emit('idleError', requestId, error);
           this.logger.error('Unable to handle idle message');
           this.emit('error', error);
         }
@@ -1185,36 +1207,50 @@ export default class BatteryQueue extends EventEmitter {
 
   async unloadClient() {
     this.logger.info('Detected client unload');
-    const heartbeatExpiresTimestamp = this.heartbeatExpiresTimestamp;
-    if (typeof heartbeatExpiresTimestamp !== 'number') {
+    if (this.isUnloading) {
+      this.logger.warn('Unload already in progress');
       return;
     }
-    clearTimeout(this.heartbeatExpiresTimeout);
-    delete this.heartbeatExpiresTimestamp;
-    const delay = heartbeatExpiresTimestamp - Date.now();
-    if (delay > 0) {
-      await new Promise((resolve) => {
-        const timeout = setTimeout(() => {
-          clearTimeout(timeout);
-          this.removeListener('heartbeat', handleHeartbeat);
-          resolve();
-        }, delay);
-        const handleHeartbeat = () => {
-          clearTimeout(timeout);
-          this.removeListener('heartbeat', handleHeartbeat);
-          resolve();
-        };
-        this.addListener('heartbeat', handleHeartbeat);
-      });
+    try {
+      for (const { heartbeatExpiresTimeout } of this.ports.values()) {
+        clearTimeout(heartbeatExpiresTimeout);
+      }
+      const heartbeatExpiresTimestamp = this.heartbeatExpiresTimestamp;
+      if (typeof heartbeatExpiresTimestamp !== 'number') {
+        this.logger.warn('Heartbeat expires timestamp does not exist');
+        return;
+      }
+      this.isUnloading = true;
+      delete this.heartbeatExpiresTimestamp;
+      const delay = heartbeatExpiresTimestamp - Date.now();
+      if (delay > 0) {
+        await new Promise((resolve) => {
+          const timeout = setTimeout(() => {
+            clearTimeout(timeout);
+            this.removeListener('heartbeat', handleHeartbeat);
+            resolve();
+          }, delay);
+          const handleHeartbeat = () => {
+            clearTimeout(timeout);
+            this.removeListener('heartbeat', handleHeartbeat);
+            resolve();
+          };
+          this.addListener('heartbeat', handleHeartbeat);
+        });
+      }
+      if (typeof this.heartbeatExpiresTimestamp === 'number') {
+        this.logger.info('Cancelling client unload, heartbeat detected');
+        return;
+      }
+      this.logger.info('Unloading');
+      await this.runUnloadHandlers();
+      for (const port of this.ports.keys()) {
+        port.postMessage({ type: 'unloadClient', args: [] });
+      }
+      await this.onIdle();
+    } finally {
+      this.isUnloading = false;
     }
-    if (typeof this.heartbeatExpiresTimestamp === 'number') {
-      this.logger.info('Cancelling client unload, heartbeat detected');
-      return;
-    }
-    this.logger.info('Unloading');
-    await this.runUnloadHandlers();
-    this.emit('unloadClient');
-    await this.onIdle();
   }
 
   runUnloadHandlers() {
@@ -1233,13 +1269,36 @@ export default class BatteryQueue extends EventEmitter {
     });
   }
 
-  listenForServiceWorkerInterface() {
-    let activeEmitCallback;
-    let handleJobAdd;
-    let handleJobDelete;
-    let handleJobUpdate;
-    let handleJobsClear;
+  removePort(port:MessagePort) {
+    const portHandlers = this.ports.get(port);
+    if (typeof portHandlers === 'undefined') {
+      this.logger.info('Unable to remove port, port handler map does not exist');
+      return;
+    }
+    const {
+      handleJobAdd,
+      handleJobDelete,
+      handleJobUpdate,
+      handleJobsClear,
+      heartbeatExpiresTimeout,
+    } = portHandlers;
 
+    localJobEmitter.removeListener('jobAdd', handleJobAdd);
+    localJobEmitter.removeListener('jobDelete', handleJobDelete);
+    localJobEmitter.removeListener('jobUpdate', handleJobUpdate);
+    localJobEmitter.removeListener('jobsClear', handleJobsClear);
+    clearTimeout(heartbeatExpiresTimeout);
+
+    port.postMessage({ type: 'closed', args: [] });
+
+    port.onmessage = null; // eslint-disable-line no-param-reassign
+    port.onmessageerror = null; // eslint-disable-line no-param-reassign
+    port.close();
+
+    this.ports.delete(port);
+  }
+
+  listenForServiceWorkerInterface() {
     self.addEventListener('sync', (event) => {
       this.logger.info(`SyncManager event ${event.tag}${event.lastChance ? ', last chance' : ''}`);
       if (event.tag === 'syncManagerOnIdle') {
@@ -1279,49 +1338,47 @@ export default class BatteryQueue extends EventEmitter {
       if (!(port instanceof MessagePort)) {
         return;
       }
-      this.emitCallbacks = this.emitCallbacks.filter((x) => x !== activeEmitCallback);
-      const previousPort = this.port;
-      if (previousPort instanceof MessagePort) {
-        this.logger.info('Closing previous worker interface');
-        previousPort.close();
+      if (this.ports.has(port)) {
+        return;
       }
-      if (typeof handleJobAdd === 'function') {
-        localJobEmitter.removeListener('jobAdd', handleJobAdd);
-      }
-      if (typeof handleJobDelete === 'function') {
-        localJobEmitter.removeListener('jobDelete', handleJobDelete);
-      }
-      if (typeof handleJobUpdate === 'function') {
-        localJobEmitter.removeListener('jobUpdate', handleJobUpdate);
-      }
-      if (typeof handleJobsClear === 'function') {
-        localJobEmitter.removeListener('jobsClear', handleJobsClear);
-      }
-      port.onmessage = this.handlePortMessage.bind(this);
 
-      handleJobAdd = (...args:Array<any>) => {
+      port.onmessage = (_event:MessageEvent) => this.handlePortMessage(port, _event); // eslint-disable-line no-param-reassign
+
+      port.onmessageerror = (_event:MessageEvent) => {
+        this.logger.error('MessagePort unable to deserialize message');
+        this.logger.errorObject(_event);
+      };
+
+      const handleJobAdd = (...args:Array<any>) => {
         port.postMessage({ type: 'jobAdd', args });
       };
-      handleJobDelete = (...args:Array<any>) => {
+      const handleJobDelete = (...args:Array<any>) => {
         port.postMessage({ type: 'jobDelete', args });
       };
-      handleJobUpdate = (...args:Array<any>) => {
+      const handleJobUpdate = (...args:Array<any>) => {
         port.postMessage({ type: 'jobUpdate', args });
       };
-      handleJobsClear = (...args:Array<any>) => {
+      const handleJobsClear = (...args:Array<any>) => {
         port.postMessage({ type: 'jobsClear', args });
       };
+
       localJobEmitter.addListener('jobAdd', handleJobAdd);
       localJobEmitter.addListener('jobDelete', handleJobDelete);
       localJobEmitter.addListener('jobUpdate', handleJobUpdate);
       localJobEmitter.addListener('jobsClear', handleJobsClear);
-      const emitCallback = (t:string, args:Array<any>) => {
-        port.postMessage({ type: t, args });
+
+
+      const portHandlers = {
+        handleJobAdd,
+        handleJobDelete,
+        handleJobUpdate,
+        handleJobsClear,
       };
-      activeEmitCallback = emitCallback;
-      this.emitCallbacks.push(emitCallback);
-      this.port = port;
+
+      this.ports.set(port, portHandlers);
+
       port.postMessage({ type: 'BATTERY_QUEUE_WORKER_CONFIRMATION' });
+
       this.logger.info('Linked to worker interface');
     });
     self.addEventListener('messageerror', (event:MessageEvent) => {

@@ -24,6 +24,10 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
   declare isSyncing: boolean;
   declare handleJobAdd: void | () => void;
   declare linkPromise: void | Promise<MessagePort>;
+  declare portHandleJobAdd: (...args:Array<any>) => void;
+  declare portHandleJobDelete: (...args:Array<any>) => void;
+  declare portHandleJobUpdate: (...args:Array<any>) => void;
+  declare portHandleJobsClear: (...args:Array<any>) => void;
 
   constructor(options?: Options = {}) {
     super();
@@ -85,6 +89,60 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
     return [registration, controller];
   }
 
+  async cleanup() {
+    this.logger.info('Cleaning up');
+    const linkPromise = this.linkPromise;
+    if (typeof linkPromise !== 'undefined') {
+      try {
+        await linkPromise;
+      } catch (error) {
+        this.logger.error('Link promise error while waiting to cleanup');
+        this.logger.errorStack(error);
+      }
+    }
+    const port = this.port;
+    if (!(port instanceof MessagePort)) {
+      return;
+    }
+    port.postMessage({ type: 'unlink', args: [Math.random()] });
+    delete this.port;
+    clearInterval(this.portHeartbeatInterval);
+    delete this.portHeartbeatInterval;
+    const handlePortHeartbeat = this.handlePortHeartbeat;
+    if (typeof handlePortHeartbeat === 'function') {
+      this.removeListener('heartbeat', this.handlePortHeartbeat);
+    }
+    const handleBeforeUnload = this.handleBeforeUnload;
+    if (typeof handlePortHeartbeat === 'function') {
+      window.removeEventListener('beforeunload', handleBeforeUnload, { capture: true });
+    }
+    const handleJobAdd = this.portHandleJobAdd;
+    if (typeof handleJobAdd === 'function') {
+      localJobEmitter.removeListener('jobAdd', handleJobAdd);
+    }
+    const handleJobDelete = this.portHandleJobDelete;
+    if (typeof handleJobDelete === 'function') {
+      localJobEmitter.removeListener('jobDelete', handleJobDelete);
+    }
+    const handleJobUpdate = this.portHandleJobUpdate;
+    if (typeof handleJobUpdate === 'function') {
+      localJobEmitter.removeListener('jobDelete', handleJobUpdate);
+    }
+    const handleJobsClear = this.portHandleJobsClear;
+    if (typeof handleJobsClear === 'function') {
+      localJobEmitter.removeListener('jobsClear', handleJobsClear);
+    }
+    try {
+      port.close();
+    } catch (error) {
+      this.logger.error('Error while closing MessageChannel port during cleanup');
+      this.logger.errorStack(error);
+    }
+    port.onmessage = null;
+    this.emit('unlink');
+    this.logger.info('Unlinked after close');
+  }
+
   async unlink(maxDuration?: number = 60000) {
     const linkPromise = this.linkPromise;
     if (typeof linkPromise !== 'undefined') {
@@ -110,6 +168,23 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
     if (typeof handlePortHeartbeat === 'function') {
       window.removeEventListener('beforeunload', handleBeforeUnload, { capture: true });
     }
+    const handleJobAdd = this.portHandleJobAdd;
+    if (typeof handleJobAdd === 'function') {
+      localJobEmitter.removeListener('jobAdd', handleJobAdd);
+    }
+    const handleJobDelete = this.portHandleJobDelete;
+    if (typeof handleJobDelete === 'function') {
+      localJobEmitter.removeListener('jobDelete', handleJobDelete);
+    }
+    const handleJobUpdate = this.portHandleJobUpdate;
+    if (typeof handleJobUpdate === 'function') {
+      localJobEmitter.removeListener('jobDelete', handleJobUpdate);
+    }
+    const handleJobsClear = this.portHandleJobsClear;
+    if (typeof handleJobsClear === 'function') {
+      localJobEmitter.removeListener('jobsClear', handleJobsClear);
+    }
+
     await new Promise((resolve) => {
       const requestId = Math.random();
       const timeout = setTimeout(() => {
@@ -145,7 +220,7 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
     try {
       port.close();
     } catch (error) {
-      this.logger.error('Error while closing MessageChannel port with redundant service worker');
+      this.logger.error('Error while closing MessageChannel port during unlink');
       this.logger.errorStack(error);
     }
     port.onmessage = null;
@@ -305,6 +380,10 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
         case 'jobsClear':
           jobEmitter.emit('jobsClear', ...args);
           return;
+        case 'closed':
+          this.logger.warn('Received unexpected "closed" event');
+          this.cleanup();
+          return;
         case 'queueActive':
           if (queueIds instanceof Set) {
             const queueId = args[0];
@@ -343,16 +422,22 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
     const handleJobsClear = (...args:Array<any>) => {
       port.postMessage({ type: 'jobsClear', args });
     };
+
     localJobEmitter.addListener('jobAdd', handleJobAdd);
     localJobEmitter.addListener('jobDelete', handleJobDelete);
     localJobEmitter.addListener('jobUpdate', handleJobUpdate);
     localJobEmitter.addListener('jobsClear', handleJobsClear);
 
-    let didLogHeartbeatTimeout = false;
+    this.portHandleJobAdd = handleJobAdd;
+    this.portHandleJobDelete = handleJobDelete;
+    this.portHandleJobUpdate = handleJobUpdate;
+    this.portHandleJobsClear = handleJobsClear;
+
     let didReceiveHeartbeat = true;
+    let missedHeartbeatCount = 0;
 
     const handlePortHeartbeat = () => {
-      didLogHeartbeatTimeout = false;
+      missedHeartbeatCount = 0;
       didReceiveHeartbeat = true;
     };
     this.addListener('heartbeat', handlePortHeartbeat);
@@ -360,9 +445,11 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
 
     const sendHeartbeat = () => {
       if (!didReceiveHeartbeat) {
-        if (!didLogHeartbeatTimeout) {
-          this.logger.error('Did not receive port heartbeat');
-          didLogHeartbeatTimeout = true;
+        missedHeartbeatCount += 1;
+        this.logger.error(`Did not receive ${missedHeartbeatCount} port ${missedHeartbeatCount === 1 ? 'heartbeat' : 'heartbeats'}`);
+        if (missedHeartbeatCount > 2) {
+          this.cleanup();
+          return;
         }
       }
       didReceiveHeartbeat = false;

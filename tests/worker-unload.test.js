@@ -75,6 +75,7 @@ describe('Worker (Unload)', () => {
     await Promise.all([
       expectAsync(serviceWorkerEmitter).toEmit('unloadHandler', data),
       expectAsync(queueInterface).toEmit('unloadClient'),
+      expectAsync(queueInterface).toEmit('unlink'),
     ]);
   });
 });
