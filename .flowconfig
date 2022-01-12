@@ -2,6 +2,7 @@
 
 <PROJECT_ROOT>/src/components/withTimeSeries/.*
 <PROJECT_ROOT>/dist/.*
+.*/node_modules/resolve/test/.*
 
 [include]
 

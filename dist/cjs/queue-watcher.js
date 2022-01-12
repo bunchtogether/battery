@@ -1,6 +1,6 @@
 "use strict";
 
-function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (obj) { return typeof obj; } : function (obj) { return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }, _typeof(obj); }
 
 Object.defineProperty(exports, "__esModule", {
   value: true
@@ -21,15 +21,15 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
 
-function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); Object.defineProperty(Constructor, "prototype", { writable: false }); return Constructor; }
 
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); Object.defineProperty(subClass, "prototype", { writable: false }); if (superClass) _setPrototypeOf(subClass, superClass); }
 
 function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
 
 function _createSuper(Derived) { var hasNativeReflectConstruct = _isNativeReflectConstruct(); return function _createSuperInternal() { var Super = _getPrototypeOf(Derived), result; if (hasNativeReflectConstruct) { var NewTarget = _getPrototypeOf(this).constructor; result = Reflect.construct(Super, arguments, NewTarget); } else { result = Super.apply(this, arguments); } return _possibleConstructorReturn(this, result); }; }
 
-function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } else if (call !== void 0) { throw new TypeError("Derived constructors may only return object or undefined"); } return _assertThisInitialized(self); }
 
 function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
 
@@ -111,37 +111,17 @@ var BatteryQueueWatcher = /*#__PURE__*/function (_EventEmitter) {
   _createClass(BatteryQueueWatcher, [{
     key: "getStatus",
     value: function () {
-      var _getStatus = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee() {
-        var status, newStatus;
-        return regeneratorRuntime.wrap(function _callee$(_context) {
-          while (1) {
-            switch (_context.prev = _context.next) {
-              case 0:
-                status = this.status;
+      var _getStatus = _asyncToGenerator(function* () {
+        var status = this.status;
 
-                if (!(typeof status === 'number')) {
-                  _context.next = 3;
-                  break;
-                }
+        if (typeof status === 'number') {
+          return status;
+        }
 
-                return _context.abrupt("return", status);
-
-              case 3:
-                _context.next = 5;
-                return (0, _database.getQueueStatus)(this.queueId);
-
-              case 5:
-                newStatus = _context.sent;
-                this.status = newStatus;
-                return _context.abrupt("return", newStatus);
-
-              case 8:
-              case "end":
-                return _context.stop();
-            }
-          }
-        }, _callee, this);
-      }));
+        var newStatus = yield (0, _database.getQueueStatus)(this.queueId);
+        this.status = newStatus;
+        return newStatus;
+      });
 
       function getStatus() {
         return _getStatus.apply(this, arguments);
@@ -167,39 +147,19 @@ var BatteryQueueWatcher = /*#__PURE__*/function (_EventEmitter) {
       };
 
       this.addListener('status', handleStatus);
-      self.queueMicrotask( /*#__PURE__*/_asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee2() {
-        var status;
-        return regeneratorRuntime.wrap(function _callee2$(_context2) {
-          while (1) {
-            switch (_context2.prev = _context2.next) {
-              case 0:
-                _this2.statusRequested = false;
+      self.queueMicrotask( /*#__PURE__*/_asyncToGenerator(function* () {
+        _this2.statusRequested = false;
 
-                _this2.removeListener('status', handleStatus);
+        _this2.removeListener('status', handleStatus);
 
-                if (!didEmitNewStatus) {
-                  _context2.next = 4;
-                  break;
-                }
+        if (didEmitNewStatus) {
+          return;
+        }
 
-                return _context2.abrupt("return");
+        var status = yield (0, _database.getQueueStatus)(_this2.queueId);
 
-              case 4:
-                _context2.next = 6;
-                return (0, _database.getQueueStatus)(_this2.queueId);
-
-              case 6:
-                status = _context2.sent;
-
-                _this2.emit('status', status);
-
-              case 8:
-              case "end":
-                return _context2.stop();
-            }
-          }
-        }, _callee2);
-      })));
+        _this2.emit('status', status);
+      }));
     }
   }, {
     key: "close",

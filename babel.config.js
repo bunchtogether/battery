@@ -8,8 +8,7 @@ module.exports = {
     ['@babel/plugin-transform-flow-strip-types', {
       allowDeclareFields: true,
     }],
-    '@babel/plugin-proposal-class-properties',
-    'transform-commonjs'
+    '@babel/plugin-proposal-class-properties'
   ],
   "env": {
     "test": {
@@ -18,7 +17,11 @@ module.exports = {
     "esm": {},
     "cjs": {
       "presets": [
-        ["@babel/env", { "modules": "commonjs", "targets": "> 0.25%, not dead" }]
+        ["@babel/env", { 
+          "modules": "commonjs", 
+          "targets": "> 0.25%, not dead",
+          "exclude": ["transform-regenerator"]
+        }]
       ],
       "exclude": "@babel/plugin-transform-regenerator"
     }

@@ -3,67 +3,69 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.clearDatabase = _clearDatabase2;
-exports.removeJobsWithQueueIdAndTypeFromDatabase = _removeJobsWithQueueIdAndTypeFromDatabase2;
-exports.removeQueueFromDatabase = _removeQueueFromDatabase2;
-exports.removeCompletedExpiredItemsFromDatabase = _removeCompletedExpiredItemsFromDatabase2;
-exports.updateJobInDatabase = _updateJobInDatabase2;
-exports.getJobFromDatabase = _getJobFromDatabase2;
-exports.updateCleanupInDatabase = _updateCleanupInDatabase2;
-exports.removePathFromCleanupDataInDatabase = _removePathFromCleanupDataInDatabase2;
-exports.updateCleanupValuesInDatabase = _updateCleanupValuesInDatabase2;
-exports.silentlyRemoveJobFromDatabase = _silentlyRemoveJobFromDatabase2;
-exports.removeJobFromDatabase = _removeJobFromDatabase2;
-exports.removeCleanupFromDatabase = _removeCleanupFromDatabase2;
-exports.getCleanupFromDatabase = _getCleanupFromDatabase2;
-exports.getMetadataFromDatabase = _getMetadataFromDatabase2;
-exports.clearMetadataInDatabase = _clearMetadataInDatabase2;
-exports.setMetadataInDatabase = _setMetadataInDatabase2;
-exports.updateMetadataInDatabase = _updateMetadataInDatabase2;
-exports.markJobStatusInDatabase = _markJobStatusInDatabase;
-exports.markJobCompleteInDatabase = _markJobCompleteInDatabase;
-exports.markJobPendingInDatabase = _markJobPendingInDatabase;
-exports.markJobErrorInDatabase = _markJobErrorInDatabase;
-exports.markJobCleanupInDatabase = _markJobCleanupInDatabase;
-exports.markJobAbortedInDatabase = _markJobAbortedInDatabase;
-exports.markJobCompleteThenRemoveFromDatabase = _markJobCompleteThenRemoveFromDatabase2;
-exports.markJobCleanupAndRemoveInDatabase = _markJobCleanupAndRemoveInDatabase;
-exports.markJobAsAbortedOrRemoveFromDatabase = _markJobAsAbortedOrRemoveFromDatabase;
-exports.markJobStartAfterInDatabase = _markJobStartAfterInDatabase;
-exports.markCleanupStartAfterInDatabase = _markCleanupStartAfterInDatabase;
-exports.markQueueForCleanupInDatabase = _markQueueForCleanupInDatabase2;
-exports.markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase = _markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase2;
-exports.markQueueForCleanupAndRemoveInDatabase = _markQueueForCleanupAndRemoveInDatabase;
-exports.markQueueJobsGreaterThanIdPendingInDatabase = _markQueueJobsGreaterThanIdPendingInDatabase2;
-exports.markQueuePendingInDatabase = _markQueuePendingInDatabase;
-exports.getGreatestJobIdFromQueueInDatabase = _getGreatestJobIdFromQueueInDatabase2;
-exports.incrementJobAttemptInDatabase = _incrementJobAttemptInDatabase2;
-exports.incrementCleanupAttemptInDatabase = _incrementCleanupAttemptInDatabase2;
-exports.bulkEnqueueToDatabase = _bulkEnqueueToDatabase2;
-exports.enqueueToDatabase = _enqueueToDatabase2;
-exports.restoreJobToDatabaseForCleanupAndRemove = _restoreJobToDatabaseForCleanupAndRemove2;
-exports.dequeueFromDatabase = _dequeueFromDatabase2;
-exports.getContiguousIds = _getContiguousIds;
-exports.dequeueFromDatabaseNotIn = _dequeueFromDatabaseNotIn2;
-exports.getJobsWithTypeFromDatabase = _getJobsWithTypeFromDatabase2;
-exports.getJobsInQueueFromDatabase = _getJobsInQueueFromDatabase2;
-exports.getJobsInDatabase = _getJobsInDatabase2;
-exports.getCompletedJobsCountFromDatabase = _getCompletedJobsCountFromDatabase2;
-exports.getCompletedJobsFromDatabase = _getCompletedJobsFromDatabase2;
-exports.storeAuthDataInDatabase = _storeAuthDataInDatabase2;
-exports.getAuthDataFromDatabase = _getAuthDataFromDatabase2;
-exports.removeAuthDataFromDatabase = _removeAuthDataFromDatabase2;
-exports.getQueueStatus = _getQueueStatus2;
-exports.addArgLookup = _addArgLookup2;
-exports.getArgLookupJobPathMap = _getArgLookupJobPathMap2;
-exports.markJobsWithArgLookupKeyCleanupAndRemoveInDatabase = _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase2;
-exports.lookupArgs = _lookupArgs2;
-exports.lookupArg = _lookupArg2;
-exports.removeArgLookupsAndCleanupsForJobAsMicrotask = _removeArgLookupsAndCleanupsForJobAsMicrotask;
-exports.updateUnloadDataInDatabase = _updateUnloadDataInDatabase;
-exports.getUnloadDataFromDatabase = _getUnloadDataFromDatabase;
-exports.clearUnloadDataInDatabase = _clearUnloadDataInDatabase;
-exports.databasePromise = exports.JOB_CLEANUP_AND_REMOVE_STATUS = exports.JOB_CLEANUP_STATUS = exports.JOB_ERROR_STATUS = exports.JOB_PENDING_STATUS = exports.JOB_COMPLETE_STATUS = exports.JOB_ABORTED_STATUS = exports.QUEUE_EMPTY_STATUS = exports.QUEUE_COMPLETE_STATUS = exports.QUEUE_PENDING_STATUS = exports.QUEUE_ERROR_STATUS = exports.CleanupDoesNotExistError = exports.JobDoesNotExistError = exports.jobEmitter = exports.localJobEmitter = void 0;
+exports.QUEUE_PENDING_STATUS = exports.QUEUE_ERROR_STATUS = exports.QUEUE_EMPTY_STATUS = exports.QUEUE_COMPLETE_STATUS = exports.JobDoesNotExistError = exports.JOB_PENDING_STATUS = exports.JOB_ERROR_STATUS = exports.JOB_COMPLETE_STATUS = exports.JOB_CLEANUP_STATUS = exports.JOB_CLEANUP_AND_REMOVE_STATUS = exports.JOB_ABORTED_STATUS = exports.CleanupDoesNotExistError = void 0;
+exports.addArgLookup = addArgLookup;
+exports.bulkEnqueueToDatabase = bulkEnqueueToDatabase;
+exports.clearDatabase = clearDatabase;
+exports.clearMetadataInDatabase = clearMetadataInDatabase;
+exports.clearUnloadDataInDatabase = clearUnloadDataInDatabase;
+exports.databasePromise = void 0;
+exports.dequeueFromDatabase = dequeueFromDatabase;
+exports.dequeueFromDatabaseNotIn = dequeueFromDatabaseNotIn;
+exports.enqueueToDatabase = enqueueToDatabase;
+exports.getArgLookupJobPathMap = getArgLookupJobPathMap;
+exports.getAuthDataFromDatabase = getAuthDataFromDatabase;
+exports.getCleanupFromDatabase = getCleanupFromDatabase;
+exports.getCompletedJobsCountFromDatabase = getCompletedJobsCountFromDatabase;
+exports.getCompletedJobsFromDatabase = getCompletedJobsFromDatabase;
+exports.getContiguousIds = getContiguousIds;
+exports.getGreatestJobIdFromQueueInDatabase = getGreatestJobIdFromQueueInDatabase;
+exports.getJobFromDatabase = getJobFromDatabase;
+exports.getJobsInDatabase = getJobsInDatabase;
+exports.getJobsInQueueFromDatabase = getJobsInQueueFromDatabase;
+exports.getJobsWithTypeFromDatabase = getJobsWithTypeFromDatabase;
+exports.getMetadataFromDatabase = getMetadataFromDatabase;
+exports.getQueueStatus = getQueueStatus;
+exports.getUnloadDataFromDatabase = getUnloadDataFromDatabase;
+exports.incrementCleanupAttemptInDatabase = incrementCleanupAttemptInDatabase;
+exports.incrementJobAttemptInDatabase = incrementJobAttemptInDatabase;
+exports.localJobEmitter = exports.jobEmitter = void 0;
+exports.lookupArg = lookupArg;
+exports.lookupArgs = lookupArgs;
+exports.markCleanupStartAfterInDatabase = markCleanupStartAfterInDatabase;
+exports.markJobAbortedInDatabase = markJobAbortedInDatabase;
+exports.markJobAsAbortedOrRemoveFromDatabase = markJobAsAbortedOrRemoveFromDatabase;
+exports.markJobCleanupAndRemoveInDatabase = markJobCleanupAndRemoveInDatabase;
+exports.markJobCleanupInDatabase = markJobCleanupInDatabase;
+exports.markJobCompleteInDatabase = markJobCompleteInDatabase;
+exports.markJobCompleteThenRemoveFromDatabase = markJobCompleteThenRemoveFromDatabase;
+exports.markJobErrorInDatabase = markJobErrorInDatabase;
+exports.markJobPendingInDatabase = markJobPendingInDatabase;
+exports.markJobStartAfterInDatabase = markJobStartAfterInDatabase;
+exports.markJobStatusInDatabase = markJobStatusInDatabase;
+exports.markJobsWithArgLookupKeyCleanupAndRemoveInDatabase = markJobsWithArgLookupKeyCleanupAndRemoveInDatabase;
+exports.markQueueForCleanupAndRemoveInDatabase = markQueueForCleanupAndRemoveInDatabase;
+exports.markQueueForCleanupInDatabase = markQueueForCleanupInDatabase;
+exports.markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase = markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase;
+exports.markQueueJobsGreaterThanIdPendingInDatabase = markQueueJobsGreaterThanIdPendingInDatabase;
+exports.markQueuePendingInDatabase = markQueuePendingInDatabase;
+exports.removeArgLookupsAndCleanupsForJobAsMicrotask = removeArgLookupsAndCleanupsForJobAsMicrotask;
+exports.removeAuthDataFromDatabase = removeAuthDataFromDatabase;
+exports.removeCleanupFromDatabase = removeCleanupFromDatabase;
+exports.removeCompletedExpiredItemsFromDatabase = removeCompletedExpiredItemsFromDatabase;
+exports.removeJobFromDatabase = removeJobFromDatabase;
+exports.removeJobsWithQueueIdAndTypeFromDatabase = removeJobsWithQueueIdAndTypeFromDatabase;
+exports.removePathFromCleanupDataInDatabase = removePathFromCleanupDataInDatabase;
+exports.removeQueueFromDatabase = removeQueueFromDatabase;
+exports.restoreJobToDatabaseForCleanupAndRemove = restoreJobToDatabaseForCleanupAndRemove;
+exports.setMetadataInDatabase = setMetadataInDatabase;
+exports.silentlyRemoveJobFromDatabase = silentlyRemoveJobFromDatabase;
+exports.storeAuthDataInDatabase = storeAuthDataInDatabase;
+exports.updateCleanupInDatabase = updateCleanupInDatabase;
+exports.updateCleanupValuesInDatabase = updateCleanupValuesInDatabase;
+exports.updateJobInDatabase = updateJobInDatabase;
+exports.updateMetadataInDatabase = updateMetadataInDatabase;
+exports.updateUnloadDataInDatabase = updateUnloadDataInDatabase;
 
 var _jsonpathPlus = require("jsonpath-plus");
 
@@ -79,7 +81,7 @@ var _logger = _interopRequireDefault(require("./logger"));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (obj) { return typeof obj; } : function (obj) { return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }, _typeof(obj); }
 
 function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest(); }
 
@@ -99,13 +101,17 @@ function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) { try
 
 function _asyncToGenerator(fn) { return function () { var self = this, args = arguments; return new Promise(function (resolve, reject) { var gen = fn.apply(self, args); function _next(value) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value); } function _throw(err) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err); } _next(undefined); }); }; }
 
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); Object.defineProperty(Constructor, "prototype", { writable: false }); return Constructor; }
+
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); Object.defineProperty(subClass, "prototype", { writable: false }); if (superClass) _setPrototypeOf(subClass, superClass); }
 
 function _createSuper(Derived) { var hasNativeReflectConstruct = _isNativeReflectConstruct(); return function _createSuperInternal() { var Super = _getPrototypeOf(Derived), result; if (hasNativeReflectConstruct) { var NewTarget = _getPrototypeOf(this).constructor; result = Reflect.construct(Super, arguments, NewTarget); } else { result = Super.apply(this, arguments); } return _possibleConstructorReturn(this, result); }; }
 
-function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } else if (call !== void 0) { throw new TypeError("Derived constructors may only return object or undefined"); } return _assertThisInitialized(self); }
 
 function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
 
@@ -123,16 +129,13 @@ function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.g
 
 // Local job emitter is for this process only,
 // jobEmitter is bridged when a MessagePort is open
-var _localJobEmitter = new _events.default();
-
-exports.localJobEmitter = _localJobEmitter;
-
-var _jobEmitter = new _events.default();
-
-exports.jobEmitter = _jobEmitter;
+var localJobEmitter = new _events.default();
+exports.localJobEmitter = localJobEmitter;
+var jobEmitter = new _events.default();
+exports.jobEmitter = jobEmitter;
 var logger = (0, _logger.default)('Jobs Database');
 
-var _JobDoesNotExistError = /*#__PURE__*/function (_Error) {
+var JobDoesNotExistError = /*#__PURE__*/function (_Error) {
   _inherits(JobDoesNotExistError, _Error);
 
   var _super = _createSuper(JobDoesNotExistError);
@@ -147,12 +150,12 @@ var _JobDoesNotExistError = /*#__PURE__*/function (_Error) {
     return _this;
   }
 
-  return JobDoesNotExistError;
+  return _createClass(JobDoesNotExistError);
 }( /*#__PURE__*/_wrapNativeSuper(Error));
 
-exports.JobDoesNotExistError = _JobDoesNotExistError;
+exports.JobDoesNotExistError = JobDoesNotExistError;
 
-var _CleanupDoesNotExistError = /*#__PURE__*/function (_Error2) {
+var CleanupDoesNotExistError = /*#__PURE__*/function (_Error2) {
   _inherits(CleanupDoesNotExistError, _Error2);
 
   var _super2 = _createSuper(CleanupDoesNotExistError);
@@ -167,194 +170,156 @@ var _CleanupDoesNotExistError = /*#__PURE__*/function (_Error2) {
     return _this2;
   }
 
-  return CleanupDoesNotExistError;
+  return _createClass(CleanupDoesNotExistError);
 }( /*#__PURE__*/_wrapNativeSuper(Error));
 
-exports.CleanupDoesNotExistError = _CleanupDoesNotExistError;
-var _QUEUE_ERROR_STATUS = 0;
-exports.QUEUE_ERROR_STATUS = _QUEUE_ERROR_STATUS;
-var _QUEUE_PENDING_STATUS = 1;
-exports.QUEUE_PENDING_STATUS = _QUEUE_PENDING_STATUS;
-var _QUEUE_COMPLETE_STATUS = 2;
-exports.QUEUE_COMPLETE_STATUS = _QUEUE_COMPLETE_STATUS;
-var _QUEUE_EMPTY_STATUS = 3;
-exports.QUEUE_EMPTY_STATUS = _QUEUE_EMPTY_STATUS;
-var _JOB_ABORTED_STATUS = 2;
-exports.JOB_ABORTED_STATUS = _JOB_ABORTED_STATUS;
-var _JOB_COMPLETE_STATUS = 1;
-exports.JOB_COMPLETE_STATUS = _JOB_COMPLETE_STATUS;
-var _JOB_PENDING_STATUS = 0;
-exports.JOB_PENDING_STATUS = _JOB_PENDING_STATUS;
+exports.CleanupDoesNotExistError = CleanupDoesNotExistError;
+var QUEUE_ERROR_STATUS = 0;
+exports.QUEUE_ERROR_STATUS = QUEUE_ERROR_STATUS;
+var QUEUE_PENDING_STATUS = 1;
+exports.QUEUE_PENDING_STATUS = QUEUE_PENDING_STATUS;
+var QUEUE_COMPLETE_STATUS = 2;
+exports.QUEUE_COMPLETE_STATUS = QUEUE_COMPLETE_STATUS;
+var QUEUE_EMPTY_STATUS = 3;
+exports.QUEUE_EMPTY_STATUS = QUEUE_EMPTY_STATUS;
+var JOB_ABORTED_STATUS = 2;
+exports.JOB_ABORTED_STATUS = JOB_ABORTED_STATUS;
+var JOB_COMPLETE_STATUS = 1;
+exports.JOB_COMPLETE_STATUS = JOB_COMPLETE_STATUS;
+var JOB_PENDING_STATUS = 0;
+exports.JOB_PENDING_STATUS = JOB_PENDING_STATUS;
+var JOB_ERROR_STATUS = -1;
+exports.JOB_ERROR_STATUS = JOB_ERROR_STATUS;
+var JOB_CLEANUP_STATUS = -2;
+exports.JOB_CLEANUP_STATUS = JOB_CLEANUP_STATUS;
+var JOB_CLEANUP_AND_REMOVE_STATUS = -3;
+exports.JOB_CLEANUP_AND_REMOVE_STATUS = JOB_CLEANUP_AND_REMOVE_STATUS;
 
-var _JOB_ERROR_STATUS = -1;
+var databasePromise = _asyncToGenerator(function* () {
+  var request = self.indexedDB.open('battery-queue-08', 1);
 
-exports.JOB_ERROR_STATUS = _JOB_ERROR_STATUS;
-
-var _JOB_CLEANUP_STATUS = -2;
-
-exports.JOB_CLEANUP_STATUS = _JOB_CLEANUP_STATUS;
-
-var _JOB_CLEANUP_AND_REMOVE_STATUS = -3;
-
-exports.JOB_CLEANUP_AND_REMOVE_STATUS = _JOB_CLEANUP_AND_REMOVE_STATUS;
-
-var _databasePromise = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee() {
-  var request, db;
-  return regeneratorRuntime.wrap(function _callee$(_context) {
-    while (1) {
-      switch (_context.prev = _context.next) {
-        case 0:
-          request = self.indexedDB.open('battery-queue-08', 1);
-
-          request.onupgradeneeded = function (e) {
-            try {
-              var store = e.target.result.createObjectStore('jobs', {
-                keyPath: 'id',
-                autoIncrement: true
-              });
-              store.createIndex('statusIndex', 'status', {
-                unique: false
-              });
-              store.createIndex('queueIdIndex', 'queueId', {
-                unique: false
-              });
-              store.createIndex('queueIdTypeIndex', ['queueId', 'type'], {
-                unique: false
-              });
-              store.createIndex('typeIndex', 'type', {
-                unique: false
-              });
-              store.createIndex('statusQueueIdIndex', ['queueId', 'status'], {
-                unique: false
-              });
-              store.createIndex('statusCreatedIndex', ['status', 'created'], {
-                unique: false
-              });
-            } catch (error) {
-              if (!(error.name === 'ConstraintError')) {
-                throw error;
-              }
-            }
-
-            try {
-              e.target.result.createObjectStore('metadata', {
-                keyPath: 'id'
-              });
-            } catch (error) {
-              if (!(error.name === 'ConstraintError')) {
-                throw error;
-              }
-            }
-
-            try {
-              var _store = e.target.result.createObjectStore('cleanups', {
-                keyPath: 'id'
-              });
-
-              _store.createIndex('queueIdIndex', 'queueId', {
-                unique: false
-              });
-            } catch (error) {
-              if (!(error.name === 'ConstraintError')) {
-                throw error;
-              }
-            }
-
-            try {
-              e.target.result.createObjectStore('auth-data', {
-                keyPath: 'id'
-              });
-            } catch (error) {
-              if (!(error.name === 'ConstraintError')) {
-                throw error;
-              }
-            }
-
-            try {
-              var _store2 = e.target.result.createObjectStore('arg-lookup', {
-                keyPath: 'id',
-                autoIncrement: true
-              });
-
-              _store2.createIndex('jobIdIndex', 'jobId', {
-                unique: false
-              });
-
-              _store2.createIndex('keyIndex', 'key', {
-                unique: false
-              });
-            } catch (error) {
-              if (!(error.name === 'ConstraintError')) {
-                throw error;
-              }
-            }
-          };
-
-          _context.next = 4;
-          return new Promise(function (resolve, reject) {
-            request.onerror = function () {
-              reject(new Error('Unable to open database'));
-            };
-
-            request.onsuccess = function (event) {
-              resolve(event.target.result);
-            };
-          });
-
-        case 4:
-          db = _context.sent;
-          return _context.abrupt("return", db);
-
-        case 6:
-        case "end":
-          return _context.stop();
+  request.onupgradeneeded = function (e) {
+    try {
+      var store = e.target.result.createObjectStore('jobs', {
+        keyPath: 'id',
+        autoIncrement: true
+      });
+      store.createIndex('statusIndex', 'status', {
+        unique: false
+      });
+      store.createIndex('queueIdIndex', 'queueId', {
+        unique: false
+      });
+      store.createIndex('queueIdTypeIndex', ['queueId', 'type'], {
+        unique: false
+      });
+      store.createIndex('typeIndex', 'type', {
+        unique: false
+      });
+      store.createIndex('statusQueueIdIndex', ['queueId', 'status'], {
+        unique: false
+      });
+      store.createIndex('statusCreatedIndex', ['status', 'created'], {
+        unique: false
+      });
+    } catch (error) {
+      if (!(error.name === 'ConstraintError')) {
+        throw error;
       }
     }
-  }, _callee);
-}))();
 
-exports.databasePromise = _databasePromise;
+    try {
+      e.target.result.createObjectStore('metadata', {
+        keyPath: 'id'
+      });
+    } catch (error) {
+      if (!(error.name === 'ConstraintError')) {
+        throw error;
+      }
+    }
+
+    try {
+      var _store = e.target.result.createObjectStore('cleanups', {
+        keyPath: 'id'
+      });
+
+      _store.createIndex('queueIdIndex', 'queueId', {
+        unique: false
+      });
+    } catch (error) {
+      if (!(error.name === 'ConstraintError')) {
+        throw error;
+      }
+    }
+
+    try {
+      e.target.result.createObjectStore('auth-data', {
+        keyPath: 'id'
+      });
+    } catch (error) {
+      if (!(error.name === 'ConstraintError')) {
+        throw error;
+      }
+    }
+
+    try {
+      var _store2 = e.target.result.createObjectStore('arg-lookup', {
+        keyPath: 'id',
+        autoIncrement: true
+      });
+
+      _store2.createIndex('jobIdIndex', 'jobId', {
+        unique: false
+      });
+
+      _store2.createIndex('keyIndex', 'key', {
+        unique: false
+      });
+    } catch (error) {
+      if (!(error.name === 'ConstraintError')) {
+        throw error;
+      }
+    }
+  };
+
+  var db = yield new Promise(function (resolve, reject) {
+    request.onerror = function () {
+      reject(new Error('Unable to open database'));
+    };
+
+    request.onsuccess = function (event) {
+      resolve(event.target.result);
+    };
+  });
+  return db;
+})();
+
+exports.databasePromise = databasePromise;
 
 function getReadWriteObjectStore(_x) {
   return _getReadWriteObjectStore.apply(this, arguments);
 }
 
 function _getReadWriteObjectStore() {
-  _getReadWriteObjectStore = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee2(name) {
-    var database, transaction, objectStore;
-    return regeneratorRuntime.wrap(function _callee2$(_context2) {
-      while (1) {
-        switch (_context2.prev = _context2.next) {
-          case 0:
-            _context2.next = 2;
-            return _databasePromise;
+  _getReadWriteObjectStore = _asyncToGenerator(function* (name) {
+    var database = yield databasePromise;
+    var transaction = database.transaction([name], 'readwrite', {
+      durability: 'relaxed'
+    });
+    var objectStore = transaction.objectStore(name);
 
-          case 2:
-            database = _context2.sent;
-            transaction = database.transaction([name], 'readwrite', {
-              durability: 'relaxed'
-            });
-            objectStore = transaction.objectStore(name);
+    transaction.onabort = function (event) {
+      logger.error("Read-write \"".concat(name, "\" transaction was aborted"));
+      logger.errorObject(event);
+    };
 
-            transaction.onabort = function (event) {
-              logger.error("Read-write \"".concat(name, "\" transaction was aborted"));
-              logger.errorObject(event);
-            };
+    transaction.onerror = function (event) {
+      logger.error("Error in read-write \"".concat(name, "\" transaction"));
+      logger.errorObject(event);
+    };
 
-            transaction.onerror = function (event) {
-              logger.error("Error in read-write \"".concat(name, "\" transaction"));
-              logger.errorObject(event);
-            };
-
-            return _context2.abrupt("return", objectStore);
-
-          case 8:
-          case "end":
-            return _context2.stop();
-        }
-      }
-    }, _callee2);
-  }));
+    return objectStore;
+  });
   return _getReadWriteObjectStore.apply(this, arguments);
 }
 
@@ -363,41 +328,25 @@ function getReadOnlyObjectStore(_x2) {
 }
 
 function _getReadOnlyObjectStore() {
-  _getReadOnlyObjectStore = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee3(name) {
-    var database, transaction, objectStore;
-    return regeneratorRuntime.wrap(function _callee3$(_context3) {
-      while (1) {
-        switch (_context3.prev = _context3.next) {
-          case 0:
-            _context3.next = 2;
-            return _databasePromise;
+  _getReadOnlyObjectStore = _asyncToGenerator(function* (name) {
+    var database = yield databasePromise;
+    var transaction = database.transaction([name], 'readonly', {
+      durability: 'relaxed'
+    });
+    var objectStore = transaction.objectStore(name);
 
-          case 2:
-            database = _context3.sent;
-            transaction = database.transaction([name], 'readonly', {
-              durability: 'relaxed'
-            });
-            objectStore = transaction.objectStore(name);
+    transaction.onabort = function (event) {
+      logger.error("Read-only \"".concat(name, "\" transaction was aborted"));
+      logger.errorObject(event);
+    };
 
-            transaction.onabort = function (event) {
-              logger.error("Read-only \"".concat(name, "\" transaction was aborted"));
-              logger.errorObject(event);
-            };
+    transaction.onerror = function (event) {
+      logger.error("Error in read-only \"".concat(name, "\" transaction"));
+      logger.errorObject(event);
+    };
 
-            transaction.onerror = function (event) {
-              logger.error("Error in read-only \"".concat(name, "\" transaction"));
-              logger.errorObject(event);
-            };
-
-            return _context3.abrupt("return", objectStore);
-
-          case 8:
-          case "end":
-            return _context3.stop();
-        }
-      }
-    }, _callee3);
-  }));
+    return objectStore;
+  });
   return _getReadOnlyObjectStore.apply(this, arguments);
 }
 
@@ -446,40 +395,24 @@ function getReadWriteJobCleanupAndArgLookupStores() {
 }
 
 function _getReadWriteJobCleanupAndArgLookupStores() {
-  _getReadWriteJobCleanupAndArgLookupStores = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee4() {
-    var database, transaction;
-    return regeneratorRuntime.wrap(function _callee4$(_context4) {
-      while (1) {
-        switch (_context4.prev = _context4.next) {
-          case 0:
-            _context4.next = 2;
-            return _databasePromise;
+  _getReadWriteJobCleanupAndArgLookupStores = _asyncToGenerator(function* () {
+    var database = yield databasePromise;
+    var transaction = database.transaction(['jobs', 'cleanups', 'arg-lookup'], 'readwrite', {
+      durability: 'relaxed'
+    });
 
-          case 2:
-            database = _context4.sent;
-            transaction = database.transaction(['jobs', 'cleanups', 'arg-lookup'], 'readwrite', {
-              durability: 'relaxed'
-            });
+    transaction.onabort = function (event) {
+      logger.error('Read-write \'jobs\', \'cleanups\', and \'arg-lookup\' transaction was aborted');
+      logger.errorObject(event);
+    };
 
-            transaction.onabort = function (event) {
-              logger.error('Read-write \'jobs\', \'cleanups\', and \'arg-lookup\' transaction was aborted');
-              logger.errorObject(event);
-            };
+    transaction.onerror = function (event) {
+      logger.error('Error in read-write \'jobs\', \'cleanups\', and \'arg-lookup\' transaction');
+      logger.errorObject(event);
+    };
 
-            transaction.onerror = function (event) {
-              logger.error('Error in read-write \'jobs\', \'cleanups\', and \'arg-lookup\' transaction');
-              logger.errorObject(event);
-            };
-
-            return _context4.abrupt("return", [transaction.objectStore('jobs'), transaction.objectStore('cleanups'), transaction.objectStore('arg-lookup')]);
-
-          case 7:
-          case "end":
-            return _context4.stop();
-        }
-      }
-    }, _callee4);
-  }));
+    return [transaction.objectStore('jobs'), transaction.objectStore('cleanups'), transaction.objectStore('arg-lookup')];
+  });
   return _getReadWriteJobCleanupAndArgLookupStores.apply(this, arguments);
 }
 
@@ -488,47 +421,31 @@ function getReadOnlyObjectStoreAndTransactionPromise(_x3) {
 }
 
 function _getReadOnlyObjectStoreAndTransactionPromise() {
-  _getReadOnlyObjectStoreAndTransactionPromise = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee5(name) {
-    var database, transaction, objectStore, promise;
-    return regeneratorRuntime.wrap(function _callee5$(_context5) {
-      while (1) {
-        switch (_context5.prev = _context5.next) {
-          case 0:
-            _context5.next = 2;
-            return _databasePromise;
+  _getReadOnlyObjectStoreAndTransactionPromise = _asyncToGenerator(function* (name) {
+    var database = yield databasePromise;
+    var transaction = database.transaction([name], 'readonly', {
+      durability: 'relaxed'
+    });
+    var objectStore = transaction.objectStore(name);
+    var promise = new Promise(function (resolve, reject) {
+      transaction.onabort = function (event) {
+        logger.error("Read-write \"".concat(name, "\" transaction was aborted"));
+        logger.errorObject(event);
+        reject(new Error("Read-write \"".concat(name, "\" transaction was aborted")));
+      };
 
-          case 2:
-            database = _context5.sent;
-            transaction = database.transaction([name], 'readonly', {
-              durability: 'relaxed'
-            });
-            objectStore = transaction.objectStore(name);
-            promise = new Promise(function (resolve, reject) {
-              transaction.onabort = function (event) {
-                logger.error("Read-write \"".concat(name, "\" transaction was aborted"));
-                logger.errorObject(event);
-                reject(new Error("Read-write \"".concat(name, "\" transaction was aborted")));
-              };
+      transaction.onerror = function (event) {
+        logger.error("Error in read-write \"".concat(name, "\" transaction"));
+        logger.errorObject(event);
+        reject(new Error("Error in read-write \"".concat(name, "\" transaction")));
+      };
 
-              transaction.onerror = function (event) {
-                logger.error("Error in read-write \"".concat(name, "\" transaction"));
-                logger.errorObject(event);
-                reject(new Error("Error in read-write \"".concat(name, "\" transaction")));
-              };
-
-              transaction.oncomplete = function () {
-                resolve();
-              };
-            });
-            return _context5.abrupt("return", [objectStore, promise]);
-
-          case 7:
-          case "end":
-            return _context5.stop();
-        }
-      }
-    }, _callee5);
-  }));
+      transaction.oncomplete = function () {
+        resolve();
+      };
+    });
+    return [objectStore, promise];
+  });
   return _getReadOnlyObjectStoreAndTransactionPromise.apply(this, arguments);
 }
 
@@ -538,10 +455,8 @@ function getReadOnlyJobsObjectStoreAndTransactionPromise() {
 
 function removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId, onSuccess, onError) {
   var jobDeleteRequest = jobsObjectStore.delete(jobId);
-
-  _localJobEmitter.emit('jobDelete', jobId, queueId);
-
-  _jobEmitter.emit('jobDelete', jobId, queueId);
+  localJobEmitter.emit('jobDelete', jobId, queueId);
+  jobEmitter.emit('jobDelete', jobId, queueId);
 
   jobDeleteRequest.onerror = function (event) {
     logger.error("Request error while removing job ".concat(jobId, " in queue ").concat(queueId, " from database"));
@@ -611,40 +526,23 @@ function clearAllMetadataInDatabase() {
 }
 
 function _clearAllMetadataInDatabase() {
-  _clearAllMetadataInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee6() {
-    var store, request;
-    return regeneratorRuntime.wrap(function _callee6$(_context6) {
-      while (1) {
-        switch (_context6.prev = _context6.next) {
-          case 0:
-            _context6.next = 2;
-            return getReadWriteMetadataObjectStore();
+  _clearAllMetadataInDatabase = _asyncToGenerator(function* () {
+    var store = yield getReadWriteMetadataObjectStore();
+    var request = store.clear();
+    yield new Promise(function (resolve, reject) {
+      request.onsuccess = function () {
+        resolve();
+      };
 
-          case 2:
-            store = _context6.sent;
-            request = store.clear();
-            _context6.next = 6;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function () {
-                resolve();
-              };
+      request.onerror = function (event) {
+        logger.error('Error while clearing queue data database');
+        logger.errorObject(event);
+        reject(new Error('Error while clearing queue data database'));
+      };
 
-              request.onerror = function (event) {
-                logger.error('Error while clearing queue data database');
-                logger.errorObject(event);
-                reject(new Error('Error while clearing queue data database'));
-              };
-
-              store.transaction.commit();
-            });
-
-          case 6:
-          case "end":
-            return _context6.stop();
-        }
-      }
-    }, _callee6);
-  }));
+      store.transaction.commit();
+    });
+  });
   return _clearAllMetadataInDatabase.apply(this, arguments);
 }
 
@@ -653,45 +551,25 @@ function clearJobsDatabase() {
 }
 
 function _clearJobsDatabase() {
-  _clearJobsDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee7() {
-    var store, request;
-    return regeneratorRuntime.wrap(function _callee7$(_context7) {
-      while (1) {
-        switch (_context7.prev = _context7.next) {
-          case 0:
-            _context7.next = 2;
-            return getReadWriteJobsObjectStore();
+  _clearJobsDatabase = _asyncToGenerator(function* () {
+    var store = yield getReadWriteJobsObjectStore();
+    var request = store.clear();
+    localJobEmitter.emit('jobsClear');
+    jobEmitter.emit('jobsClear');
+    yield new Promise(function (resolve, reject) {
+      request.onsuccess = function () {
+        resolve();
+      };
 
-          case 2:
-            store = _context7.sent;
-            request = store.clear();
+      request.onerror = function (event) {
+        logger.error('Error while clearing jobs database');
+        logger.errorObject(event);
+        reject(new Error('Error while clearing jobs database'));
+      };
 
-            _localJobEmitter.emit('jobsClear');
-
-            _jobEmitter.emit('jobsClear');
-
-            _context7.next = 8;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function () {
-                resolve();
-              };
-
-              request.onerror = function (event) {
-                logger.error('Error while clearing jobs database');
-                logger.errorObject(event);
-                reject(new Error('Error while clearing jobs database'));
-              };
-
-              store.transaction.commit();
-            });
-
-          case 8:
-          case "end":
-            return _context7.stop();
-        }
-      }
-    }, _callee7);
-  }));
+      store.transaction.commit();
+    });
+  });
   return _clearJobsDatabase.apply(this, arguments);
 }
 
@@ -700,956 +578,644 @@ function clearCleanupsDatabase() {
 }
 
 function _clearCleanupsDatabase() {
-  _clearCleanupsDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee8() {
-    var store, request;
-    return regeneratorRuntime.wrap(function _callee8$(_context8) {
-      while (1) {
-        switch (_context8.prev = _context8.next) {
-          case 0:
-            _context8.next = 2;
-            return getReadWriteCleanupsObjectStore();
+  _clearCleanupsDatabase = _asyncToGenerator(function* () {
+    var store = yield getReadWriteCleanupsObjectStore();
+    var request = store.clear();
+    yield new Promise(function (resolve, reject) {
+      request.onsuccess = function () {
+        resolve();
+      };
 
-          case 2:
-            store = _context8.sent;
-            request = store.clear();
-            _context8.next = 6;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function () {
-                resolve();
-              };
+      request.onerror = function (event) {
+        logger.error('Error while clearing cleanups database');
+        logger.errorObject(event);
+        reject(new Error('Error while clearing cleanups database'));
+      };
 
-              request.onerror = function (event) {
-                logger.error('Error while clearing cleanups database');
-                logger.errorObject(event);
-                reject(new Error('Error while clearing cleanups database'));
-              };
-
-              store.transaction.commit();
-            });
-
-          case 6:
-          case "end":
-            return _context8.stop();
-        }
-      }
-    }, _callee8);
-  }));
+      store.transaction.commit();
+    });
+  });
   return _clearCleanupsDatabase.apply(this, arguments);
 }
 
-function _clearDatabase2() {
+function clearDatabase() {
   return _clearDatabase.apply(this, arguments);
 }
 
 function _clearDatabase() {
-  _clearDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee9() {
-    return regeneratorRuntime.wrap(function _callee9$(_context9) {
-      while (1) {
-        switch (_context9.prev = _context9.next) {
-          case 0:
-            _context9.next = 2;
-            return clearJobsDatabase();
-
-          case 2:
-            _context9.next = 4;
-            return clearCleanupsDatabase();
-
-          case 4:
-            _context9.next = 6;
-            return clearAllMetadataInDatabase();
-
-          case 6:
-          case "end":
-            return _context9.stop();
-        }
-      }
-    }, _callee9);
-  }));
+  _clearDatabase = _asyncToGenerator(function* () {
+    yield clearJobsDatabase();
+    yield clearCleanupsDatabase();
+    yield clearAllMetadataInDatabase();
+  });
   return _clearDatabase.apply(this, arguments);
 }
 
-function _removeJobsWithQueueIdAndTypeFromDatabase2(_x4, _x5) {
+function removeJobsWithQueueIdAndTypeFromDatabase(_x4, _x5) {
   return _removeJobsWithQueueIdAndTypeFromDatabase.apply(this, arguments);
 }
 
 function _removeJobsWithQueueIdAndTypeFromDatabase() {
-  _removeJobsWithQueueIdAndTypeFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee10(queueId, type) {
-    var _yield$getReadWriteJo, _yield$getReadWriteJo2, jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, index, request;
+  _removeJobsWithQueueIdAndTypeFromDatabase = _asyncToGenerator(function* (queueId, type) {
+    var _yield$getReadWriteJo = yield getReadWriteJobCleanupAndArgLookupStores(),
+        _yield$getReadWriteJo2 = _slicedToArray(_yield$getReadWriteJo, 3),
+        jobsObjectStore = _yield$getReadWriteJo2[0],
+        cleanupsObjectStore = _yield$getReadWriteJo2[1],
+        argLookupObjectStore = _yield$getReadWriteJo2[2];
 
-    return regeneratorRuntime.wrap(function _callee10$(_context10) {
-      while (1) {
-        switch (_context10.prev = _context10.next) {
-          case 0:
-            _context10.next = 2;
-            return getReadWriteJobCleanupAndArgLookupStores();
+    var index = jobsObjectStore.index('queueIdTypeIndex'); // $FlowFixMe
 
-          case 2:
-            _yield$getReadWriteJo = _context10.sent;
-            _yield$getReadWriteJo2 = _slicedToArray(_yield$getReadWriteJo, 3);
-            jobsObjectStore = _yield$getReadWriteJo2[0];
-            cleanupsObjectStore = _yield$getReadWriteJo2[1];
-            argLookupObjectStore = _yield$getReadWriteJo2[2];
-            index = jobsObjectStore.index('queueIdTypeIndex'); // $FlowFixMe
+    var request = index.getAllKeys(IDBKeyRange.only([queueId, type]));
+    yield new Promise(function (resolve, reject) {
+      request.onsuccess = function (event) {
+        var jobIds = event.target.result;
 
-            request = index.getAllKeys(IDBKeyRange.only([queueId, type]));
-            _context10.next = 11;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function (event) {
-                var jobIds = event.target.result;
+        for (var i = 0; i < jobIds.length; i += 1) {
+          var jobId = jobIds[i];
 
-                for (var i = 0; i < jobIds.length; i += 1) {
-                  var jobId = jobIds[i];
-
-                  if (i === jobIds.length - 1) {
-                    removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId, resolve, reject);
-                  } else {
-                    removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId);
-                  }
-                }
-              };
-
-              request.onerror = function (event) {
-                logger.error("Request error while removing jobs with queue ".concat(queueId, " and type ").concat(type, " from jobs database"));
-                logger.errorObject(event);
-              };
-            });
-
-          case 11:
-          case "end":
-            return _context10.stop();
+          if (i === jobIds.length - 1) {
+            removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId, resolve, reject);
+          } else {
+            removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId);
+          }
         }
-      }
-    }, _callee10);
-  }));
+      };
+
+      request.onerror = function (event) {
+        logger.error("Request error while removing jobs with queue ".concat(queueId, " and type ").concat(type, " from jobs database"));
+        logger.errorObject(event);
+      };
+    });
+  });
   return _removeJobsWithQueueIdAndTypeFromDatabase.apply(this, arguments);
 }
 
-function _removeQueueFromDatabase2(_x6) {
+function removeQueueFromDatabase(_x6) {
   return _removeQueueFromDatabase.apply(this, arguments);
 }
 
 function _removeQueueFromDatabase() {
-  _removeQueueFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee11(queueId) {
-    var _yield$getReadWriteJo3, _yield$getReadWriteJo4, jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, index, request;
+  _removeQueueFromDatabase = _asyncToGenerator(function* (queueId) {
+    var _yield$getReadWriteJo3 = yield getReadWriteJobCleanupAndArgLookupStores(),
+        _yield$getReadWriteJo4 = _slicedToArray(_yield$getReadWriteJo3, 3),
+        jobsObjectStore = _yield$getReadWriteJo4[0],
+        cleanupsObjectStore = _yield$getReadWriteJo4[1],
+        argLookupObjectStore = _yield$getReadWriteJo4[2];
 
-    return regeneratorRuntime.wrap(function _callee11$(_context11) {
-      while (1) {
-        switch (_context11.prev = _context11.next) {
-          case 0:
-            _context11.next = 2;
-            return getReadWriteJobCleanupAndArgLookupStores();
+    var index = jobsObjectStore.index('queueIdIndex'); // $FlowFixMe
 
-          case 2:
-            _yield$getReadWriteJo3 = _context11.sent;
-            _yield$getReadWriteJo4 = _slicedToArray(_yield$getReadWriteJo3, 3);
-            jobsObjectStore = _yield$getReadWriteJo4[0];
-            cleanupsObjectStore = _yield$getReadWriteJo4[1];
-            argLookupObjectStore = _yield$getReadWriteJo4[2];
-            index = jobsObjectStore.index('queueIdIndex'); // $FlowFixMe
+    var request = index.getAllKeys(IDBKeyRange.only(queueId));
+    yield new Promise(function (resolve, reject) {
+      request.onsuccess = function (event) {
+        var jobIds = event.target.result;
 
-            request = index.getAllKeys(IDBKeyRange.only(queueId));
-            _context11.next = 11;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function (event) {
-                var jobIds = event.target.result;
+        for (var i = 0; i < jobIds.length; i += 1) {
+          var jobId = jobIds[i];
 
-                for (var i = 0; i < jobIds.length; i += 1) {
-                  var jobId = jobIds[i];
-
-                  if (i === jobIds.length - 1) {
-                    removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId, function () {
-                      jobsObjectStore.transaction.commit();
-                      resolve();
-                    }, reject);
-                  } else {
-                    removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId);
-                  }
-                }
-              };
-
-              request.onerror = function (event) {
-                logger.error("Request error while removing queue ".concat(queueId, " from jobs database"));
-                logger.errorObject(event);
-                reject(new Error("Request error while removing queue ".concat(queueId, " from jobs database")));
-              };
-            });
-
-          case 11:
-          case "end":
-            return _context11.stop();
+          if (i === jobIds.length - 1) {
+            removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId, function () {
+              jobsObjectStore.transaction.commit();
+              resolve();
+            }, reject);
+          } else {
+            removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId);
+          }
         }
-      }
-    }, _callee11);
-  }));
+      };
+
+      request.onerror = function (event) {
+        logger.error("Request error while removing queue ".concat(queueId, " from jobs database"));
+        logger.errorObject(event);
+        reject(new Error("Request error while removing queue ".concat(queueId, " from jobs database")));
+      };
+    });
+  });
   return _removeQueueFromDatabase.apply(this, arguments);
 }
 
-function _removeCompletedExpiredItemsFromDatabase2(_x7) {
+function removeCompletedExpiredItemsFromDatabase(_x7) {
   return _removeCompletedExpiredItemsFromDatabase.apply(this, arguments);
 }
 
 function _removeCompletedExpiredItemsFromDatabase() {
-  _removeCompletedExpiredItemsFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee12(maxAge) {
-    var _yield$getReadWriteJo5, _yield$getReadWriteJo6, jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, index, request;
+  _removeCompletedExpiredItemsFromDatabase = _asyncToGenerator(function* (maxAge) {
+    var _yield$getReadWriteJo5 = yield getReadWriteJobCleanupAndArgLookupStores(),
+        _yield$getReadWriteJo6 = _slicedToArray(_yield$getReadWriteJo5, 3),
+        jobsObjectStore = _yield$getReadWriteJo6[0],
+        cleanupsObjectStore = _yield$getReadWriteJo6[1],
+        argLookupObjectStore = _yield$getReadWriteJo6[2];
 
-    return regeneratorRuntime.wrap(function _callee12$(_context12) {
-      while (1) {
-        switch (_context12.prev = _context12.next) {
-          case 0:
-            _context12.next = 2;
-            return getReadWriteJobCleanupAndArgLookupStores();
+    var index = jobsObjectStore.index('statusCreatedIndex'); // $FlowFixMe
 
-          case 2:
-            _yield$getReadWriteJo5 = _context12.sent;
-            _yield$getReadWriteJo6 = _slicedToArray(_yield$getReadWriteJo5, 3);
-            jobsObjectStore = _yield$getReadWriteJo6[0];
-            cleanupsObjectStore = _yield$getReadWriteJo6[1];
-            argLookupObjectStore = _yield$getReadWriteJo6[2];
-            index = jobsObjectStore.index('statusCreatedIndex'); // $FlowFixMe
+    var request = index.getAll(IDBKeyRange.bound([JOB_COMPLETE_STATUS, 0], [JOB_COMPLETE_STATUS, Date.now() - maxAge]));
+    yield new Promise(function (resolve, reject) {
+      request.onsuccess = function (event) {
+        var jobs = event.target.result;
 
-            request = index.getAll(IDBKeyRange.bound([_JOB_COMPLETE_STATUS, 0], [_JOB_COMPLETE_STATUS, Date.now() - maxAge]));
-            _context12.next = 11;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function (event) {
-                var jobs = event.target.result;
+        for (var i = 0; i < jobs.length; i += 1) {
+          var _jobs$i = jobs[i],
+              jobId = _jobs$i.id,
+              queueId = _jobs$i.queueId;
 
-                for (var i = 0; i < jobs.length; i += 1) {
-                  var _jobs$i = jobs[i],
-                      jobId = _jobs$i.id,
-                      queueId = _jobs$i.queueId;
-
-                  if (i === jobs.length - 1) {
-                    removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId, function () {
-                      jobsObjectStore.transaction.commit();
-                      resolve();
-                    }, reject);
-                  } else {
-                    removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId);
-                  }
-                }
-
-                if (jobs.length === 0) {
-                  resolve();
-                }
-              };
-
-              request.onerror = function (event) {
-                logger.error("Request error while removing completed jobs with age > ".concat(maxAge, "ms"));
-                logger.errorObject(event);
-                reject(new Error("Request error while removing completed jobs with age > ".concat(maxAge, "ms")));
-              };
-            });
-
-          case 11:
-          case "end":
-            return _context12.stop();
+          if (i === jobs.length - 1) {
+            removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId, function () {
+              jobsObjectStore.transaction.commit();
+              resolve();
+            }, reject);
+          } else {
+            removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId);
+          }
         }
-      }
-    }, _callee12);
-  }));
+
+        if (jobs.length === 0) {
+          resolve();
+        }
+      };
+
+      request.onerror = function (event) {
+        logger.error("Request error while removing completed jobs with age > ".concat(maxAge, "ms"));
+        logger.errorObject(event);
+        reject(new Error("Request error while removing completed jobs with age > ".concat(maxAge, "ms")));
+      };
+    });
+  });
   return _removeCompletedExpiredItemsFromDatabase.apply(this, arguments);
 }
 
-function _updateJobInDatabase2(_x8, _x9) {
+function updateJobInDatabase(_x8, _x9) {
   return _updateJobInDatabase.apply(this, arguments);
 }
 
 function _updateJobInDatabase() {
-  _updateJobInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee13(id, transform) {
-    var store, request;
-    return regeneratorRuntime.wrap(function _callee13$(_context13) {
-      while (1) {
-        switch (_context13.prev = _context13.next) {
-          case 0:
-            _context13.next = 2;
-            return getReadWriteJobsObjectStore();
+  _updateJobInDatabase = _asyncToGenerator(function* (id, transform) {
+    var store = yield getReadWriteJobsObjectStore();
+    var request = store.get(id);
+    yield new Promise(function (resolve, reject) {
+      request.onsuccess = function () {
+        var newValue;
+        var value = request.result;
 
-          case 2:
-            store = _context13.sent;
-            request = store.get(id);
-            _context13.next = 6;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function () {
-                var newValue;
-                var value = request.result;
-
-                try {
-                  newValue = transform(value);
-                } catch (error) {
-                  reject(error);
-                  return;
-                }
-
-                if (typeof newValue === 'undefined') {
-                  resolve();
-                } else if (newValue === false) {
-                  if (typeof value !== 'undefined') {
-                    var queueId = value.queueId,
-                        type = value.type;
-                    var deleteRequest = store.delete(id);
-
-                    _localJobEmitter.emit('jobDelete', id, queueId);
-
-                    _jobEmitter.emit('jobDelete', id, queueId);
-
-                    deleteRequest.onsuccess = function () {
-                      _removeArgLookupsAndCleanupsForJobAsMicrotask(id);
-
-                      resolve();
-                    };
-
-                    deleteRequest.onerror = function (event) {
-                      logger.error("Delete request error while updating job ".concat(id, " in queue ").concat(queueId, " and type ").concat(type, " in jobs database"));
-                      logger.errorObject(event);
-                      reject(new Error("Delete request error while updating job ".concat(id, " in queue ").concat(queueId, " and type ").concat(type, " from jobs database")));
-                    };
-                  } else {
-                    resolve();
-                  }
-                } else {
-                  var _newValue = newValue,
-                      _queueId = _newValue.queueId,
-                      _type = _newValue.type,
-                      status = _newValue.status;
-                  var putRequest = store.put(newValue);
-
-                  _localJobEmitter.emit('jobUpdate', id, _queueId, _type, status);
-
-                  _jobEmitter.emit('jobUpdate', id, _queueId, _type, status);
-
-                  putRequest.onsuccess = function () {
-                    resolve();
-                  };
-
-                  putRequest.onerror = function (event) {
-                    logger.error("Put request error while updating job ".concat(id, " in queue ").concat(_queueId, " and type ").concat(_type, " in jobs database"));
-                    logger.errorObject(event);
-                    reject(new Error("Put request error while updating job ".concat(id, " in queue ").concat(_queueId, " and type ").concat(_type, " from jobs database")));
-                  };
-                }
-
-                store.transaction.commit();
-              };
-
-              request.onerror = function (event) {
-                logger.error("Get request error while updating ".concat(id));
-                logger.errorObject(event);
-                reject(new Error("Get request error while updating ".concat(id)));
-              };
-            });
-
-          case 6:
-          case "end":
-            return _context13.stop();
+        try {
+          newValue = transform(value);
+        } catch (error) {
+          reject(error);
+          return;
         }
-      }
-    }, _callee13);
-  }));
+
+        if (typeof newValue === 'undefined') {
+          resolve();
+        } else if (newValue === false) {
+          if (typeof value !== 'undefined') {
+            var queueId = value.queueId,
+                type = value.type;
+            var deleteRequest = store.delete(id);
+            localJobEmitter.emit('jobDelete', id, queueId);
+            jobEmitter.emit('jobDelete', id, queueId);
+
+            deleteRequest.onsuccess = function () {
+              removeArgLookupsAndCleanupsForJobAsMicrotask(id);
+              resolve();
+            };
+
+            deleteRequest.onerror = function (event) {
+              logger.error("Delete request error while updating job ".concat(id, " in queue ").concat(queueId, " and type ").concat(type, " in jobs database"));
+              logger.errorObject(event);
+              reject(new Error("Delete request error while updating job ".concat(id, " in queue ").concat(queueId, " and type ").concat(type, " from jobs database")));
+            };
+          } else {
+            resolve();
+          }
+        } else {
+          var _newValue = newValue,
+              _queueId = _newValue.queueId,
+              _type = _newValue.type,
+              status = _newValue.status;
+          var putRequest = store.put(newValue);
+          localJobEmitter.emit('jobUpdate', id, _queueId, _type, status);
+          jobEmitter.emit('jobUpdate', id, _queueId, _type, status);
+
+          putRequest.onsuccess = function () {
+            resolve();
+          };
+
+          putRequest.onerror = function (event) {
+            logger.error("Put request error while updating job ".concat(id, " in queue ").concat(_queueId, " and type ").concat(_type, " in jobs database"));
+            logger.errorObject(event);
+            reject(new Error("Put request error while updating job ".concat(id, " in queue ").concat(_queueId, " and type ").concat(_type, " from jobs database")));
+          };
+        }
+
+        store.transaction.commit();
+      };
+
+      request.onerror = function (event) {
+        logger.error("Get request error while updating ".concat(id));
+        logger.errorObject(event);
+        reject(new Error("Get request error while updating ".concat(id)));
+      };
+    });
+  });
   return _updateJobInDatabase.apply(this, arguments);
 }
 
-function _getJobFromDatabase2(_x10) {
+function getJobFromDatabase(_x10) {
   return _getJobFromDatabase.apply(this, arguments);
 }
 
 function _getJobFromDatabase() {
-  _getJobFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee14(id) {
-    var store, request;
-    return regeneratorRuntime.wrap(function _callee14$(_context14) {
-      while (1) {
-        switch (_context14.prev = _context14.next) {
-          case 0:
-            _context14.next = 2;
-            return getReadOnlyJobsObjectStore();
+  _getJobFromDatabase = _asyncToGenerator(function* (id) {
+    var store = yield getReadOnlyJobsObjectStore();
+    var request = store.get(id);
+    return new Promise(function (resolve, reject) {
+      request.onsuccess = function () {
+        resolve(request.result);
+      };
 
-          case 2:
-            store = _context14.sent;
-            request = store.get(id);
-            return _context14.abrupt("return", new Promise(function (resolve, reject) {
-              request.onsuccess = function () {
-                resolve(request.result);
-              };
+      request.onerror = function (event) {
+        logger.error("Request error while getting ".concat(id));
+        logger.errorObject(event);
+        reject(new Error("Request error while getting ".concat(id)));
+      };
 
-              request.onerror = function (event) {
-                logger.error("Request error while getting ".concat(id));
-                logger.errorObject(event);
-                reject(new Error("Request error while getting ".concat(id)));
-              };
-
-              store.transaction.commit();
-            }));
-
-          case 5:
-          case "end":
-            return _context14.stop();
-        }
-      }
-    }, _callee14);
-  }));
+      store.transaction.commit();
+    });
+  });
   return _getJobFromDatabase.apply(this, arguments);
 }
 
-function _updateCleanupInDatabase2(_x11, _x12) {
+function updateCleanupInDatabase(_x11, _x12) {
   return _updateCleanupInDatabase.apply(this, arguments);
 }
 
 function _updateCleanupInDatabase() {
-  _updateCleanupInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee15(id, transform) {
-    var store, request;
-    return regeneratorRuntime.wrap(function _callee15$(_context15) {
-      while (1) {
-        switch (_context15.prev = _context15.next) {
-          case 0:
-            _context15.next = 2;
-            return getReadWriteCleanupsObjectStore();
+  _updateCleanupInDatabase = _asyncToGenerator(function* (id, transform) {
+    var store = yield getReadWriteCleanupsObjectStore();
+    var request = store.get(id);
+    yield new Promise(function (resolve, reject) {
+      request.onsuccess = function () {
+        var newValue;
 
-          case 2:
-            store = _context15.sent;
-            request = store.get(id);
-            _context15.next = 6;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function () {
-                var newValue;
-
-                try {
-                  newValue = transform(request.result);
-                } catch (error) {
-                  reject(error);
-                  return;
-                }
-
-                if (typeof newValue === 'undefined') {
-                  resolve();
-                } else {
-                  var putRequest = store.put(newValue);
-
-                  putRequest.onsuccess = function () {
-                    resolve();
-                  };
-
-                  putRequest.onerror = function (event) {
-                    logger.error("Put request error while updating ".concat(id, " cleanup"));
-                    logger.errorObject(event);
-                    reject(new Error("Put request error while updating ".concat(id, " cleanup")));
-                  };
-                }
-
-                store.transaction.commit();
-              };
-
-              request.onerror = function (event) {
-                logger.error("Get request error while updating ".concat(id, " cleanup"));
-                logger.errorObject(event);
-                reject(new Error("Get request error while updating ".concat(id, " cleanup")));
-              };
-            });
-
-          case 6:
-          case "end":
-            return _context15.stop();
+        try {
+          newValue = transform(request.result);
+        } catch (error) {
+          reject(error);
+          return;
         }
-      }
-    }, _callee15);
-  }));
+
+        if (typeof newValue === 'undefined') {
+          resolve();
+        } else {
+          var putRequest = store.put(newValue);
+
+          putRequest.onsuccess = function () {
+            resolve();
+          };
+
+          putRequest.onerror = function (event) {
+            logger.error("Put request error while updating ".concat(id, " cleanup"));
+            logger.errorObject(event);
+            reject(new Error("Put request error while updating ".concat(id, " cleanup")));
+          };
+        }
+
+        store.transaction.commit();
+      };
+
+      request.onerror = function (event) {
+        logger.error("Get request error while updating ".concat(id, " cleanup"));
+        logger.errorObject(event);
+        reject(new Error("Get request error while updating ".concat(id, " cleanup")));
+      };
+    });
+  });
   return _updateCleanupInDatabase.apply(this, arguments);
 }
 
-function _removePathFromCleanupDataInDatabase2(_x13, _x14) {
+function removePathFromCleanupDataInDatabase(_x13, _x14) {
   return _removePathFromCleanupDataInDatabase.apply(this, arguments);
 }
 
 function _removePathFromCleanupDataInDatabase() {
-  _removePathFromCleanupDataInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee16(id, path) {
-    return regeneratorRuntime.wrap(function _callee16$(_context16) {
-      while (1) {
-        switch (_context16.prev = _context16.next) {
-          case 0:
-            _context16.next = 2;
-            return _updateCleanupInDatabase2(id, function (value) {
-              if (typeof value === 'undefined') {
-                return;
-              }
-
-              var queueId = value.queueId,
-                  attempt = value.attempt,
-                  startAfter = value.startAfter;
-              var data = Object.assign({}, value.data);
-              (0, _unset.default)(data, path);
-              return {
-                // eslint-disable-line consistent-return
-                id: id,
-                queueId: queueId,
-                attempt: attempt,
-                startAfter: startAfter,
-                data: data
-              };
-            });
-
-          case 2:
-          case "end":
-            return _context16.stop();
-        }
+  _removePathFromCleanupDataInDatabase = _asyncToGenerator(function* (id, path) {
+    yield updateCleanupInDatabase(id, function (value) {
+      if (typeof value === 'undefined') {
+        return;
       }
-    }, _callee16);
-  }));
+
+      var queueId = value.queueId,
+          attempt = value.attempt,
+          startAfter = value.startAfter;
+      var data = Object.assign({}, value.data);
+      (0, _unset.default)(data, path);
+      return {
+        // eslint-disable-line consistent-return
+        id: id,
+        queueId: queueId,
+        attempt: attempt,
+        startAfter: startAfter,
+        data: data
+      };
+    });
+  });
   return _removePathFromCleanupDataInDatabase.apply(this, arguments);
 }
 
-function _updateCleanupValuesInDatabase2(_x15, _x16, _x17) {
+function updateCleanupValuesInDatabase(_x15, _x16, _x17) {
   return _updateCleanupValuesInDatabase.apply(this, arguments);
 }
 
 function _updateCleanupValuesInDatabase() {
-  _updateCleanupValuesInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee17(id, queueId, data) {
-    return regeneratorRuntime.wrap(function _callee17$(_context17) {
-      while (1) {
-        switch (_context17.prev = _context17.next) {
-          case 0:
-            if (!(typeof id !== 'number')) {
-              _context17.next = 2;
-              break;
-            }
+  _updateCleanupValuesInDatabase = _asyncToGenerator(function* (id, queueId, data) {
+    if (typeof id !== 'number') {
+      throw new TypeError("Unable to update cleanup in database, received invalid \"id\" argument type \"".concat(_typeof(id), "\""));
+    }
 
-            throw new TypeError("Unable to update cleanup in database, received invalid \"id\" argument type \"".concat(_typeof(id), "\""));
+    if (typeof queueId !== 'string') {
+      throw new TypeError("Unable to update cleanup in database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\""));
+    }
 
-          case 2:
-            if (!(typeof queueId !== 'string')) {
-              _context17.next = 4;
-              break;
-            }
+    if (_typeof(data) !== 'object') {
+      throw new TypeError("Unable to update cleanup in database, received invalid \"data\" argument type \"".concat(_typeof(data), "\""));
+    }
 
-            throw new TypeError("Unable to update cleanup in database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\""));
-
-          case 4:
-            if (!(_typeof(data) !== 'object')) {
-              _context17.next = 6;
-              break;
-            }
-
-            throw new TypeError("Unable to update cleanup in database, received invalid \"data\" argument type \"".concat(_typeof(data), "\""));
-
-          case 6:
-            _context17.next = 8;
-            return _updateCleanupInDatabase2(id, function (value) {
-              var combinedData = typeof value === 'undefined' ? data : (0, _merge.default)({}, value.data, data);
-              return {
-                id: id,
-                queueId: queueId,
-                attempt: 0,
-                startAfter: Date.now(),
-                data: combinedData
-              };
-            });
-
-          case 8:
-          case "end":
-            return _context17.stop();
-        }
-      }
-    }, _callee17);
-  }));
+    yield updateCleanupInDatabase(id, function (value) {
+      var combinedData = typeof value === 'undefined' ? data : (0, _merge.default)({}, value.data, data);
+      return {
+        id: id,
+        queueId: queueId,
+        attempt: 0,
+        startAfter: Date.now(),
+        data: combinedData
+      };
+    });
+  });
   return _updateCleanupValuesInDatabase.apply(this, arguments);
 }
 
-function _silentlyRemoveJobFromDatabase2(_x18) {
+function silentlyRemoveJobFromDatabase(_x18) {
   return _silentlyRemoveJobFromDatabase.apply(this, arguments);
 }
 
 function _silentlyRemoveJobFromDatabase() {
-  _silentlyRemoveJobFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee18(id) {
-    var store, request;
-    return regeneratorRuntime.wrap(function _callee18$(_context18) {
-      while (1) {
-        switch (_context18.prev = _context18.next) {
-          case 0:
-            _context18.next = 2;
-            return getReadWriteJobsObjectStore();
+  _silentlyRemoveJobFromDatabase = _asyncToGenerator(function* (id) {
+    var store = yield getReadWriteJobsObjectStore();
+    var request = store.delete(id);
+    yield new Promise(function (resolve, reject) {
+      request.onsuccess = function () {
+        resolve();
+      };
 
-          case 2:
-            store = _context18.sent;
-            request = store.delete(id);
-            _context18.next = 6;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function () {
-                resolve();
-              };
+      request.onerror = function (event) {
+        logger.error("Delete request error while removing job ".concat(id, " from database"));
+        logger.errorObject(event);
+        reject(new Error("Delete request error while removing job ".concat(id, " from database")));
+      };
 
-              request.onerror = function (event) {
-                logger.error("Delete request error while removing job ".concat(id, " from database"));
-                logger.errorObject(event);
-                reject(new Error("Delete request error while removing job ".concat(id, " from database")));
-              };
-
-              store.transaction.commit();
-            });
-
-          case 6:
-          case "end":
-            return _context18.stop();
-        }
-      }
-    }, _callee18);
-  }));
+      store.transaction.commit();
+    });
+  });
   return _silentlyRemoveJobFromDatabase.apply(this, arguments);
 }
 
-function _removeJobFromDatabase2(_x19) {
+function removeJobFromDatabase(_x19) {
   return _removeJobFromDatabase.apply(this, arguments);
 }
 
 function _removeJobFromDatabase() {
-  _removeJobFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee19(jobId) {
-    var _yield$getReadWriteJo7, _yield$getReadWriteJo8, jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, request;
+  _removeJobFromDatabase = _asyncToGenerator(function* (jobId) {
+    var _yield$getReadWriteJo7 = yield getReadWriteJobCleanupAndArgLookupStores(),
+        _yield$getReadWriteJo8 = _slicedToArray(_yield$getReadWriteJo7, 3),
+        jobsObjectStore = _yield$getReadWriteJo8[0],
+        cleanupsObjectStore = _yield$getReadWriteJo8[1],
+        argLookupObjectStore = _yield$getReadWriteJo8[2];
 
-    return regeneratorRuntime.wrap(function _callee19$(_context19) {
-      while (1) {
-        switch (_context19.prev = _context19.next) {
-          case 0:
-            _context19.next = 2;
-            return getReadWriteJobCleanupAndArgLookupStores();
+    var request = jobsObjectStore.get(jobId);
+    yield new Promise(function (resolve, reject) {
+      request.onsuccess = function () {
+        var job = request.result;
 
-          case 2:
-            _yield$getReadWriteJo7 = _context19.sent;
-            _yield$getReadWriteJo8 = _slicedToArray(_yield$getReadWriteJo7, 3);
-            jobsObjectStore = _yield$getReadWriteJo8[0];
-            cleanupsObjectStore = _yield$getReadWriteJo8[1];
-            argLookupObjectStore = _yield$getReadWriteJo8[2];
-            request = jobsObjectStore.get(jobId);
-            _context19.next = 10;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function () {
-                var job = request.result;
-
-                if (typeof job === 'undefined') {
-                  resolve();
-                  jobsObjectStore.transaction.commit();
-                  return;
-                }
-
-                removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, job.id, job.queueId, function () {
-                  resolve();
-                }, reject);
-                jobsObjectStore.transaction.commit();
-              };
-
-              request.onerror = function (event) {
-                logger.error("Request error while getting job ".concat(jobId, " before removing from database"));
-                logger.errorObject(event);
-                reject(new Error("Request error while getting job ".concat(jobId, " before removing from database")));
-              };
-            });
-
-          case 10:
-          case "end":
-            return _context19.stop();
+        if (typeof job === 'undefined') {
+          resolve();
+          jobsObjectStore.transaction.commit();
+          return;
         }
-      }
-    }, _callee19);
-  }));
+
+        removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, job.id, job.queueId, function () {
+          resolve();
+        }, reject);
+        jobsObjectStore.transaction.commit();
+      };
+
+      request.onerror = function (event) {
+        logger.error("Request error while getting job ".concat(jobId, " before removing from database"));
+        logger.errorObject(event);
+        reject(new Error("Request error while getting job ".concat(jobId, " before removing from database")));
+      };
+    });
+  });
   return _removeJobFromDatabase.apply(this, arguments);
 }
 
-function _removeCleanupFromDatabase2(_x20) {
+function removeCleanupFromDatabase(_x20) {
   return _removeCleanupFromDatabase.apply(this, arguments);
 }
 
 function _removeCleanupFromDatabase() {
-  _removeCleanupFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee20(id) {
-    var store, request;
-    return regeneratorRuntime.wrap(function _callee20$(_context20) {
-      while (1) {
-        switch (_context20.prev = _context20.next) {
-          case 0:
-            _context20.next = 2;
-            return getReadWriteCleanupsObjectStore();
+  _removeCleanupFromDatabase = _asyncToGenerator(function* (id) {
+    var store = yield getReadWriteCleanupsObjectStore();
+    var request = store.delete(id);
+    return new Promise(function (resolve, reject) {
+      request.onsuccess = function () {
+        resolve();
+      };
 
-          case 2:
-            store = _context20.sent;
-            request = store.delete(id);
-            return _context20.abrupt("return", new Promise(function (resolve, reject) {
-              request.onsuccess = function () {
-                resolve();
-              };
+      request.onerror = function (event) {
+        logger.error("Error while removing cleanup data for ".concat(id));
+        logger.errorObject(event);
+        reject(new Error("Error while removing cleanup data for ".concat(id)));
+      };
 
-              request.onerror = function (event) {
-                logger.error("Error while removing cleanup data for ".concat(id));
-                logger.errorObject(event);
-                reject(new Error("Error while removing cleanup data for ".concat(id)));
-              };
-
-              store.transaction.commit();
-            }));
-
-          case 5:
-          case "end":
-            return _context20.stop();
-        }
-      }
-    }, _callee20);
-  }));
+      store.transaction.commit();
+    });
+  });
   return _removeCleanupFromDatabase.apply(this, arguments);
 }
 
-function _getCleanupFromDatabase2(_x21) {
+function getCleanupFromDatabase(_x21) {
   return _getCleanupFromDatabase.apply(this, arguments);
 }
 
 function _getCleanupFromDatabase() {
-  _getCleanupFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee21(id) {
-    var store, request;
-    return regeneratorRuntime.wrap(function _callee21$(_context21) {
-      while (1) {
-        switch (_context21.prev = _context21.next) {
-          case 0:
-            _context21.next = 2;
-            return getReadOnlyCleanupsObjectStore();
+  _getCleanupFromDatabase = _asyncToGenerator(function* (id) {
+    var store = yield getReadOnlyCleanupsObjectStore();
+    var request = store.get(id);
+    return new Promise(function (resolve, reject) {
+      request.onsuccess = function () {
+        resolve(request.result);
+      };
 
-          case 2:
-            store = _context21.sent;
-            request = store.get(id);
-            return _context21.abrupt("return", new Promise(function (resolve, reject) {
-              request.onsuccess = function () {
-                resolve(request.result);
-              };
+      request.onerror = function (event) {
+        logger.error("Request error while getting ".concat(id));
+        logger.errorObject(event);
+        reject(new Error("Request error while getting ".concat(id)));
+      };
 
-              request.onerror = function (event) {
-                logger.error("Request error while getting ".concat(id));
-                logger.errorObject(event);
-                reject(new Error("Request error while getting ".concat(id)));
-              };
-
-              store.transaction.commit();
-            }));
-
-          case 5:
-          case "end":
-            return _context21.stop();
-        }
-      }
-    }, _callee21);
-  }));
+      store.transaction.commit();
+    });
+  });
   return _getCleanupFromDatabase.apply(this, arguments);
 }
 
-function _getMetadataFromDatabase2(_x22) {
+function getMetadataFromDatabase(_x22) {
   return _getMetadataFromDatabase.apply(this, arguments);
 }
 
 function _getMetadataFromDatabase() {
-  _getMetadataFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee22(id) {
-    var store, request, response;
-    return regeneratorRuntime.wrap(function _callee22$(_context22) {
-      while (1) {
-        switch (_context22.prev = _context22.next) {
-          case 0:
-            _context22.next = 2;
-            return getReadOnlyMetadataObjectStore();
+  _getMetadataFromDatabase = _asyncToGenerator(function* (id) {
+    var store = yield getReadOnlyMetadataObjectStore();
+    var request = store.get(id);
+    var response = yield new Promise(function (resolve, reject) {
+      request.onsuccess = function () {
+        resolve(request.result);
+      };
 
-          case 2:
-            store = _context22.sent;
-            request = store.get(id);
-            _context22.next = 6;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function () {
-                resolve(request.result);
-              };
+      request.onerror = function (event) {
+        logger.error("Request error while getting ".concat(id, " metadata"));
+        logger.errorObject(event);
+        reject(new Error("Request error while getting ".concat(id, " metadata")));
+      };
 
-              request.onerror = function (event) {
-                logger.error("Request error while getting ".concat(id, " metadata"));
-                logger.errorObject(event);
-                reject(new Error("Request error while getting ".concat(id, " metadata")));
-              };
-
-              store.transaction.commit();
-            });
-
-          case 6:
-            response = _context22.sent;
-            return _context22.abrupt("return", typeof response !== 'undefined' ? response.metadata : undefined);
-
-          case 8:
-          case "end":
-            return _context22.stop();
-        }
-      }
-    }, _callee22);
-  }));
+      store.transaction.commit();
+    });
+    return typeof response !== 'undefined' ? response.metadata : undefined;
+  });
   return _getMetadataFromDatabase.apply(this, arguments);
 }
 
-function _clearMetadataInDatabase2(_x23) {
+function clearMetadataInDatabase(_x23) {
   return _clearMetadataInDatabase.apply(this, arguments);
 }
 
 function _clearMetadataInDatabase() {
-  _clearMetadataInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee23(id) {
-    var store, request;
-    return regeneratorRuntime.wrap(function _callee23$(_context23) {
-      while (1) {
-        switch (_context23.prev = _context23.next) {
-          case 0:
-            _context23.next = 2;
-            return getReadWriteMetadataObjectStore();
+  _clearMetadataInDatabase = _asyncToGenerator(function* (id) {
+    var store = yield getReadWriteMetadataObjectStore();
+    var request = store.delete(id);
+    return new Promise(function (resolve, reject) {
+      request.onsuccess = function () {
+        resolve();
+      };
 
-          case 2:
-            store = _context23.sent;
-            request = store.delete(id);
-            return _context23.abrupt("return", new Promise(function (resolve, reject) {
-              request.onsuccess = function () {
-                resolve();
-              };
+      request.onerror = function (event) {
+        logger.error("Error while clearing ".concat(id, " metadata"));
+        logger.errorObject(event);
+        reject(new Error("Error while clearing ".concat(id, " metadata")));
+      };
 
-              request.onerror = function (event) {
-                logger.error("Error while clearing ".concat(id, " metadata"));
-                logger.errorObject(event);
-                reject(new Error("Error while clearing ".concat(id, " metadata")));
-              };
-
-              store.transaction.commit();
-            }));
-
-          case 5:
-          case "end":
-            return _context23.stop();
-        }
-      }
-    }, _callee23);
-  }));
+      store.transaction.commit();
+    });
+  });
   return _clearMetadataInDatabase.apply(this, arguments);
 }
 
-function _setMetadataInDatabase2(_x24, _x25) {
+function setMetadataInDatabase(_x24, _x25) {
   return _setMetadataInDatabase.apply(this, arguments);
 }
 
 function _setMetadataInDatabase() {
-  _setMetadataInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee24(id, metadata) {
-    var store, request;
-    return regeneratorRuntime.wrap(function _callee24$(_context24) {
-      while (1) {
-        switch (_context24.prev = _context24.next) {
-          case 0:
-            _context24.next = 2;
-            return getReadWriteMetadataObjectStore();
+  _setMetadataInDatabase = _asyncToGenerator(function* (id, metadata) {
+    var store = yield getReadWriteMetadataObjectStore();
+    var request = store.put({
+      id: id,
+      metadata: metadata
+    });
+    return new Promise(function (resolve, reject) {
+      request.onsuccess = function () {
+        resolve();
+      };
 
-          case 2:
-            store = _context24.sent;
-            request = store.put({
-              id: id,
-              metadata: metadata
-            });
-            return _context24.abrupt("return", new Promise(function (resolve, reject) {
-              request.onsuccess = function () {
-                resolve();
-              };
+      request.onerror = function (event) {
+        logger.error("Error while setting ".concat(id, " metadata"));
+        logger.errorObject(event);
+        reject(new Error("Error while setting ".concat(id, " metadata")));
+      };
 
-              request.onerror = function (event) {
-                logger.error("Error while setting ".concat(id, " metadata"));
-                logger.errorObject(event);
-                reject(new Error("Error while setting ".concat(id, " metadata")));
-              };
-
-              store.transaction.commit();
-            }));
-
-          case 5:
-          case "end":
-            return _context24.stop();
-        }
-      }
-    }, _callee24);
-  }));
+      store.transaction.commit();
+    });
+  });
   return _setMetadataInDatabase.apply(this, arguments);
 }
 
-function _updateMetadataInDatabase2(_x26, _x27) {
+function updateMetadataInDatabase(_x26, _x27) {
   return _updateMetadataInDatabase.apply(this, arguments);
 }
 
 function _updateMetadataInDatabase() {
-  _updateMetadataInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee25(id, transform) {
-    var store, request;
-    return regeneratorRuntime.wrap(function _callee25$(_context25) {
-      while (1) {
-        switch (_context25.prev = _context25.next) {
-          case 0:
-            _context25.next = 2;
-            return getReadWriteMetadataObjectStore();
+  _updateMetadataInDatabase = _asyncToGenerator(function* (id, transform) {
+    var store = yield getReadWriteMetadataObjectStore();
+    var request = store.get(id);
+    yield new Promise(function (resolve, reject) {
+      request.onsuccess = function () {
+        var newValue;
+        var response = request.result;
+        var value = typeof response !== 'undefined' ? response.metadata : undefined;
 
-          case 2:
-            store = _context25.sent;
-            request = store.get(id);
-            _context25.next = 6;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function () {
-                var newValue;
-                var response = request.result;
-                var value = typeof response !== 'undefined' ? response.metadata : undefined;
-
-                try {
-                  newValue = transform(value);
-                } catch (error) {
-                  reject(error);
-                  return;
-                }
-
-                if (typeof newValue === 'undefined') {
-                  resolve();
-                } else if (newValue === false) {
-                  if (typeof value !== 'undefined') {
-                    var deleteRequest = store.delete(id);
-
-                    deleteRequest.onsuccess = function () {
-                      resolve();
-                    };
-
-                    deleteRequest.onerror = function (event) {
-                      logger.error("Delete request error while updating ".concat(id, " in metadata database"));
-                      logger.errorObject(event);
-                      reject(new Error("Delete request error while updating ".concat(id, " in metadata database")));
-                    };
-                  }
-                } else {
-                  var putRequest = store.put({
-                    id: id,
-                    metadata: newValue
-                  });
-
-                  putRequest.onsuccess = function () {
-                    resolve();
-                  };
-
-                  putRequest.onerror = function (event) {
-                    logger.error("Put request error while updating ".concat(id, " in metadata database"));
-                    logger.errorObject(event);
-                    reject(new Error("Put request error while updating ".concat(id, " in metadata database")));
-                  };
-                }
-
-                store.transaction.commit();
-              };
-
-              request.onerror = function (event) {
-                logger.error("Get request error while updating ".concat(id, " in metadata database"));
-                logger.errorObject(event);
-                reject(new Error("Get request error while updating ".concat(id, " in metadata database")));
-              };
-            });
-
-          case 6:
-          case "end":
-            return _context25.stop();
+        try {
+          newValue = transform(value);
+        } catch (error) {
+          reject(error);
+          return;
         }
-      }
-    }, _callee25);
-  }));
+
+        if (typeof newValue === 'undefined') {
+          resolve();
+        } else if (newValue === false) {
+          if (typeof value !== 'undefined') {
+            var deleteRequest = store.delete(id);
+
+            deleteRequest.onsuccess = function () {
+              resolve();
+            };
+
+            deleteRequest.onerror = function (event) {
+              logger.error("Delete request error while updating ".concat(id, " in metadata database"));
+              logger.errorObject(event);
+              reject(new Error("Delete request error while updating ".concat(id, " in metadata database")));
+            };
+          }
+        } else {
+          var putRequest = store.put({
+            id: id,
+            metadata: newValue
+          });
+
+          putRequest.onsuccess = function () {
+            resolve();
+          };
+
+          putRequest.onerror = function (event) {
+            logger.error("Put request error while updating ".concat(id, " in metadata database"));
+            logger.errorObject(event);
+            reject(new Error("Put request error while updating ".concat(id, " in metadata database")));
+          };
+        }
+
+        store.transaction.commit();
+      };
+
+      request.onerror = function (event) {
+        logger.error("Get request error while updating ".concat(id, " in metadata database"));
+        logger.errorObject(event);
+        reject(new Error("Get request error while updating ".concat(id, " in metadata database")));
+      };
+    });
+  });
   return _updateMetadataInDatabase.apply(this, arguments);
 }
 
-function _markJobStatusInDatabase(id, status) {
-  return _updateJobInDatabase2(id, function (value) {
+function markJobStatusInDatabase(id, status) {
+  return updateJobInDatabase(id, function (value) {
     if (typeof value === 'undefined') {
-      throw new _JobDoesNotExistError("Unable to mark job ".concat(id, " as status ").concat(status, " in database, job does not exist"));
+      throw new JobDoesNotExistError("Unable to mark job ".concat(id, " as status ").concat(status, " in database, job does not exist"));
     }
 
     value.status = status; // eslint-disable-line no-param-reassign
@@ -1658,124 +1224,104 @@ function _markJobStatusInDatabase(id, status) {
   });
 }
 
-function _markJobCompleteInDatabase(id) {
-  return _markJobStatusInDatabase(id, _JOB_COMPLETE_STATUS);
+function markJobCompleteInDatabase(id) {
+  return markJobStatusInDatabase(id, JOB_COMPLETE_STATUS);
 }
 
-function _markJobPendingInDatabase(id) {
-  return _markJobStatusInDatabase(id, _JOB_PENDING_STATUS);
+function markJobPendingInDatabase(id) {
+  return markJobStatusInDatabase(id, JOB_PENDING_STATUS);
 }
 
-function _markJobErrorInDatabase(id) {
-  return _markJobStatusInDatabase(id, _JOB_ERROR_STATUS);
+function markJobErrorInDatabase(id) {
+  return markJobStatusInDatabase(id, JOB_ERROR_STATUS);
 }
 
-function _markJobCleanupInDatabase(id) {
-  return _markJobStatusInDatabase(id, _JOB_CLEANUP_STATUS);
+function markJobCleanupInDatabase(id) {
+  return markJobStatusInDatabase(id, JOB_CLEANUP_STATUS);
 }
 
-function _markJobAbortedInDatabase(id) {
-  return _markJobStatusInDatabase(id, _JOB_ABORTED_STATUS);
+function markJobAbortedInDatabase(id) {
+  return markJobStatusInDatabase(id, JOB_ABORTED_STATUS);
 }
 
-function _markJobCompleteThenRemoveFromDatabase2(_x28) {
+function markJobCompleteThenRemoveFromDatabase(_x28) {
   return _markJobCompleteThenRemoveFromDatabase.apply(this, arguments);
 }
 
 function _markJobCompleteThenRemoveFromDatabase() {
-  _markJobCompleteThenRemoveFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee26(id) {
-    var _yield$getReadWriteJo9, _yield$getReadWriteJo10, jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, request;
+  _markJobCompleteThenRemoveFromDatabase = _asyncToGenerator(function* (id) {
+    var _yield$getReadWriteJo9 = yield getReadWriteJobCleanupAndArgLookupStores(),
+        _yield$getReadWriteJo10 = _slicedToArray(_yield$getReadWriteJo9, 3),
+        jobsObjectStore = _yield$getReadWriteJo10[0],
+        cleanupsObjectStore = _yield$getReadWriteJo10[1],
+        argLookupObjectStore = _yield$getReadWriteJo10[2];
 
-    return regeneratorRuntime.wrap(function _callee26$(_context26) {
-      while (1) {
-        switch (_context26.prev = _context26.next) {
-          case 0:
-            _context26.next = 2;
-            return getReadWriteJobCleanupAndArgLookupStores();
+    var request = jobsObjectStore.get(id);
+    yield new Promise(function (resolve, reject) {
+      request.onsuccess = function () {
+        var value = request.result;
 
-          case 2:
-            _yield$getReadWriteJo9 = _context26.sent;
-            _yield$getReadWriteJo10 = _slicedToArray(_yield$getReadWriteJo9, 3);
-            jobsObjectStore = _yield$getReadWriteJo10[0];
-            cleanupsObjectStore = _yield$getReadWriteJo10[1];
-            argLookupObjectStore = _yield$getReadWriteJo10[2];
-            request = jobsObjectStore.get(id);
-            _context26.next = 10;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function () {
-                var value = request.result;
-
-                if (typeof value !== 'undefined') {
-                  var queueId = value.queueId,
-                      type = value.type;
-
-                  _localJobEmitter.emit('jobUpdate', id, queueId, type, _JOB_COMPLETE_STATUS);
-
-                  _jobEmitter.emit('jobUpdate', id, queueId, type, _JOB_COMPLETE_STATUS);
-
-                  removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, id, queueId, function () {
-                    jobsObjectStore.transaction.commit();
-                    resolve();
-                  });
-                }
-              };
-
-              request.onerror = function (event) {
-                logger.error("Get request error while marking job ".concat(id, " complete then removing from jobs database"));
-                logger.errorObject(event);
-                reject(new Error("Get request error while marking job ".concat(id, " complete then removing from jobs database")));
-              };
-            });
-
-          case 10:
-          case "end":
-            return _context26.stop();
+        if (typeof value !== 'undefined') {
+          var queueId = value.queueId,
+              type = value.type;
+          localJobEmitter.emit('jobUpdate', id, queueId, type, JOB_COMPLETE_STATUS);
+          jobEmitter.emit('jobUpdate', id, queueId, type, JOB_COMPLETE_STATUS);
+          removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, id, queueId, function () {
+            jobsObjectStore.transaction.commit();
+            resolve();
+          });
         }
-      }
-    }, _callee26);
-  }));
+      };
+
+      request.onerror = function (event) {
+        logger.error("Get request error while marking job ".concat(id, " complete then removing from jobs database"));
+        logger.errorObject(event);
+        reject(new Error("Get request error while marking job ".concat(id, " complete then removing from jobs database")));
+      };
+    });
+  });
   return _markJobCompleteThenRemoveFromDatabase.apply(this, arguments);
 }
 
-function _markJobCleanupAndRemoveInDatabase(id) {
-  return _updateJobInDatabase2(id, function (value) {
+function markJobCleanupAndRemoveInDatabase(id) {
+  return updateJobInDatabase(id, function (value) {
     if (typeof value === 'undefined') {
       return false;
     }
 
-    if (value.status === _JOB_PENDING_STATUS) {
+    if (value.status === JOB_PENDING_STATUS) {
       return false;
     }
 
-    if (value.status === _JOB_ABORTED_STATUS) {
+    if (value.status === JOB_ABORTED_STATUS) {
       return false;
     }
 
-    value.status = _JOB_CLEANUP_AND_REMOVE_STATUS; // eslint-disable-line no-param-reassign
+    value.status = JOB_CLEANUP_AND_REMOVE_STATUS; // eslint-disable-line no-param-reassign
 
     return value;
   });
 }
 
-function _markJobAsAbortedOrRemoveFromDatabase(id) {
-  return _updateJobInDatabase2(id, function (value) {
+function markJobAsAbortedOrRemoveFromDatabase(id) {
+  return updateJobInDatabase(id, function (value) {
     if (typeof value === 'undefined') {
       return;
     }
 
-    if (value.status === _JOB_ERROR_STATUS) {
-      value.status = _JOB_ABORTED_STATUS; // eslint-disable-line no-param-reassign
+    if (value.status === JOB_ERROR_STATUS) {
+      value.status = JOB_ABORTED_STATUS; // eslint-disable-line no-param-reassign
 
       return value; // eslint-disable-line consistent-return
     }
 
-    if (value.status === _JOB_CLEANUP_STATUS) {
-      value.status = _JOB_ABORTED_STATUS; // eslint-disable-line no-param-reassign
+    if (value.status === JOB_CLEANUP_STATUS) {
+      value.status = JOB_ABORTED_STATUS; // eslint-disable-line no-param-reassign
 
       return value; // eslint-disable-line consistent-return
     }
 
-    if (value.status === _JOB_CLEANUP_AND_REMOVE_STATUS) {
+    if (value.status === JOB_CLEANUP_AND_REMOVE_STATUS) {
       return false; // eslint-disable-line consistent-return
     }
 
@@ -1783,10 +1329,10 @@ function _markJobAsAbortedOrRemoveFromDatabase(id) {
   });
 }
 
-function _markJobStartAfterInDatabase(id, startAfter) {
-  return _updateJobInDatabase2(id, function (value) {
+function markJobStartAfterInDatabase(id, startAfter) {
+  return updateJobInDatabase(id, function (value) {
     if (typeof value === 'undefined') {
-      throw new _JobDoesNotExistError("Unable to mark job ".concat(id, " start-after time to ").concat(new Date(startAfter).toLocaleString(), " in database, job does not exist"));
+      throw new JobDoesNotExistError("Unable to mark job ".concat(id, " start-after time to ").concat(new Date(startAfter).toLocaleString(), " in database, job does not exist"));
     }
 
     if (startAfter < value.startAfter) {
@@ -1799,10 +1345,10 @@ function _markJobStartAfterInDatabase(id, startAfter) {
   });
 }
 
-function _markCleanupStartAfterInDatabase(id, startAfter) {
-  return _updateCleanupInDatabase2(id, function (value) {
+function markCleanupStartAfterInDatabase(id, startAfter) {
+  return updateCleanupInDatabase(id, function (value) {
     if (typeof value === 'undefined') {
-      throw new _CleanupDoesNotExistError("Unable to mark cleanup ".concat(id, " start-after time to ").concat(new Date(startAfter).toLocaleString(), " in database, cleanup does not exist"));
+      throw new CleanupDoesNotExistError("Unable to mark cleanup ".concat(id, " start-after time to ").concat(new Date(startAfter).toLocaleString(), " in database, cleanup does not exist"));
     }
 
     if (startAfter < value.startAfter) {
@@ -1815,943 +1361,648 @@ function _markCleanupStartAfterInDatabase(id, startAfter) {
   });
 }
 
-function _markQueueForCleanupInDatabase2(_x29) {
+function markQueueForCleanupInDatabase(_x29) {
   return _markQueueForCleanupInDatabase.apply(this, arguments);
 }
 
 function _markQueueForCleanupInDatabase() {
-  _markQueueForCleanupInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee27(queueId) {
-    var store, index, request, jobs;
-    return regeneratorRuntime.wrap(function _callee27$(_context27) {
-      while (1) {
-        switch (_context27.prev = _context27.next) {
-          case 0:
-            _context27.next = 2;
-            return getReadWriteJobsObjectStore();
+  _markQueueForCleanupInDatabase = _asyncToGenerator(function* (queueId) {
+    var store = yield getReadWriteJobsObjectStore();
+    var index = store.index('queueIdIndex'); // $FlowFixMe
 
-          case 2:
-            store = _context27.sent;
-            index = store.index('queueIdIndex'); // $FlowFixMe
+    var request = index.getAll(IDBKeyRange.only(queueId));
+    var jobs = [];
+    yield new Promise(function (resolve, reject) {
+      request.onsuccess = function (event) {
+        var length = event.target.result.length;
+        var lastRequest;
 
-            request = index.getAll(IDBKeyRange.only(queueId));
-            jobs = [];
-            _context27.next = 8;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function (event) {
-                var length = event.target.result.length;
-                var lastRequest;
+        for (var i = 0; i < length; i += 1) {
+          var value = Object.assign({}, event.target.result[i]);
 
-                for (var i = 0; i < length; i += 1) {
-                  var value = Object.assign({}, event.target.result[i]);
+          switch (value.status) {
+            case JOB_ERROR_STATUS:
+              value.status = JOB_CLEANUP_STATUS;
+              jobs.push(value);
+              break;
 
-                  switch (value.status) {
-                    case _JOB_ERROR_STATUS:
-                      value.status = _JOB_CLEANUP_STATUS;
-                      jobs.push(value);
-                      break;
+            case JOB_COMPLETE_STATUS:
+              value.status = JOB_CLEANUP_STATUS;
+              jobs.push(value);
+              break;
 
-                    case _JOB_COMPLETE_STATUS:
-                      value.status = _JOB_CLEANUP_STATUS;
-                      jobs.push(value);
-                      break;
+            case JOB_PENDING_STATUS:
+              value.status = JOB_ABORTED_STATUS;
+              break;
 
-                    case _JOB_PENDING_STATUS:
-                      value.status = _JOB_ABORTED_STATUS;
-                      break;
+            case JOB_CLEANUP_STATUS:
+              jobs.push(value);
+              continue;
 
-                    case _JOB_CLEANUP_STATUS:
-                      jobs.push(value);
-                      continue;
+            case JOB_CLEANUP_AND_REMOVE_STATUS:
+              jobs.push(value);
+              continue;
 
-                    case _JOB_CLEANUP_AND_REMOVE_STATUS:
-                      jobs.push(value);
-                      continue;
+            case JOB_ABORTED_STATUS:
+              continue;
 
-                    case _JOB_ABORTED_STATUS:
-                      continue;
+            default:
+              logger.warn("Unhandled job status ".concat(value.status, " while marking queue ").concat(queueId, " for cleanup"));
+              continue;
+          }
 
-                    default:
-                      logger.warn("Unhandled job status ".concat(value.status, " while marking queue ").concat(queueId, " for cleanup"));
-                      continue;
-                  }
+          var putRequest = store.put(value);
+          localJobEmitter.emit('jobUpdate', value.id, value.queueId, value.type, value.status);
+          jobEmitter.emit('jobUpdate', value.id, value.queueId, value.type, value.status);
+          lastRequest = putRequest;
 
-                  var putRequest = store.put(value);
-
-                  _localJobEmitter.emit('jobUpdate', value.id, value.queueId, value.type, value.status);
-
-                  _jobEmitter.emit('jobUpdate', value.id, value.queueId, value.type, value.status);
-
-                  lastRequest = putRequest;
-
-                  putRequest.onerror = function (event2) {
-                    logger.error("Put request error while marking queue ".concat(queueId, " for cleanup"));
-                    logger.errorObject(event2);
-                    reject(new Error("Put request error while marking queue ".concat(queueId, " for cleanup")));
-                  };
-                }
-
-                if (typeof lastRequest !== 'undefined') {
-                  lastRequest.onsuccess = function () {
-                    resolve();
-                  };
-                } else {
-                  resolve();
-                }
-
-                store.transaction.commit();
-              };
-
-              request.onerror = function (event) {
-                logger.error("Request error while marking queue ".concat(queueId, " for cleanup"));
-                logger.errorObject(event);
-                reject(new Error("Request error while marking queue ".concat(queueId, " for cleanup")));
-              };
-            });
-
-          case 8:
-            return _context27.abrupt("return", jobs);
-
-          case 9:
-          case "end":
-            return _context27.stop();
+          putRequest.onerror = function (event2) {
+            logger.error("Put request error while marking queue ".concat(queueId, " for cleanup"));
+            logger.errorObject(event2);
+            reject(new Error("Put request error while marking queue ".concat(queueId, " for cleanup")));
+          };
         }
-      }
-    }, _callee27);
-  }));
+
+        if (typeof lastRequest !== 'undefined') {
+          lastRequest.onsuccess = function () {
+            resolve();
+          };
+        } else {
+          resolve();
+        }
+
+        store.transaction.commit();
+      };
+
+      request.onerror = function (event) {
+        logger.error("Request error while marking queue ".concat(queueId, " for cleanup"));
+        logger.errorObject(event);
+        reject(new Error("Request error while marking queue ".concat(queueId, " for cleanup")));
+      };
+    });
+    return jobs;
+  });
   return _markQueueForCleanupInDatabase.apply(this, arguments);
 }
 
-function _markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase2(_x30, _x31) {
+function markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase(_x30, _x31) {
   return _markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase.apply(this, arguments);
 }
 
 function _markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase() {
-  _markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee28(queueId, jobId) {
-    var store, index, request, jobs;
-    return regeneratorRuntime.wrap(function _callee28$(_context28) {
-      while (1) {
-        switch (_context28.prev = _context28.next) {
-          case 0:
-            _context28.next = 2;
-            return getReadWriteJobsObjectStore();
+  _markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase = _asyncToGenerator(function* (queueId, jobId) {
+    var store = yield getReadWriteJobsObjectStore();
+    var index = store.index('queueIdIndex'); // $FlowFixMe
 
-          case 2:
-            store = _context28.sent;
-            index = store.index('queueIdIndex'); // $FlowFixMe
+    var request = index.getAll(IDBKeyRange.only(queueId));
+    var jobs = [];
+    yield new Promise(function (resolve, reject) {
+      request.onsuccess = function (event) {
+        var length = event.target.result.length;
+        var lastRequest;
 
-            request = index.getAll(IDBKeyRange.only(queueId));
-            jobs = [];
-            _context28.next = 8;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function (event) {
-                var length = event.target.result.length;
-                var lastRequest;
+        for (var i = 0; i < length; i += 1) {
+          var value = Object.assign({}, event.target.result[i]);
 
-                for (var i = 0; i < length; i += 1) {
-                  var value = Object.assign({}, event.target.result[i]);
+          if (value.id <= jobId) {
+            continue;
+          }
 
-                  if (value.id <= jobId) {
-                    continue;
-                  }
+          var shouldRemove = false;
 
-                  var shouldRemove = false;
+          switch (value.status) {
+            case JOB_ERROR_STATUS:
+              value.status = JOB_CLEANUP_AND_REMOVE_STATUS;
+              jobs.push(value);
+              break;
 
-                  switch (value.status) {
-                    case _JOB_ERROR_STATUS:
-                      value.status = _JOB_CLEANUP_AND_REMOVE_STATUS;
-                      jobs.push(value);
-                      break;
+            case JOB_COMPLETE_STATUS:
+              value.status = JOB_CLEANUP_AND_REMOVE_STATUS;
+              jobs.push(value);
+              break;
 
-                    case _JOB_COMPLETE_STATUS:
-                      value.status = _JOB_CLEANUP_AND_REMOVE_STATUS;
-                      jobs.push(value);
-                      break;
+            case JOB_PENDING_STATUS:
+              shouldRemove = true;
+              break;
 
-                    case _JOB_PENDING_STATUS:
-                      shouldRemove = true;
-                      break;
+            case JOB_CLEANUP_STATUS:
+              value.status = JOB_CLEANUP_AND_REMOVE_STATUS;
+              jobs.push(value);
+              break;
 
-                    case _JOB_CLEANUP_STATUS:
-                      value.status = _JOB_CLEANUP_AND_REMOVE_STATUS;
-                      jobs.push(value);
-                      break;
+            case JOB_CLEANUP_AND_REMOVE_STATUS:
+              jobs.push(value);
+              continue;
 
-                    case _JOB_CLEANUP_AND_REMOVE_STATUS:
-                      jobs.push(value);
-                      continue;
+            case JOB_ABORTED_STATUS:
+              shouldRemove = true;
+              break;
 
-                    case _JOB_ABORTED_STATUS:
-                      shouldRemove = true;
-                      break;
+            default:
+              logger.warn("Unhandled job status ".concat(value.status, " while marking queue ").concat(queueId, " for cleanup and removal"));
+              continue;
+          }
 
-                    default:
-                      logger.warn("Unhandled job status ".concat(value.status, " while marking queue ").concat(queueId, " for cleanup and removal"));
-                      continue;
-                  }
+          var id = value.id,
+              type = value.type,
+              status = value.status;
 
-                  var id = value.id,
-                      type = value.type,
-                      status = value.status;
+          if (shouldRemove) {
+            var deleteRequest = store.delete(id);
+            localJobEmitter.emit('jobDelete', id, queueId);
+            jobEmitter.emit('jobDelete', id, queueId);
+            removeArgLookupsAndCleanupsForJobAsMicrotask(id);
+            lastRequest = deleteRequest;
 
-                  if (shouldRemove) {
-                    var deleteRequest = store.delete(id);
+            deleteRequest.onerror = function (event2) {
+              logger.error("Delete request error while marking queue ".concat(queueId, " for cleanup and removal"));
+              logger.errorObject(event2);
+              reject(new Error("Delete request error while marking queue ".concat(queueId, " for cleanup and removal")));
+            };
+          } else {
+            var putRequest = store.put(value);
+            localJobEmitter.emit('jobUpdate', id, queueId, type, status);
+            jobEmitter.emit('jobUpdate', id, queueId, type, status);
+            lastRequest = putRequest;
 
-                    _localJobEmitter.emit('jobDelete', id, queueId);
-
-                    _jobEmitter.emit('jobDelete', id, queueId);
-
-                    _removeArgLookupsAndCleanupsForJobAsMicrotask(id);
-
-                    lastRequest = deleteRequest;
-
-                    deleteRequest.onerror = function (event2) {
-                      logger.error("Delete request error while marking queue ".concat(queueId, " for cleanup and removal"));
-                      logger.errorObject(event2);
-                      reject(new Error("Delete request error while marking queue ".concat(queueId, " for cleanup and removal")));
-                    };
-                  } else {
-                    var putRequest = store.put(value);
-
-                    _localJobEmitter.emit('jobUpdate', id, queueId, type, status);
-
-                    _jobEmitter.emit('jobUpdate', id, queueId, type, status);
-
-                    lastRequest = putRequest;
-
-                    putRequest.onerror = function (event2) {
-                      logger.error("Put request error while marking queue ".concat(queueId, " for cleanup and removal"));
-                      logger.errorObject(event2);
-                      reject(new Error("Put request error while marking queue ".concat(queueId, " for cleanup and removal")));
-                    };
-                  }
-                }
-
-                if (typeof lastRequest !== 'undefined') {
-                  lastRequest.onsuccess = function () {
-                    resolve();
-                  };
-                } else {
-                  resolve();
-                }
-
-                store.transaction.commit();
-              };
-
-              request.onerror = function (event) {
-                logger.error("Request error while marking queue ".concat(queueId, " for cleanup and removal"));
-                logger.errorObject(event);
-                reject(new Error("Request error while marking queue ".concat(queueId, " for cleanup and removal")));
-              };
-            });
-
-          case 8:
-            return _context28.abrupt("return", jobs);
-
-          case 9:
-          case "end":
-            return _context28.stop();
+            putRequest.onerror = function (event2) {
+              logger.error("Put request error while marking queue ".concat(queueId, " for cleanup and removal"));
+              logger.errorObject(event2);
+              reject(new Error("Put request error while marking queue ".concat(queueId, " for cleanup and removal")));
+            };
+          }
         }
-      }
-    }, _callee28);
-  }));
+
+        if (typeof lastRequest !== 'undefined') {
+          lastRequest.onsuccess = function () {
+            resolve();
+          };
+        } else {
+          resolve();
+        }
+
+        store.transaction.commit();
+      };
+
+      request.onerror = function (event) {
+        logger.error("Request error while marking queue ".concat(queueId, " for cleanup and removal"));
+        logger.errorObject(event);
+        reject(new Error("Request error while marking queue ".concat(queueId, " for cleanup and removal")));
+      };
+    });
+    return jobs;
+  });
   return _markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase.apply(this, arguments);
 }
 
-function _markQueueForCleanupAndRemoveInDatabase(queueId) {
-  return _markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase2(queueId, -1);
+function markQueueForCleanupAndRemoveInDatabase(queueId) {
+  return markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase(queueId, -1);
 }
 
-function _markQueueJobsGreaterThanIdPendingInDatabase2(_x32, _x33) {
+function markQueueJobsGreaterThanIdPendingInDatabase(_x32, _x33) {
   return _markQueueJobsGreaterThanIdPendingInDatabase.apply(this, arguments);
 }
 
 function _markQueueJobsGreaterThanIdPendingInDatabase() {
-  _markQueueJobsGreaterThanIdPendingInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee29(queueId, jobId) {
-    var store, index, request, jobs;
-    return regeneratorRuntime.wrap(function _callee29$(_context29) {
-      while (1) {
-        switch (_context29.prev = _context29.next) {
-          case 0:
-            _context29.next = 2;
-            return getReadWriteJobsObjectStore();
+  _markQueueJobsGreaterThanIdPendingInDatabase = _asyncToGenerator(function* (queueId, jobId) {
+    var store = yield getReadWriteJobsObjectStore();
+    var index = store.index('queueIdIndex'); // $FlowFixMe
 
-          case 2:
-            store = _context29.sent;
-            index = store.index('queueIdIndex'); // $FlowFixMe
+    var request = index.getAll(IDBKeyRange.only(queueId));
+    var jobs = [];
+    yield new Promise(function (resolve, reject) {
+      request.onsuccess = function (event) {
+        var length = event.target.result.length;
+        var lastRequest;
 
-            request = index.getAll(IDBKeyRange.only(queueId));
-            jobs = [];
-            _context29.next = 8;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function (event) {
-                var length = event.target.result.length;
-                var lastRequest;
+        for (var i = 0; i < length; i += 1) {
+          var value = Object.assign({}, event.target.result[i]);
 
-                for (var i = 0; i < length; i += 1) {
-                  var value = Object.assign({}, event.target.result[i]);
+          if (value.id <= jobId) {
+            continue;
+          }
 
-                  if (value.id <= jobId) {
-                    continue;
-                  }
+          switch (value.status) {
+            case JOB_ERROR_STATUS:
+              value.attempt = 0;
+              jobs.push(value);
+              break;
 
-                  switch (value.status) {
-                    case _JOB_ERROR_STATUS:
-                      value.attempt = 0;
-                      jobs.push(value);
-                      break;
+            case JOB_COMPLETE_STATUS:
+              continue;
 
-                    case _JOB_COMPLETE_STATUS:
-                      continue;
+            case JOB_PENDING_STATUS:
+              value.attempt = 0;
+              jobs.push(value);
+              break;
 
-                    case _JOB_PENDING_STATUS:
-                      value.attempt = 0;
-                      jobs.push(value);
-                      break;
+            case JOB_CLEANUP_STATUS:
+              value.attempt = 0;
+              jobs.push(value);
+              break;
 
-                    case _JOB_CLEANUP_STATUS:
-                      value.attempt = 0;
-                      jobs.push(value);
-                      break;
+            case JOB_CLEANUP_AND_REMOVE_STATUS:
+              jobs.push(value);
+              continue;
 
-                    case _JOB_CLEANUP_AND_REMOVE_STATUS:
-                      jobs.push(value);
-                      continue;
+            case JOB_ABORTED_STATUS:
+              value.attempt = 0;
+              value.status = JOB_PENDING_STATUS;
+              jobs.push(value);
+              break;
 
-                    case _JOB_ABORTED_STATUS:
-                      value.attempt = 0;
-                      value.status = _JOB_PENDING_STATUS;
-                      jobs.push(value);
-                      break;
+            default:
+              logger.warn("Unhandled job status ".concat(value.status, " while marking queue ").concat(queueId, " as pending"));
+              continue;
+          }
 
-                    default:
-                      logger.warn("Unhandled job status ".concat(value.status, " while marking queue ").concat(queueId, " as pending"));
-                      continue;
-                  }
+          var id = value.id,
+              type = value.type,
+              status = value.status;
+          var putRequest = store.put(value);
+          localJobEmitter.emit('jobUpdate', id, queueId, type, status);
+          jobEmitter.emit('jobUpdate', id, queueId, type, status);
+          lastRequest = putRequest;
 
-                  var id = value.id,
-                      type = value.type,
-                      status = value.status;
-                  var putRequest = store.put(value);
-
-                  _localJobEmitter.emit('jobUpdate', id, queueId, type, status);
-
-                  _jobEmitter.emit('jobUpdate', id, queueId, type, status);
-
-                  lastRequest = putRequest;
-
-                  putRequest.onerror = function (event2) {
-                    logger.error("Put request error while marking queue ".concat(queueId, " as pending"));
-                    logger.errorObject(event2);
-                    reject(new Error("Put request error while marking queue ".concat(queueId, " as pending")));
-                  };
-                }
-
-                if (typeof lastRequest !== 'undefined') {
-                  lastRequest.onsuccess = function () {
-                    resolve();
-                  };
-                } else {
-                  resolve();
-                }
-
-                store.transaction.commit();
-              };
-
-              request.onerror = function (event) {
-                logger.error("Request error while marking queue ".concat(queueId, " as pending"));
-                logger.errorObject(event);
-                reject(new Error("Request error while marking queue ".concat(queueId, " as pending")));
-              };
-            });
-
-          case 8:
-            return _context29.abrupt("return", jobs);
-
-          case 9:
-          case "end":
-            return _context29.stop();
+          putRequest.onerror = function (event2) {
+            logger.error("Put request error while marking queue ".concat(queueId, " as pending"));
+            logger.errorObject(event2);
+            reject(new Error("Put request error while marking queue ".concat(queueId, " as pending")));
+          };
         }
-      }
-    }, _callee29);
-  }));
+
+        if (typeof lastRequest !== 'undefined') {
+          lastRequest.onsuccess = function () {
+            resolve();
+          };
+        } else {
+          resolve();
+        }
+
+        store.transaction.commit();
+      };
+
+      request.onerror = function (event) {
+        logger.error("Request error while marking queue ".concat(queueId, " as pending"));
+        logger.errorObject(event);
+        reject(new Error("Request error while marking queue ".concat(queueId, " as pending")));
+      };
+    });
+    return jobs;
+  });
   return _markQueueJobsGreaterThanIdPendingInDatabase.apply(this, arguments);
 }
 
-function _markQueuePendingInDatabase(queueId) {
-  return _markQueueJobsGreaterThanIdPendingInDatabase2(queueId, -1);
+function markQueuePendingInDatabase(queueId) {
+  return markQueueJobsGreaterThanIdPendingInDatabase(queueId, -1);
 }
 
-function _getGreatestJobIdFromQueueInDatabase2(_x34) {
+function getGreatestJobIdFromQueueInDatabase(_x34) {
   return _getGreatestJobIdFromQueueInDatabase.apply(this, arguments);
 }
 
 function _getGreatestJobIdFromQueueInDatabase() {
-  _getGreatestJobIdFromQueueInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee30(queueId) {
-    var store, index, request;
-    return regeneratorRuntime.wrap(function _callee30$(_context30) {
-      while (1) {
-        switch (_context30.prev = _context30.next) {
-          case 0:
-            _context30.next = 2;
-            return getReadOnlyJobsObjectStore();
+  _getGreatestJobIdFromQueueInDatabase = _asyncToGenerator(function* (queueId) {
+    var store = yield getReadOnlyJobsObjectStore();
+    var index = store.index('queueIdIndex'); // $FlowFixMe
 
-          case 2:
-            store = _context30.sent;
-            index = store.index('queueIdIndex'); // $FlowFixMe
+    var request = index.openCursor(IDBKeyRange.only(queueId), 'prev');
+    return new Promise(function (resolve, reject) {
+      request.onsuccess = function (event) {
+        var cursor = event.target.result;
 
-            request = index.openCursor(IDBKeyRange.only(queueId), 'prev');
-            return _context30.abrupt("return", new Promise(function (resolve, reject) {
-              request.onsuccess = function (event) {
-                var cursor = event.target.result;
-
-                if (cursor) {
-                  resolve(cursor.value.id || 0);
-                } else {
-                  resolve(0);
-                }
-              };
-
-              request.onerror = function (event) {
-                logger.error("Request error while getting the greatest job ID in queue ".concat(queueId));
-                logger.errorObject(event);
-                reject(new Error("Request error while getting the greatest job ID in queue ".concat(queueId)));
-              };
-
-              store.transaction.commit();
-            }));
-
-          case 6:
-          case "end":
-            return _context30.stop();
+        if (cursor) {
+          resolve(cursor.value.id || 0);
+        } else {
+          resolve(0);
         }
-      }
-    }, _callee30);
-  }));
+      };
+
+      request.onerror = function (event) {
+        logger.error("Request error while getting the greatest job ID in queue ".concat(queueId));
+        logger.errorObject(event);
+        reject(new Error("Request error while getting the greatest job ID in queue ".concat(queueId)));
+      };
+
+      store.transaction.commit();
+    });
+  });
   return _getGreatestJobIdFromQueueInDatabase.apply(this, arguments);
 }
 
-function _incrementJobAttemptInDatabase2(_x35) {
+function incrementJobAttemptInDatabase(_x35) {
   return _incrementJobAttemptInDatabase.apply(this, arguments);
 }
 
 function _incrementJobAttemptInDatabase() {
-  _incrementJobAttemptInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee31(id) {
-    return regeneratorRuntime.wrap(function _callee31$(_context31) {
-      while (1) {
-        switch (_context31.prev = _context31.next) {
-          case 0:
-            _context31.next = 2;
-            return _updateJobInDatabase2(id, function (value) {
-              if (typeof value === 'undefined') {
-                throw new _JobDoesNotExistError("Unable to increment attempts for job ".concat(id, " in database, job does not exist"));
-              }
-
-              value.attempt += 1; // eslint-disable-line no-param-reassign
-
-              // eslint-disable-line no-param-reassign
-              return value;
-            });
-
-          case 2:
-          case "end":
-            return _context31.stop();
-        }
+  _incrementJobAttemptInDatabase = _asyncToGenerator(function* (id) {
+    yield updateJobInDatabase(id, function (value) {
+      if (typeof value === 'undefined') {
+        throw new JobDoesNotExistError("Unable to increment attempts for job ".concat(id, " in database, job does not exist"));
       }
-    }, _callee31);
-  }));
+
+      value.attempt += 1; // eslint-disable-line no-param-reassign
+
+      return value;
+    });
+  });
   return _incrementJobAttemptInDatabase.apply(this, arguments);
 }
 
-function _incrementCleanupAttemptInDatabase2(_x36, _x37) {
+function incrementCleanupAttemptInDatabase(_x36, _x37) {
   return _incrementCleanupAttemptInDatabase.apply(this, arguments);
 }
 
 function _incrementCleanupAttemptInDatabase() {
-  _incrementCleanupAttemptInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee32(id, queueId) {
-    var attempt;
-    return regeneratorRuntime.wrap(function _callee32$(_context32) {
-      while (1) {
-        switch (_context32.prev = _context32.next) {
-          case 0:
-            attempt = 1;
-            _context32.next = 3;
-            return _updateCleanupInDatabase2(id, function (value) {
-              if (typeof value === 'undefined') {
-                return {
-                  id: id,
-                  queueId: queueId,
-                  attempt: 1,
-                  startAfter: Date.now(),
-                  data: {}
-                };
-              }
-
-              attempt = value.attempt + 1;
-              value.attempt = attempt; // eslint-disable-line no-param-reassign
-
-              // eslint-disable-line no-param-reassign
-              return value;
-            });
-
-          case 3:
-            return _context32.abrupt("return", attempt);
-
-          case 4:
-          case "end":
-            return _context32.stop();
-        }
+  _incrementCleanupAttemptInDatabase = _asyncToGenerator(function* (id, queueId) {
+    var attempt = 1;
+    yield updateCleanupInDatabase(id, function (value) {
+      if (typeof value === 'undefined') {
+        return {
+          id: id,
+          queueId: queueId,
+          attempt: 1,
+          startAfter: Date.now(),
+          data: {}
+        };
       }
-    }, _callee32);
-  }));
+
+      attempt = value.attempt + 1;
+      value.attempt = attempt; // eslint-disable-line no-param-reassign
+
+      return value;
+    });
+    return attempt;
+  });
   return _incrementCleanupAttemptInDatabase.apply(this, arguments);
 }
 
-function _bulkEnqueueToDatabase2(_x38) {
+function bulkEnqueueToDatabase(_x38) {
   return _bulkEnqueueToDatabase.apply(this, arguments);
 }
 
 function _bulkEnqueueToDatabase() {
-  _bulkEnqueueToDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee33(items) {
-    var _iterator2, _step2, _step2$value, queueId, type, args, _step2$value$, options, delay, prioritize, ids, store;
+  _bulkEnqueueToDatabase = _asyncToGenerator(function* (items) {
+    // eslint-disable-line no-underscore-dangle
+    if (!Array.isArray(items)) {
+      throw new TypeError("Unable to bulk enqueue in database, received invalid \"items\" argument type \"".concat(_typeof(items), "\""));
+    }
 
-    return regeneratorRuntime.wrap(function _callee33$(_context33) {
-      while (1) {
-        switch (_context33.prev = _context33.next) {
-          case 0:
-            if (Array.isArray(items)) {
-              _context33.next = 2;
-              break;
-            }
+    var _iterator2 = _createForOfIteratorHelper(items),
+        _step2;
 
-            throw new TypeError("Unable to bulk enqueue in database, received invalid \"items\" argument type \"".concat(_typeof(items), "\""));
+    try {
+      for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
+        var _step2$value = _slicedToArray(_step2.value, 4),
+            queueId = _step2$value[0],
+            type = _step2$value[1],
+            args = _step2$value[2],
+            _step2$value$ = _step2$value[3],
+            options = _step2$value$ === void 0 ? {} : _step2$value$;
 
-          case 2:
-            _iterator2 = _createForOfIteratorHelper(items);
-            _context33.prev = 3;
+        if (typeof queueId !== 'string') {
+          throw new TypeError("Unable to enqueue in database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\", should be string"));
+        }
 
-            _iterator2.s();
+        if (typeof type !== 'string') {
+          throw new TypeError("Unable to enqueue in database, received invalid \"type\" argument type \"".concat(_typeof(type), "\", should be string"));
+        }
 
-          case 5:
-            if ((_step2 = _iterator2.n()).done) {
-              _context33.next = 21;
-              break;
-            }
+        if (!Array.isArray(args)) {
+          throw new TypeError("Unable to enqueue in database, received invalid \"args\" argument type \"".concat(_typeof(args), "\", should be Array<any>"));
+        }
 
-            _step2$value = _slicedToArray(_step2.value, 4), queueId = _step2$value[0], type = _step2$value[1], args = _step2$value[2], _step2$value$ = _step2$value[3], options = _step2$value$ === void 0 ? {} : _step2$value$;
+        var delay = options.delay || 0;
+        var prioritize = options.prioritize || false;
 
-            if (!(typeof queueId !== 'string')) {
-              _context33.next = 9;
-              break;
-            }
+        if (typeof delay !== 'number') {
+          throw new TypeError("Unable to enqueue in database, received invalid \"options.delay\" argument type \"".concat(_typeof(delay), "\", should be number"));
+        }
 
-            throw new TypeError("Unable to enqueue in database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\", should be string"));
-
-          case 9:
-            if (!(typeof type !== 'string')) {
-              _context33.next = 11;
-              break;
-            }
-
-            throw new TypeError("Unable to enqueue in database, received invalid \"type\" argument type \"".concat(_typeof(type), "\", should be string"));
-
-          case 11:
-            if (Array.isArray(args)) {
-              _context33.next = 13;
-              break;
-            }
-
-            throw new TypeError("Unable to enqueue in database, received invalid \"args\" argument type \"".concat(_typeof(args), "\", should be Array<any>"));
-
-          case 13:
-            delay = options.delay || 0;
-            prioritize = options.prioritize || false;
-
-            if (!(typeof delay !== 'number')) {
-              _context33.next = 17;
-              break;
-            }
-
-            throw new TypeError("Unable to enqueue in database, received invalid \"options.delay\" argument type \"".concat(_typeof(delay), "\", should be number"));
-
-          case 17:
-            if (!(typeof prioritize !== 'boolean')) {
-              _context33.next = 19;
-              break;
-            }
-
-            throw new TypeError("Unable to enqueue in database, received invalid \"options.prioritize\" argument type \"".concat(_typeof(prioritize), "\", should be boolean"));
-
-          case 19:
-            _context33.next = 5;
-            break;
-
-          case 21:
-            _context33.next = 26;
-            break;
-
-          case 23:
-            _context33.prev = 23;
-            _context33.t0 = _context33["catch"](3);
-
-            _iterator2.e(_context33.t0);
-
-          case 26:
-            _context33.prev = 26;
-
-            _iterator2.f();
-
-            return _context33.finish(26);
-
-          case 29:
-            ids = [];
-            _context33.next = 32;
-            return getReadWriteJobsObjectStore();
-
-          case 32:
-            store = _context33.sent;
-            _context33.next = 35;
-            return new Promise(function (resolve, reject) {
-              var _loop = function _loop(i) {
-                var _items$i = _slicedToArray(items[i], 4),
-                    queueId = _items$i[0],
-                    type = _items$i[1],
-                    args = _items$i[2],
-                    _items$i$ = _items$i[3],
-                    options = _items$i$ === void 0 ? {} : _items$i$;
-
-                var delay = typeof options.delay === 'number' ? options.delay : 0;
-                var prioritize = typeof options.prioritize === 'boolean' ? options.prioritize : false;
-                var value = {
-                  queueId: queueId,
-                  type: type,
-                  args: args,
-                  attempt: 0,
-                  created: Date.now(),
-                  status: _JOB_PENDING_STATUS,
-                  startAfter: Date.now() + delay,
-                  prioritize: prioritize
-                };
-                var request = store.put(value);
-
-                request.onsuccess = function () {
-                  var id = request.result;
-                  ids.push(request.result);
-
-                  _localJobEmitter.emit('jobAdd', id, queueId, type);
-
-                  _jobEmitter.emit('jobAdd', id, queueId, type);
-
-                  resolve(request.result);
-                };
-
-                request.onerror = function (event) {
-                  logger.error("Request error while bulk enqueueing ".concat(items.length, " ").concat(items.length === 1 ? 'job' : 'jobs', " in queue ").concat(queueId));
-                  logger.errorObject(event);
-                  reject(new Error("Request error while bulk enqueueing ".concat(items.length, " ").concat(items.length === 1 ? 'job' : 'jobs', " in queue ").concat(queueId)));
-                };
-              };
-
-              for (var i = 0; i < items.length; i += 1) {
-                _loop(i);
-              }
-
-              store.transaction.commit();
-            });
-
-          case 35:
-            return _context33.abrupt("return", ids);
-
-          case 36:
-          case "end":
-            return _context33.stop();
+        if (typeof prioritize !== 'boolean') {
+          throw new TypeError("Unable to enqueue in database, received invalid \"options.prioritize\" argument type \"".concat(_typeof(prioritize), "\", should be boolean"));
         }
       }
-    }, _callee33, null, [[3, 23, 26, 29]]);
-  }));
+    } catch (err) {
+      _iterator2.e(err);
+    } finally {
+      _iterator2.f();
+    }
+
+    var ids = [];
+    var store = yield getReadWriteJobsObjectStore();
+    yield new Promise(function (resolve, reject) {
+      var _loop = function _loop(i) {
+        var _items$i = _slicedToArray(items[i], 4),
+            queueId = _items$i[0],
+            type = _items$i[1],
+            args = _items$i[2],
+            _items$i$ = _items$i[3],
+            options = _items$i$ === void 0 ? {} : _items$i$;
+
+        var delay = typeof options.delay === 'number' ? options.delay : 0;
+        var prioritize = typeof options.prioritize === 'boolean' ? options.prioritize : false;
+        var value = {
+          queueId: queueId,
+          type: type,
+          args: args,
+          attempt: 0,
+          created: Date.now(),
+          status: JOB_PENDING_STATUS,
+          startAfter: Date.now() + delay,
+          prioritize: prioritize
+        };
+        var request = store.put(value);
+
+        request.onsuccess = function () {
+          var id = request.result;
+          ids.push(request.result);
+          localJobEmitter.emit('jobAdd', id, queueId, type);
+          jobEmitter.emit('jobAdd', id, queueId, type);
+          resolve(request.result);
+        };
+
+        request.onerror = function (event) {
+          logger.error("Request error while bulk enqueueing ".concat(items.length, " ").concat(items.length === 1 ? 'job' : 'jobs', " in queue ").concat(queueId));
+          logger.errorObject(event);
+          reject(new Error("Request error while bulk enqueueing ".concat(items.length, " ").concat(items.length === 1 ? 'job' : 'jobs', " in queue ").concat(queueId)));
+        };
+      };
+
+      for (var i = 0; i < items.length; i += 1) {
+        _loop(i);
+      }
+
+      store.transaction.commit();
+    });
+    return ids;
+  });
   return _bulkEnqueueToDatabase.apply(this, arguments);
 }
 
-function _enqueueToDatabase2(_x39, _x40, _x41) {
+function enqueueToDatabase(_x39, _x40, _x41) {
   return _enqueueToDatabase.apply(this, arguments);
 }
 
 function _enqueueToDatabase() {
-  _enqueueToDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee34(queueId, type, args) {
-    var options,
-        delay,
-        prioritize,
-        value,
-        store,
-        request,
-        id,
-        _args34 = arguments;
-    return regeneratorRuntime.wrap(function _callee34$(_context34) {
-      while (1) {
-        switch (_context34.prev = _context34.next) {
-          case 0:
-            options = _args34.length > 3 && _args34[3] !== undefined ? _args34[3] : {};
+  _enqueueToDatabase = _asyncToGenerator(function* (queueId, type, args) {
+    var options = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : {};
 
-            if (!(typeof queueId !== 'string')) {
-              _context34.next = 3;
-              break;
-            }
+    // eslint-disable-line no-underscore-dangle
+    if (typeof queueId !== 'string') {
+      throw new TypeError("Unable to enqueue in database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\", should be string"));
+    }
 
-            throw new TypeError("Unable to enqueue in database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\", should be string"));
+    if (typeof type !== 'string') {
+      throw new TypeError("Unable to enqueue in database, received invalid \"type\" argument type \"".concat(_typeof(type), "\", should be string"));
+    }
 
-          case 3:
-            if (!(typeof type !== 'string')) {
-              _context34.next = 5;
-              break;
-            }
+    if (!Array.isArray(args)) {
+      throw new TypeError("Unable to enqueue in database, received invalid \"args\" argument type \"".concat(_typeof(args), "\", should be Array<any>"));
+    }
 
-            throw new TypeError("Unable to enqueue in database, received invalid \"type\" argument type \"".concat(_typeof(type), "\", should be string"));
+    var delay = options.delay || 0;
+    var prioritize = options.prioritize || false;
 
-          case 5:
-            if (Array.isArray(args)) {
-              _context34.next = 7;
-              break;
-            }
+    if (typeof delay !== 'number') {
+      throw new TypeError("Unable to enqueue in database, received invalid \"options.delay\" argument type \"".concat(_typeof(delay), "\", should be number"));
+    }
 
-            throw new TypeError("Unable to enqueue in database, received invalid \"args\" argument type \"".concat(_typeof(args), "\", should be Array<any>"));
+    if (typeof prioritize !== 'boolean') {
+      throw new TypeError("Unable to enqueue in database, received invalid \"options.prioritize\" argument type \"".concat(_typeof(prioritize), "\", should be boolean"));
+    }
 
-          case 7:
-            delay = options.delay || 0;
-            prioritize = options.prioritize || false;
+    var value = {
+      queueId: queueId,
+      type: type,
+      args: args,
+      attempt: 0,
+      created: Date.now(),
+      status: JOB_PENDING_STATUS,
+      startAfter: Date.now() + delay,
+      prioritize: prioritize
+    };
+    var store = yield getReadWriteJobsObjectStore();
+    var request = store.put(value);
+    var id = yield new Promise(function (resolve, reject) {
+      request.onsuccess = function () {
+        resolve(request.result);
+      };
 
-            if (!(typeof delay !== 'number')) {
-              _context34.next = 11;
-              break;
-            }
+      request.onerror = function (event) {
+        logger.error("Request error while enqueueing ".concat(type, " job"));
+        logger.errorObject(event);
+        reject(new Error("Request error while enqueueing ".concat(type, " job")));
+      };
 
-            throw new TypeError("Unable to enqueue in database, received invalid \"options.delay\" argument type \"".concat(_typeof(delay), "\", should be number"));
-
-          case 11:
-            if (!(typeof prioritize !== 'boolean')) {
-              _context34.next = 13;
-              break;
-            }
-
-            throw new TypeError("Unable to enqueue in database, received invalid \"options.prioritize\" argument type \"".concat(_typeof(prioritize), "\", should be boolean"));
-
-          case 13:
-            value = {
-              queueId: queueId,
-              type: type,
-              args: args,
-              attempt: 0,
-              created: Date.now(),
-              status: _JOB_PENDING_STATUS,
-              startAfter: Date.now() + delay,
-              prioritize: prioritize
-            };
-            _context34.next = 16;
-            return getReadWriteJobsObjectStore();
-
-          case 16:
-            store = _context34.sent;
-            request = store.put(value);
-            _context34.next = 20;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function () {
-                resolve(request.result);
-              };
-
-              request.onerror = function (event) {
-                logger.error("Request error while enqueueing ".concat(type, " job"));
-                logger.errorObject(event);
-                reject(new Error("Request error while enqueueing ".concat(type, " job")));
-              };
-
-              store.transaction.commit();
-            });
-
-          case 20:
-            id = _context34.sent;
-
-            _localJobEmitter.emit('jobAdd', id, queueId, type);
-
-            _jobEmitter.emit('jobAdd', id, queueId, type);
-
-            return _context34.abrupt("return", id);
-
-          case 24:
-          case "end":
-            return _context34.stop();
-        }
-      }
-    }, _callee34);
-  }));
+      store.transaction.commit();
+    });
+    localJobEmitter.emit('jobAdd', id, queueId, type);
+    jobEmitter.emit('jobAdd', id, queueId, type);
+    return id;
+  });
   return _enqueueToDatabase.apply(this, arguments);
 }
 
-function _restoreJobToDatabaseForCleanupAndRemove2(_x42, _x43, _x44, _x45) {
+function restoreJobToDatabaseForCleanupAndRemove(_x42, _x43, _x44, _x45) {
   return _restoreJobToDatabaseForCleanupAndRemove.apply(this, arguments);
 }
 
 function _restoreJobToDatabaseForCleanupAndRemove() {
-  _restoreJobToDatabaseForCleanupAndRemove = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee35(id, queueId, type, args) {
-    var options,
-        delay,
-        prioritize,
-        value,
-        store,
-        request,
-        _args35 = arguments;
-    return regeneratorRuntime.wrap(function _callee35$(_context35) {
-      while (1) {
-        switch (_context35.prev = _context35.next) {
-          case 0:
-            options = _args35.length > 4 && _args35[4] !== undefined ? _args35[4] : {};
+  _restoreJobToDatabaseForCleanupAndRemove = _asyncToGenerator(function* (id, queueId, type, args) {
+    var options = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : {};
 
-            if (!(typeof id !== 'number')) {
-              _context35.next = 3;
-              break;
-            }
+    // eslint-disable-line no-underscore-dangle
+    if (typeof id !== 'number') {
+      throw new TypeError("Unable to restore to database, received invalid \"id\" argument type \"".concat(_typeof(id), "\", should be number"));
+    }
 
-            throw new TypeError("Unable to restore to database, received invalid \"id\" argument type \"".concat(_typeof(id), "\", should be number"));
+    if (typeof queueId !== 'string') {
+      throw new TypeError("Unable to restore to database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\", should be string"));
+    }
 
-          case 3:
-            if (!(typeof queueId !== 'string')) {
-              _context35.next = 5;
-              break;
-            }
+    if (typeof type !== 'string') {
+      throw new TypeError("Unable to restore to database, received invalid \"type\" argument type \"".concat(_typeof(type), "\", should be string"));
+    }
 
-            throw new TypeError("Unable to restore to database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\", should be string"));
+    if (!Array.isArray(args)) {
+      throw new TypeError("Unable to restore to database, received invalid \"args\" argument type \"".concat(_typeof(args), "\", should be Array<any>"));
+    }
 
-          case 5:
-            if (!(typeof type !== 'string')) {
-              _context35.next = 7;
-              break;
-            }
+    var delay = options.delay || 0;
+    var prioritize = options.prioritize || false;
 
-            throw new TypeError("Unable to restore to database, received invalid \"type\" argument type \"".concat(_typeof(type), "\", should be string"));
+    if (typeof delay !== 'number') {
+      throw new TypeError("Unable to enqueue in database, received invalid \"options.delay\" argument type \"".concat(_typeof(delay), "\", should be number"));
+    }
 
-          case 7:
-            if (Array.isArray(args)) {
-              _context35.next = 9;
-              break;
-            }
+    if (typeof prioritize !== 'boolean') {
+      throw new TypeError("Unable to enqueue in database, received invalid \"options.prioritize\" argument type \"".concat(_typeof(prioritize), "\", should be boolean"));
+    }
 
-            throw new TypeError("Unable to restore to database, received invalid \"args\" argument type \"".concat(_typeof(args), "\", should be Array<any>"));
+    var value = {
+      id: id,
+      queueId: queueId,
+      type: type,
+      args: args,
+      attempt: 1,
+      created: Date.now(),
+      status: JOB_CLEANUP_AND_REMOVE_STATUS,
+      startAfter: Date.now() + delay,
+      prioritize: prioritize
+    };
+    var store = yield getReadWriteJobsObjectStore();
+    var request = store.put(value);
+    yield new Promise(function (resolve, reject) {
+      request.onsuccess = function () {
+        resolve(request.result);
+      };
 
-          case 9:
-            delay = options.delay || 0;
-            prioritize = options.prioritize || false;
+      request.onerror = function (event) {
+        logger.error("Request error while enqueueing ".concat(type, " job"));
+        logger.errorObject(event);
+        reject(new Error("Request error while enqueueing ".concat(type, " job")));
+      };
 
-            if (!(typeof delay !== 'number')) {
-              _context35.next = 13;
-              break;
-            }
-
-            throw new TypeError("Unable to enqueue in database, received invalid \"options.delay\" argument type \"".concat(_typeof(delay), "\", should be number"));
-
-          case 13:
-            if (!(typeof prioritize !== 'boolean')) {
-              _context35.next = 15;
-              break;
-            }
-
-            throw new TypeError("Unable to enqueue in database, received invalid \"options.prioritize\" argument type \"".concat(_typeof(prioritize), "\", should be boolean"));
-
-          case 15:
-            value = {
-              id: id,
-              queueId: queueId,
-              type: type,
-              args: args,
-              attempt: 1,
-              created: Date.now(),
-              status: _JOB_CLEANUP_AND_REMOVE_STATUS,
-              startAfter: Date.now() + delay,
-              prioritize: prioritize
-            };
-            _context35.next = 18;
-            return getReadWriteJobsObjectStore();
-
-          case 18:
-            store = _context35.sent;
-            request = store.put(value);
-            _context35.next = 22;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function () {
-                resolve(request.result);
-              };
-
-              request.onerror = function (event) {
-                logger.error("Request error while enqueueing ".concat(type, " job"));
-                logger.errorObject(event);
-                reject(new Error("Request error while enqueueing ".concat(type, " job")));
-              };
-
-              store.transaction.commit();
-            });
-
-          case 22:
-            _localJobEmitter.emit('jobAdd', id, queueId, type);
-
-            _jobEmitter.emit('jobAdd', id, queueId, type);
-
-            return _context35.abrupt("return", id);
-
-          case 25:
-          case "end":
-            return _context35.stop();
-        }
-      }
-    }, _callee35);
-  }));
+      store.transaction.commit();
+    });
+    localJobEmitter.emit('jobAdd', id, queueId, type);
+    jobEmitter.emit('jobAdd', id, queueId, type);
+    return id;
+  });
   return _restoreJobToDatabaseForCleanupAndRemove.apply(this, arguments);
 }
 
-function _dequeueFromDatabase2() {
+function dequeueFromDatabase() {
   return _dequeueFromDatabase.apply(this, arguments);
 }
 
 function _dequeueFromDatabase() {
-  _dequeueFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee36() {
-    var store, index, request, jobs;
-    return regeneratorRuntime.wrap(function _callee36$(_context36) {
-      while (1) {
-        switch (_context36.prev = _context36.next) {
-          case 0:
-            _context36.next = 2;
-            return getReadOnlyJobsObjectStore();
+  _dequeueFromDatabase = _asyncToGenerator(function* () {
+    // eslint-disable-line no-underscore-dangle
+    var store = yield getReadOnlyJobsObjectStore();
+    var index = store.index('statusIndex'); // $FlowFixMe
 
-          case 2:
-            store = _context36.sent;
-            index = store.index('statusIndex'); // $FlowFixMe
+    var request = index.getAll(IDBKeyRange.bound(JOB_CLEANUP_AND_REMOVE_STATUS, JOB_PENDING_STATUS));
+    var jobs = yield new Promise(function (resolve, reject) {
+      request.onsuccess = function (event) {
+        resolve(event.target.result);
+      };
 
-            request = index.getAll(IDBKeyRange.bound(_JOB_CLEANUP_AND_REMOVE_STATUS, _JOB_PENDING_STATUS));
-            _context36.next = 7;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function (event) {
-                resolve(event.target.result);
-              };
+      request.onerror = function (event) {
+        logger.error('Request error while dequeing');
+        logger.errorObject(event);
+        reject(new Error('Request error while dequeing'));
+      };
 
-              request.onerror = function (event) {
-                logger.error('Request error while dequeing');
-                logger.errorObject(event);
-                reject(new Error('Request error while dequeing'));
-              };
-
-              store.transaction.commit();
-            });
-
-          case 7:
-            jobs = _context36.sent;
-            return _context36.abrupt("return", jobs);
-
-          case 9:
-          case "end":
-            return _context36.stop();
-        }
-      }
-    }, _callee36);
-  }));
+      store.transaction.commit();
+    });
+    return jobs;
+  });
   return _dequeueFromDatabase.apply(this, arguments);
 }
 
-function _getContiguousIds(ids) {
+function getContiguousIds(ids) {
   ids.sort(function (a, b) {
     return a - b;
   });
@@ -2770,985 +2021,661 @@ function _getContiguousIds(ids) {
   return points;
 }
 
-function _dequeueFromDatabaseNotIn2(_x46) {
+function dequeueFromDatabaseNotIn(_x46) {
   return _dequeueFromDatabaseNotIn.apply(this, arguments);
 }
 
 function _dequeueFromDatabaseNotIn() {
-  _dequeueFromDatabaseNotIn = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee37(ids) {
-    var _yield$getReadOnlyJob, _yield$getReadOnlyJob2, store, promise, index, jobs, request;
+  _dequeueFromDatabaseNotIn = _asyncToGenerator(function* (ids) {
+    // eslint-disable-line no-underscore-dangle
+    if (ids.length === 0) {
+      return dequeueFromDatabase();
+    }
 
-    return regeneratorRuntime.wrap(function _callee37$(_context37) {
-      while (1) {
-        switch (_context37.prev = _context37.next) {
-          case 0:
-            if (!(ids.length === 0)) {
-              _context37.next = 2;
-              break;
-            }
+    var _yield$getReadOnlyJob = yield getReadOnlyJobsObjectStoreAndTransactionPromise(),
+        _yield$getReadOnlyJob2 = _slicedToArray(_yield$getReadOnlyJob, 2),
+        store = _yield$getReadOnlyJob2[0],
+        promise = _yield$getReadOnlyJob2[1];
 
-            return _context37.abrupt("return", _dequeueFromDatabase2());
+    var index = store.index('statusIndex');
+    var jobs = []; // $FlowFixMe
 
-          case 2:
-            _context37.next = 4;
-            return getReadOnlyJobsObjectStoreAndTransactionPromise();
+    var request = index.getAllKeys(IDBKeyRange.bound(JOB_CLEANUP_AND_REMOVE_STATUS, JOB_PENDING_STATUS));
 
-          case 4:
-            _yield$getReadOnlyJob = _context37.sent;
-            _yield$getReadOnlyJob2 = _slicedToArray(_yield$getReadOnlyJob, 2);
-            store = _yield$getReadOnlyJob2[0];
-            promise = _yield$getReadOnlyJob2[1];
-            index = store.index('statusIndex');
-            jobs = []; // $FlowFixMe
+    request.onsuccess = function (event) {
+      var _iterator3 = _createForOfIteratorHelper(event.target.result),
+          _step3;
 
-            request = index.getAllKeys(IDBKeyRange.bound(_JOB_CLEANUP_AND_REMOVE_STATUS, _JOB_PENDING_STATUS));
+      try {
+        var _loop2 = function _loop2() {
+          var id = _step3.value;
 
-            request.onsuccess = function (event) {
-              var _iterator3 = _createForOfIteratorHelper(event.target.result),
-                  _step3;
+          if (ids.includes(id)) {
+            return "continue";
+          }
 
-              try {
-                var _loop2 = function _loop2() {
-                  var id = _step3.value;
+          var getRequest = store.get(id);
 
-                  if (ids.includes(id)) {
-                    return "continue";
-                  }
+          getRequest.onsuccess = function () {
+            jobs.push(getRequest.result);
+          };
 
-                  var getRequest = store.get(id);
+          getRequest.onerror = function (event2) {
+            logger.error("Request error while getting job ".concat(id));
+            logger.errorObject(event2);
+          };
+        };
 
-                  getRequest.onsuccess = function () {
-                    jobs.push(getRequest.result);
-                  };
+        for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
+          var _ret = _loop2();
 
-                  getRequest.onerror = function (event2) {
-                    logger.error("Request error while getting job ".concat(id));
-                    logger.errorObject(event2);
-                  };
-                };
-
-                for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
-                  var _ret = _loop2();
-
-                  if (_ret === "continue") continue;
-                }
-              } catch (err) {
-                _iterator3.e(err);
-              } finally {
-                _iterator3.f();
-              }
-
-              store.transaction.commit();
-            };
-
-            request.onerror = function (event) {
-              logger.error('Request error while dequeing');
-              logger.errorObject(event);
-            };
-
-            _context37.next = 15;
-            return promise;
-
-          case 15:
-            return _context37.abrupt("return", jobs);
-
-          case 16:
-          case "end":
-            return _context37.stop();
+          if (_ret === "continue") continue;
         }
+      } catch (err) {
+        _iterator3.e(err);
+      } finally {
+        _iterator3.f();
       }
-    }, _callee37);
-  }));
+
+      store.transaction.commit();
+    };
+
+    request.onerror = function (event) {
+      logger.error('Request error while dequeing');
+      logger.errorObject(event);
+    };
+
+    yield promise;
+    return jobs;
+  });
   return _dequeueFromDatabaseNotIn.apply(this, arguments);
 }
 
-function _getJobsWithTypeFromDatabase2(_x47) {
+function getJobsWithTypeFromDatabase(_x47) {
   return _getJobsWithTypeFromDatabase.apply(this, arguments);
 }
 
 function _getJobsWithTypeFromDatabase() {
-  _getJobsWithTypeFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee38(type) {
-    var store, index, request;
-    return regeneratorRuntime.wrap(function _callee38$(_context38) {
-      while (1) {
-        switch (_context38.prev = _context38.next) {
-          case 0:
-            _context38.next = 2;
-            return getReadOnlyJobsObjectStore();
+  _getJobsWithTypeFromDatabase = _asyncToGenerator(function* (type) {
+    var store = yield getReadOnlyJobsObjectStore();
+    var index = store.index('typeIndex'); // $FlowFixMe
 
-          case 2:
-            store = _context38.sent;
-            index = store.index('typeIndex'); // $FlowFixMe
+    var request = index.getAll(IDBKeyRange.only(type));
+    return new Promise(function (resolve, reject) {
+      request.onsuccess = function (event) {
+        resolve(event.target.result);
+      };
 
-            request = index.getAll(IDBKeyRange.only(type));
-            return _context38.abrupt("return", new Promise(function (resolve, reject) {
-              request.onsuccess = function (event) {
-                resolve(event.target.result);
-              };
+      request.onerror = function (event) {
+        logger.error("Request error while getting jobs with type ".concat(type, " from jobs database"));
+        logger.errorObject(event);
+        reject(new Error("Error while getting jobs with type ".concat(type, " from jobs database")));
+      };
 
-              request.onerror = function (event) {
-                logger.error("Request error while getting jobs with type ".concat(type, " from jobs database"));
-                logger.errorObject(event);
-                reject(new Error("Error while getting jobs with type ".concat(type, " from jobs database")));
-              };
-
-              store.transaction.commit();
-            }));
-
-          case 6:
-          case "end":
-            return _context38.stop();
-        }
-      }
-    }, _callee38);
-  }));
+      store.transaction.commit();
+    });
+  });
   return _getJobsWithTypeFromDatabase.apply(this, arguments);
 }
 
-function _getJobsInQueueFromDatabase2(_x48) {
+function getJobsInQueueFromDatabase(_x48) {
   return _getJobsInQueueFromDatabase.apply(this, arguments);
 }
 
 function _getJobsInQueueFromDatabase() {
-  _getJobsInQueueFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee39(queueId) {
-    var store, index, request, jobs;
-    return regeneratorRuntime.wrap(function _callee39$(_context39) {
-      while (1) {
-        switch (_context39.prev = _context39.next) {
-          case 0:
-            if (!(typeof queueId !== 'string')) {
-              _context39.next = 2;
-              break;
-            }
+  _getJobsInQueueFromDatabase = _asyncToGenerator(function* (queueId) {
+    // eslint-disable-line no-underscore-dangle
+    if (typeof queueId !== 'string') {
+      throw new TypeError("Unable to get jobs in queue from database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\""));
+    }
 
-            throw new TypeError("Unable to get jobs in queue from database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\""));
+    var store = yield getReadOnlyJobsObjectStore();
+    var index = store.index('queueIdIndex'); // $FlowFixMe
 
-          case 2:
-            _context39.next = 4;
-            return getReadOnlyJobsObjectStore();
+    var request = index.getAll(IDBKeyRange.only(queueId));
+    var jobs = yield new Promise(function (resolve, reject) {
+      request.onsuccess = function (event) {
+        resolve(event.target.result);
+      };
 
-          case 4:
-            store = _context39.sent;
-            index = store.index('queueIdIndex'); // $FlowFixMe
+      request.onerror = function (event) {
+        logger.error('Request error while dequeing');
+        logger.errorObject(event);
+        reject(new Error('Request error while dequeing'));
+      };
 
-            request = index.getAll(IDBKeyRange.only(queueId));
-            _context39.next = 9;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function (event) {
-                resolve(event.target.result);
-              };
-
-              request.onerror = function (event) {
-                logger.error('Request error while dequeing');
-                logger.errorObject(event);
-                reject(new Error('Request error while dequeing'));
-              };
-
-              store.transaction.commit();
-            });
-
-          case 9:
-            jobs = _context39.sent;
-            return _context39.abrupt("return", jobs);
-
-          case 11:
-          case "end":
-            return _context39.stop();
-        }
-      }
-    }, _callee39);
-  }));
+      store.transaction.commit();
+    });
+    return jobs;
+  });
   return _getJobsInQueueFromDatabase.apply(this, arguments);
 }
 
-function _getJobsInDatabase2(_x49) {
+function getJobsInDatabase(_x49) {
   return _getJobsInDatabase.apply(this, arguments);
 }
 
 function _getJobsInDatabase() {
-  _getJobsInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee40(jobIds) {
-    var _yield$getReadOnlyJob3, _yield$getReadOnlyJob4, store, promise, jobs, _iterator4, _step4, _loop3;
+  _getJobsInDatabase = _asyncToGenerator(function* (jobIds) {
+    // eslint-disable-line no-underscore-dangle
+    if (!Array.isArray(jobIds)) {
+      throw new TypeError("Unable to get jobs from database, received invalid \"jobIds\" argument type \"".concat(_typeof(jobIds), "\""));
+    }
 
-    return regeneratorRuntime.wrap(function _callee40$(_context40) {
-      while (1) {
-        switch (_context40.prev = _context40.next) {
-          case 0:
-            if (Array.isArray(jobIds)) {
-              _context40.next = 2;
-              break;
-            }
+    var _yield$getReadOnlyJob3 = yield getReadOnlyJobsObjectStoreAndTransactionPromise(),
+        _yield$getReadOnlyJob4 = _slicedToArray(_yield$getReadOnlyJob3, 2),
+        store = _yield$getReadOnlyJob4[0],
+        promise = _yield$getReadOnlyJob4[1];
 
-            throw new TypeError("Unable to get jobs from database, received invalid \"jobIds\" argument type \"".concat(_typeof(jobIds), "\""));
+    var jobs = [];
 
-          case 2:
-            _context40.next = 4;
-            return getReadOnlyJobsObjectStoreAndTransactionPromise();
+    var _iterator4 = _createForOfIteratorHelper(jobIds),
+        _step4;
 
-          case 4:
-            _yield$getReadOnlyJob3 = _context40.sent;
-            _yield$getReadOnlyJob4 = _slicedToArray(_yield$getReadOnlyJob3, 2);
-            store = _yield$getReadOnlyJob4[0];
-            promise = _yield$getReadOnlyJob4[1];
-            jobs = [];
-            _iterator4 = _createForOfIteratorHelper(jobIds);
+    try {
+      var _loop3 = function _loop3() {
+        var jobId = _step4.value;
+        var request = store.get(jobId);
 
-            try {
-              _loop3 = function _loop3() {
-                var jobId = _step4.value;
-                var request = store.get(jobId);
+        request.onsuccess = function () {
+          if (typeof request.result !== 'undefined') {
+            jobs.push(request.result);
+          }
+        };
 
-                request.onsuccess = function () {
-                  if (typeof request.result !== 'undefined') {
-                    jobs.push(request.result);
-                  }
-                };
+        request.onerror = function (event) {
+          logger.error("Request error while getting job ".concat(jobId));
+          logger.errorObject(event);
+        };
+      };
 
-                request.onerror = function (event) {
-                  logger.error("Request error while getting job ".concat(jobId));
-                  logger.errorObject(event);
-                };
-              };
-
-              for (_iterator4.s(); !(_step4 = _iterator4.n()).done;) {
-                _loop3();
-              }
-            } catch (err) {
-              _iterator4.e(err);
-            } finally {
-              _iterator4.f();
-            }
-
-            store.transaction.commit();
-            _context40.next = 14;
-            return promise;
-
-          case 14:
-            return _context40.abrupt("return", jobs);
-
-          case 15:
-          case "end":
-            return _context40.stop();
-        }
+      for (_iterator4.s(); !(_step4 = _iterator4.n()).done;) {
+        _loop3();
       }
-    }, _callee40);
-  }));
+    } catch (err) {
+      _iterator4.e(err);
+    } finally {
+      _iterator4.f();
+    }
+
+    store.transaction.commit();
+    yield promise;
+    return jobs;
+  });
   return _getJobsInDatabase.apply(this, arguments);
 }
 
-function _getCompletedJobsCountFromDatabase2(_x50) {
+function getCompletedJobsCountFromDatabase(_x50) {
   return _getCompletedJobsCountFromDatabase.apply(this, arguments);
 }
 
 function _getCompletedJobsCountFromDatabase() {
-  _getCompletedJobsCountFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee41(queueId) {
-    var jobs;
-    return regeneratorRuntime.wrap(function _callee41$(_context41) {
-      while (1) {
-        switch (_context41.prev = _context41.next) {
-          case 0:
-            _context41.next = 2;
-            return _getCompletedJobsFromDatabase2(queueId);
-
-          case 2:
-            jobs = _context41.sent;
-            return _context41.abrupt("return", jobs.length);
-
-          case 4:
-          case "end":
-            return _context41.stop();
-        }
-      }
-    }, _callee41);
-  }));
+  _getCompletedJobsCountFromDatabase = _asyncToGenerator(function* (queueId) {
+    // eslint-disable-line no-underscore-dangle
+    var jobs = yield getCompletedJobsFromDatabase(queueId);
+    return jobs.length;
+  });
   return _getCompletedJobsCountFromDatabase.apply(this, arguments);
 }
 
-function _getCompletedJobsFromDatabase2(_x51) {
+function getCompletedJobsFromDatabase(_x51) {
   return _getCompletedJobsFromDatabase.apply(this, arguments);
 }
 
 function _getCompletedJobsFromDatabase() {
-  _getCompletedJobsFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee42(queueId) {
-    var store, index, request, jobs;
-    return regeneratorRuntime.wrap(function _callee42$(_context42) {
-      while (1) {
-        switch (_context42.prev = _context42.next) {
-          case 0:
-            if (!(typeof queueId !== 'string')) {
-              _context42.next = 2;
-              break;
-            }
+  _getCompletedJobsFromDatabase = _asyncToGenerator(function* (queueId) {
+    // eslint-disable-line no-underscore-dangle
+    if (typeof queueId !== 'string') {
+      throw new TypeError("Unable to get completed jobs database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\""));
+    }
 
-            throw new TypeError("Unable to get completed jobs database, received invalid \"queueId\" argument type \"".concat(_typeof(queueId), "\""));
+    var store = yield getReadOnlyJobsObjectStore();
+    var index = store.index('statusQueueIdIndex'); // $FlowFixMe
 
-          case 2:
-            _context42.next = 4;
-            return getReadOnlyJobsObjectStore();
+    var request = index.getAll(IDBKeyRange.only([queueId, JOB_COMPLETE_STATUS]));
+    var jobs = yield new Promise(function (resolve, reject) {
+      request.onsuccess = function (event) {
+        resolve(event.target.result);
+      };
 
-          case 4:
-            store = _context42.sent;
-            index = store.index('statusQueueIdIndex'); // $FlowFixMe
+      request.onerror = function (event) {
+        logger.error("Request error while getting completed jobs for queue ".concat(queueId));
+        logger.errorObject(event);
+        reject(new Error("Request error while getting completed jobs for queue ".concat(queueId)));
+      };
 
-            request = index.getAll(IDBKeyRange.only([queueId, _JOB_COMPLETE_STATUS]));
-            _context42.next = 9;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function (event) {
-                resolve(event.target.result);
-              };
-
-              request.onerror = function (event) {
-                logger.error("Request error while getting completed jobs for queue ".concat(queueId));
-                logger.errorObject(event);
-                reject(new Error("Request error while getting completed jobs for queue ".concat(queueId)));
-              };
-
-              store.transaction.commit();
-            });
-
-          case 9:
-            jobs = _context42.sent;
-            return _context42.abrupt("return", jobs);
-
-          case 11:
-          case "end":
-            return _context42.stop();
-        }
-      }
-    }, _callee42);
-  }));
+      store.transaction.commit();
+    });
+    return jobs;
+  });
   return _getCompletedJobsFromDatabase.apply(this, arguments);
 }
 
-function _storeAuthDataInDatabase2(_x52, _x53) {
+function storeAuthDataInDatabase(_x52, _x53) {
   return _storeAuthDataInDatabase.apply(this, arguments);
 }
 
 function _storeAuthDataInDatabase() {
-  _storeAuthDataInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee43(id, data) {
-    var store, request;
-    return regeneratorRuntime.wrap(function _callee43$(_context43) {
-      while (1) {
-        switch (_context43.prev = _context43.next) {
-          case 0:
-            if (!(typeof id !== 'string')) {
-              _context43.next = 2;
-              break;
-            }
+  _storeAuthDataInDatabase = _asyncToGenerator(function* (id, data) {
+    // eslint-disable-line no-underscore-dangle
+    if (typeof id !== 'string') {
+      throw new TypeError("Unable to store auth data in database, received invalid \"id\" argument type \"".concat(_typeof(id), "\""));
+    }
 
-            throw new TypeError("Unable to store auth data in database, received invalid \"id\" argument type \"".concat(_typeof(id), "\""));
+    if (_typeof(data) !== 'object') {
+      throw new TypeError("Unable to store auth data in database, received invalid \"data\" argument type \"".concat(_typeof(data), "\""));
+    }
 
-          case 2:
-            if (!(_typeof(data) !== 'object')) {
-              _context43.next = 4;
-              break;
-            }
+    var store = yield getReadWriteAuthObjectStore();
+    var request = store.put({
+      id: id,
+      data: data
+    });
+    yield new Promise(function (resolve, reject) {
+      request.onsuccess = function () {
+        resolve();
+      };
 
-            throw new TypeError("Unable to store auth data in database, received invalid \"data\" argument type \"".concat(_typeof(data), "\""));
+      request.onerror = function (event) {
+        logger.error("Request error while storing auth data for ".concat(id));
+        logger.errorObject(event);
+        reject(new Error("Request error while storing auth data for ".concat(id)));
+      };
 
-          case 4:
-            _context43.next = 6;
-            return getReadWriteAuthObjectStore();
-
-          case 6:
-            store = _context43.sent;
-            request = store.put({
-              id: id,
-              data: data
-            });
-            _context43.next = 10;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function () {
-                resolve();
-              };
-
-              request.onerror = function (event) {
-                logger.error("Request error while storing auth data for ".concat(id));
-                logger.errorObject(event);
-                reject(new Error("Request error while storing auth data for ".concat(id)));
-              };
-
-              store.transaction.commit();
-            });
-
-          case 10:
-          case "end":
-            return _context43.stop();
-        }
-      }
-    }, _callee43);
-  }));
+      store.transaction.commit();
+    });
+  });
   return _storeAuthDataInDatabase.apply(this, arguments);
 }
 
-function _getAuthDataFromDatabase2(_x54) {
+function getAuthDataFromDatabase(_x54) {
   return _getAuthDataFromDatabase.apply(this, arguments);
 }
 
 function _getAuthDataFromDatabase() {
-  _getAuthDataFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee44(id) {
-    var store, request, authData;
-    return regeneratorRuntime.wrap(function _callee44$(_context44) {
-      while (1) {
-        switch (_context44.prev = _context44.next) {
-          case 0:
-            if (!(typeof id !== 'string')) {
-              _context44.next = 2;
-              break;
-            }
+  _getAuthDataFromDatabase = _asyncToGenerator(function* (id) {
+    if (typeof id !== 'string') {
+      throw new TypeError("Unable to store auth data in database, received invalid \"id\" argument type \"".concat(_typeof(id), "\""));
+    }
 
-            throw new TypeError("Unable to store auth data in database, received invalid \"id\" argument type \"".concat(_typeof(id), "\""));
+    var store = yield getReadOnlyAuthObjectStore();
+    var request = store.get(id);
+    var authData = yield new Promise(function (resolve, reject) {
+      request.onsuccess = function () {
+        resolve(request.result);
+      };
 
-          case 2:
-            _context44.next = 4;
-            return getReadOnlyAuthObjectStore();
+      request.onerror = function (event) {
+        logger.error("Request error while getting auth data for ".concat(id));
+        logger.errorObject(event);
+        reject(new Error("Request error while getting auth data for ".concat(id)));
+      };
 
-          case 4:
-            store = _context44.sent;
-            request = store.get(id);
-            _context44.next = 8;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function () {
-                resolve(request.result);
-              };
-
-              request.onerror = function (event) {
-                logger.error("Request error while getting auth data for ".concat(id));
-                logger.errorObject(event);
-                reject(new Error("Request error while getting auth data for ".concat(id)));
-              };
-
-              store.transaction.commit();
-            });
-
-          case 8:
-            authData = _context44.sent;
-            return _context44.abrupt("return", typeof authData !== 'undefined' ? authData.data : undefined);
-
-          case 10:
-          case "end":
-            return _context44.stop();
-        }
-      }
-    }, _callee44);
-  }));
+      store.transaction.commit();
+    });
+    return typeof authData !== 'undefined' ? authData.data : undefined;
+  });
   return _getAuthDataFromDatabase.apply(this, arguments);
 }
 
-function _removeAuthDataFromDatabase2(_x55) {
+function removeAuthDataFromDatabase(_x55) {
   return _removeAuthDataFromDatabase.apply(this, arguments);
 }
 
 function _removeAuthDataFromDatabase() {
-  _removeAuthDataFromDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee45(id) {
-    var store, request;
-    return regeneratorRuntime.wrap(function _callee45$(_context45) {
-      while (1) {
-        switch (_context45.prev = _context45.next) {
-          case 0:
-            if (!(typeof id !== 'string')) {
-              _context45.next = 2;
-              break;
-            }
+  _removeAuthDataFromDatabase = _asyncToGenerator(function* (id) {
+    if (typeof id !== 'string') {
+      throw new TypeError("Unable to store auth data in database, received invalid \"id\" argument type \"".concat(_typeof(id), "\""));
+    }
 
-            throw new TypeError("Unable to store auth data in database, received invalid \"id\" argument type \"".concat(_typeof(id), "\""));
+    var store = yield getReadWriteAuthObjectStore();
+    var request = store.delete(id);
+    return new Promise(function (resolve, reject) {
+      request.onsuccess = function () {
+        resolve();
+      };
 
-          case 2:
-            _context45.next = 4;
-            return getReadWriteAuthObjectStore();
+      request.onerror = function (event) {
+        logger.error("Error while removing auth data for ".concat(id));
+        logger.errorObject(event);
+        reject(new Error("Error while removing auth data for ".concat(id)));
+      };
 
-          case 4:
-            store = _context45.sent;
-            request = store.delete(id);
-            return _context45.abrupt("return", new Promise(function (resolve, reject) {
-              request.onsuccess = function () {
-                resolve();
-              };
-
-              request.onerror = function (event) {
-                logger.error("Error while removing auth data for ".concat(id));
-                logger.errorObject(event);
-                reject(new Error("Error while removing auth data for ".concat(id)));
-              };
-
-              store.transaction.commit();
-            }));
-
-          case 7:
-          case "end":
-            return _context45.stop();
-        }
-      }
-    }, _callee45);
-  }));
+      store.transaction.commit();
+    });
+  });
   return _removeAuthDataFromDatabase.apply(this, arguments);
 }
 
-function _getQueueStatus2(_x56) {
+function getQueueStatus(_x56) {
   return _getQueueStatus.apply(this, arguments);
 }
 
 function _getQueueStatus() {
-  _getQueueStatus = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee46(queueId) {
-    var store, index, abortedRequest, completeRequest, pendingRequest, errorRequest, cleanupRequest, cleanupAndRemoveRequest, abortedCountPromise, completeCountPromise, pendingCountPromise, errorCountPromise, cleanupCountPromise, cleanupAndRemoveCountPromise, _yield$Promise$all, _yield$Promise$all2, abortedCount, completeCount, pendingCount, errorCount, cleanupCount, cleanupAndRemoveCount;
+  _getQueueStatus = _asyncToGenerator(function* (queueId) {
+    var store = yield getReadOnlyJobsObjectStore();
+    var index = store.index('statusQueueIdIndex'); // $FlowFixMe
 
-    return regeneratorRuntime.wrap(function _callee46$(_context46) {
-      while (1) {
-        switch (_context46.prev = _context46.next) {
-          case 0:
-            _context46.next = 2;
-            return getReadOnlyJobsObjectStore();
+    var abortedRequest = index.getAllKeys(IDBKeyRange.only([queueId, JOB_ABORTED_STATUS])); // $FlowFixMe
 
-          case 2:
-            store = _context46.sent;
-            index = store.index('statusQueueIdIndex'); // $FlowFixMe
+    var completeRequest = index.getAllKeys(IDBKeyRange.only([queueId, JOB_COMPLETE_STATUS])); // $FlowFixMe
 
-            abortedRequest = index.getAllKeys(IDBKeyRange.only([queueId, _JOB_ABORTED_STATUS])); // $FlowFixMe
+    var pendingRequest = index.getAllKeys(IDBKeyRange.only([queueId, JOB_PENDING_STATUS])); // $FlowFixMe
 
-            completeRequest = index.getAllKeys(IDBKeyRange.only([queueId, _JOB_COMPLETE_STATUS])); // $FlowFixMe
+    var errorRequest = index.getAllKeys(IDBKeyRange.only([queueId, JOB_ERROR_STATUS])); // $FlowFixMe
 
-            pendingRequest = index.getAllKeys(IDBKeyRange.only([queueId, _JOB_PENDING_STATUS])); // $FlowFixMe
+    var cleanupRequest = index.getAllKeys(IDBKeyRange.only([queueId, JOB_CLEANUP_STATUS])); // $FlowFixMe
 
-            errorRequest = index.getAllKeys(IDBKeyRange.only([queueId, _JOB_ERROR_STATUS])); // $FlowFixMe
+    var cleanupAndRemoveRequest = index.getAllKeys(IDBKeyRange.only([queueId, JOB_CLEANUP_AND_REMOVE_STATUS]));
+    var abortedCountPromise = new Promise(function (resolve, reject) {
+      abortedRequest.onsuccess = function (event) {
+        resolve(event.target.result.length);
+      };
 
-            cleanupRequest = index.getAllKeys(IDBKeyRange.only([queueId, _JOB_CLEANUP_STATUS])); // $FlowFixMe
+      abortedRequest.onerror = function (event) {
+        logger.error("Request error while getting status of queue ".concat(queueId));
+        logger.errorObject(event);
+        reject(new Error("Request error while getting status of queue ".concat(queueId)));
+      };
+    });
+    var completeCountPromise = new Promise(function (resolve, reject) {
+      completeRequest.onsuccess = function (event) {
+        resolve(event.target.result.length);
+      };
 
-            cleanupAndRemoveRequest = index.getAllKeys(IDBKeyRange.only([queueId, _JOB_CLEANUP_AND_REMOVE_STATUS]));
-            abortedCountPromise = new Promise(function (resolve, reject) {
-              abortedRequest.onsuccess = function (event) {
-                resolve(event.target.result.length);
-              };
+      completeRequest.onerror = function (event) {
+        logger.error("Request error while getting status of queue ".concat(queueId));
+        logger.errorObject(event);
+        reject(new Error("Request error while getting status of queue ".concat(queueId)));
+      };
+    });
+    var pendingCountPromise = new Promise(function (resolve, reject) {
+      pendingRequest.onsuccess = function (event) {
+        resolve(event.target.result.length);
+      };
 
-              abortedRequest.onerror = function (event) {
-                logger.error("Request error while getting status of queue ".concat(queueId));
-                logger.errorObject(event);
-                reject(new Error("Request error while getting status of queue ".concat(queueId)));
-              };
-            });
-            completeCountPromise = new Promise(function (resolve, reject) {
-              completeRequest.onsuccess = function (event) {
-                resolve(event.target.result.length);
-              };
+      pendingRequest.onerror = function (event) {
+        logger.error("Request error while getting status of queue ".concat(queueId));
+        logger.errorObject(event);
+        reject(new Error("Request error while getting status of queue ".concat(queueId)));
+      };
+    });
+    var errorCountPromise = new Promise(function (resolve, reject) {
+      errorRequest.onsuccess = function (event) {
+        resolve(event.target.result.length);
+      };
 
-              completeRequest.onerror = function (event) {
-                logger.error("Request error while getting status of queue ".concat(queueId));
-                logger.errorObject(event);
-                reject(new Error("Request error while getting status of queue ".concat(queueId)));
-              };
-            });
-            pendingCountPromise = new Promise(function (resolve, reject) {
-              pendingRequest.onsuccess = function (event) {
-                resolve(event.target.result.length);
-              };
+      errorRequest.onerror = function (event) {
+        logger.error("Request error while getting status of queue ".concat(queueId));
+        logger.errorObject(event);
+        reject(new Error("Request error while getting status of queue ".concat(queueId)));
+      };
+    });
+    var cleanupCountPromise = new Promise(function (resolve, reject) {
+      cleanupRequest.onsuccess = function (event) {
+        resolve(event.target.result.length);
+      };
 
-              pendingRequest.onerror = function (event) {
-                logger.error("Request error while getting status of queue ".concat(queueId));
-                logger.errorObject(event);
-                reject(new Error("Request error while getting status of queue ".concat(queueId)));
-              };
-            });
-            errorCountPromise = new Promise(function (resolve, reject) {
-              errorRequest.onsuccess = function (event) {
-                resolve(event.target.result.length);
-              };
+      cleanupRequest.onerror = function (event) {
+        logger.error("Request error while getting status of queue ".concat(queueId));
+        logger.errorObject(event);
+        reject(new Error("Request error while getting status of queue ".concat(queueId)));
+      };
+    });
+    var cleanupAndRemoveCountPromise = new Promise(function (resolve, reject) {
+      cleanupAndRemoveRequest.onsuccess = function (event) {
+        resolve(event.target.result.length);
+      };
 
-              errorRequest.onerror = function (event) {
-                logger.error("Request error while getting status of queue ".concat(queueId));
-                logger.errorObject(event);
-                reject(new Error("Request error while getting status of queue ".concat(queueId)));
-              };
-            });
-            cleanupCountPromise = new Promise(function (resolve, reject) {
-              cleanupRequest.onsuccess = function (event) {
-                resolve(event.target.result.length);
-              };
+      cleanupAndRemoveRequest.onerror = function (event) {
+        logger.error("Request error while getting status of queue ".concat(queueId));
+        logger.errorObject(event);
+        reject(new Error("Request error while getting status of queue ".concat(queueId)));
+      };
+    });
+    store.transaction.commit();
 
-              cleanupRequest.onerror = function (event) {
-                logger.error("Request error while getting status of queue ".concat(queueId));
-                logger.errorObject(event);
-                reject(new Error("Request error while getting status of queue ".concat(queueId)));
-              };
-            });
-            cleanupAndRemoveCountPromise = new Promise(function (resolve, reject) {
-              cleanupAndRemoveRequest.onsuccess = function (event) {
-                resolve(event.target.result.length);
-              };
+    var _yield$Promise$all = yield Promise.all([abortedCountPromise, completeCountPromise, pendingCountPromise, errorCountPromise, cleanupCountPromise, cleanupAndRemoveCountPromise]),
+        _yield$Promise$all2 = _slicedToArray(_yield$Promise$all, 6),
+        abortedCount = _yield$Promise$all2[0],
+        completeCount = _yield$Promise$all2[1],
+        pendingCount = _yield$Promise$all2[2],
+        errorCount = _yield$Promise$all2[3],
+        cleanupCount = _yield$Promise$all2[4],
+        cleanupAndRemoveCount = _yield$Promise$all2[5];
 
-              cleanupAndRemoveRequest.onerror = function (event) {
-                logger.error("Request error while getting status of queue ".concat(queueId));
-                logger.errorObject(event);
-                reject(new Error("Request error while getting status of queue ".concat(queueId)));
-              };
-            });
-            store.transaction.commit();
-            _context46.next = 19;
-            return Promise.all([abortedCountPromise, completeCountPromise, pendingCountPromise, errorCountPromise, cleanupCountPromise, cleanupAndRemoveCountPromise]);
+    if (abortedCount > 0 || cleanupCount > 0) {
+      return QUEUE_ERROR_STATUS;
+    }
 
-          case 19:
-            _yield$Promise$all = _context46.sent;
-            _yield$Promise$all2 = _slicedToArray(_yield$Promise$all, 6);
-            abortedCount = _yield$Promise$all2[0];
-            completeCount = _yield$Promise$all2[1];
-            pendingCount = _yield$Promise$all2[2];
-            errorCount = _yield$Promise$all2[3];
-            cleanupCount = _yield$Promise$all2[4];
-            cleanupAndRemoveCount = _yield$Promise$all2[5];
+    if (errorCount > 0 || pendingCount > 0 || cleanupAndRemoveCount > 0) {
+      return QUEUE_PENDING_STATUS;
+    }
 
-            if (!(abortedCount > 0 || cleanupCount > 0)) {
-              _context46.next = 29;
-              break;
-            }
+    if (completeCount > 0) {
+      return QUEUE_COMPLETE_STATUS;
+    }
 
-            return _context46.abrupt("return", _QUEUE_ERROR_STATUS);
-
-          case 29:
-            if (!(errorCount > 0 || pendingCount > 0 || cleanupAndRemoveCount > 0)) {
-              _context46.next = 31;
-              break;
-            }
-
-            return _context46.abrupt("return", _QUEUE_PENDING_STATUS);
-
-          case 31:
-            if (!(completeCount > 0)) {
-              _context46.next = 33;
-              break;
-            }
-
-            return _context46.abrupt("return", _QUEUE_COMPLETE_STATUS);
-
-          case 33:
-            return _context46.abrupt("return", _QUEUE_EMPTY_STATUS);
-
-          case 34:
-          case "end":
-            return _context46.stop();
-        }
-      }
-    }, _callee46);
-  }));
+    return QUEUE_EMPTY_STATUS;
+  });
   return _getQueueStatus.apply(this, arguments);
 }
 
-function _addArgLookup2(_x57, _x58, _x59) {
+function addArgLookup(_x57, _x58, _x59) {
   return _addArgLookup.apply(this, arguments);
 }
 
 function _addArgLookup() {
-  _addArgLookup = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee47(jobId, key, jsonPath) {
-    var store, request;
-    return regeneratorRuntime.wrap(function _callee47$(_context47) {
-      while (1) {
-        switch (_context47.prev = _context47.next) {
-          case 0:
-            if (!(typeof jobId !== 'number')) {
-              _context47.next = 2;
-              break;
-            }
+  _addArgLookup = _asyncToGenerator(function* (jobId, key, jsonPath) {
+    if (typeof jobId !== 'number') {
+      throw new TypeError("Unable add argument lookup, received invalid \"jobId\" argument type \"".concat(_typeof(jobId), "\""));
+    }
 
-            throw new TypeError("Unable add argument lookup, received invalid \"jobId\" argument type \"".concat(_typeof(jobId), "\""));
+    if (typeof key !== 'string') {
+      throw new TypeError("Unable add argument lookup, received invalid \"key\" argument type \"".concat(_typeof(key), "\""));
+    }
 
-          case 2:
-            if (!(typeof key !== 'string')) {
-              _context47.next = 4;
-              break;
-            }
+    if (typeof jsonPath !== 'string') {
+      throw new TypeError("Unable add argument lookup, received invalid \"jsonPath\" argument type \"".concat(_typeof(jsonPath), "\""));
+    }
 
-            throw new TypeError("Unable add argument lookup, received invalid \"key\" argument type \"".concat(_typeof(key), "\""));
+    var store = yield getReadWriteArgLookupObjectStore();
+    var request = store.put({
+      jobId: jobId,
+      key: key,
+      jsonPath: jsonPath
+    });
+    return new Promise(function (resolve, reject) {
+      request.onsuccess = function () {
+        resolve();
+      };
 
-          case 4:
-            if (!(typeof jsonPath !== 'string')) {
-              _context47.next = 6;
-              break;
-            }
+      request.onerror = function (event) {
+        logger.error("Error while adding argument lookup for job ".concat(jobId, " with key \"").concat(key, "\" and JSON path \"").concat(jsonPath, "\""));
+        logger.errorObject(event);
+        reject(new Error("Error while adding argument lookup for job ".concat(jobId, " with key \"").concat(key, "\" and JSON path \"").concat(jsonPath, "\"")));
+      };
 
-            throw new TypeError("Unable add argument lookup, received invalid \"jsonPath\" argument type \"".concat(_typeof(jsonPath), "\""));
-
-          case 6:
-            _context47.next = 8;
-            return getReadWriteArgLookupObjectStore();
-
-          case 8:
-            store = _context47.sent;
-            request = store.put({
-              jobId: jobId,
-              key: key,
-              jsonPath: jsonPath
-            });
-            return _context47.abrupt("return", new Promise(function (resolve, reject) {
-              request.onsuccess = function () {
-                resolve();
-              };
-
-              request.onerror = function (event) {
-                logger.error("Error while adding argument lookup for job ".concat(jobId, " with key \"").concat(key, "\" and JSON path \"").concat(jsonPath, "\""));
-                logger.errorObject(event);
-                reject(new Error("Error while adding argument lookup for job ".concat(jobId, " with key \"").concat(key, "\" and JSON path \"").concat(jsonPath, "\"")));
-              };
-
-              store.transaction.commit();
-            }));
-
-          case 11:
-          case "end":
-            return _context47.stop();
-        }
-      }
-    }, _callee47);
-  }));
+      store.transaction.commit();
+    });
+  });
   return _addArgLookup.apply(this, arguments);
 }
 
-function _getArgLookupJobPathMap2(_x60) {
+function getArgLookupJobPathMap(_x60) {
   return _getArgLookupJobPathMap.apply(this, arguments);
 }
 
 function _getArgLookupJobPathMap() {
-  _getArgLookupJobPathMap = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee48(key) {
-    var store, index, request;
-    return regeneratorRuntime.wrap(function _callee48$(_context48) {
-      while (1) {
-        switch (_context48.prev = _context48.next) {
-          case 0:
-            if (!(typeof key !== 'string')) {
-              _context48.next = 2;
-              break;
-            }
+  _getArgLookupJobPathMap = _asyncToGenerator(function* (key) {
+    if (typeof key !== 'string') {
+      throw new TypeError("Unable to lookup arguments, received invalid \"key\" argument type \"".concat(_typeof(key), "\""));
+    }
 
-            throw new TypeError("Unable to lookup arguments, received invalid \"key\" argument type \"".concat(_typeof(key), "\""));
+    var store = yield getReadOnlyArgLookupObjectStore();
+    var index = store.index('keyIndex'); // $FlowFixMe
 
-          case 2:
-            _context48.next = 4;
-            return getReadOnlyArgLookupObjectStore();
+    var request = index.getAll(IDBKeyRange.only(key));
+    return new Promise(function (resolve, reject) {
+      request.onsuccess = function (event) {
+        var map = new Map(event.target.result.map(function (x) {
+          return [x.jobId, x.jsonPath];
+        }));
+        resolve(map);
+      };
 
-          case 4:
-            store = _context48.sent;
-            index = store.index('keyIndex'); // $FlowFixMe
+      request.onerror = function (event) {
+        logger.error("Request error looking up arguments for key ".concat(key));
+        logger.errorObject(event);
+        reject(new Error("Request error looking up arguments for key ".concat(key)));
+      };
 
-            request = index.getAll(IDBKeyRange.only(key));
-            return _context48.abrupt("return", new Promise(function (resolve, reject) {
-              request.onsuccess = function (event) {
-                var map = new Map(event.target.result.map(function (x) {
-                  return [x.jobId, x.jsonPath];
-                }));
-                resolve(map);
-              };
-
-              request.onerror = function (event) {
-                logger.error("Request error looking up arguments for key ".concat(key));
-                logger.errorObject(event);
-                reject(new Error("Request error looking up arguments for key ".concat(key)));
-              };
-
-              store.transaction.commit();
-            }));
-
-          case 8:
-          case "end":
-            return _context48.stop();
-        }
-      }
-    }, _callee48);
-  }));
+      store.transaction.commit();
+    });
+  });
   return _getArgLookupJobPathMap.apply(this, arguments);
 }
 
-function _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase2(_x61) {
+function markJobsWithArgLookupKeyCleanupAndRemoveInDatabase(_x61) {
   return _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase.apply(this, arguments);
 }
 
 function _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase() {
-  _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee49(key) {
-    var store, index, request, jobIds;
-    return regeneratorRuntime.wrap(function _callee49$(_context49) {
-      while (1) {
-        switch (_context49.prev = _context49.next) {
-          case 0:
-            if (!(typeof key !== 'string')) {
-              _context49.next = 2;
-              break;
-            }
+  _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase = _asyncToGenerator(function* (key) {
+    if (typeof key !== 'string') {
+      throw new TypeError("Unable to lookup arguments, received invalid \"key\" argument type \"".concat(_typeof(key), "\""));
+    }
 
-            throw new TypeError("Unable to lookup arguments, received invalid \"key\" argument type \"".concat(_typeof(key), "\""));
+    var store = yield getReadOnlyArgLookupObjectStore();
+    var index = store.index('keyIndex'); // $FlowFixMe
 
-          case 2:
-            _context49.next = 4;
-            return getReadOnlyArgLookupObjectStore();
+    var request = index.getAll(IDBKeyRange.only(key));
+    var jobIds = yield new Promise(function (resolve, reject) {
+      request.onsuccess = function (event) {
+        resolve((0, _uniq.default)(event.target.result.map(function (x) {
+          return x.jobId;
+        })));
+      };
 
-          case 4:
-            store = _context49.sent;
-            index = store.index('keyIndex'); // $FlowFixMe
+      request.onerror = function (event) {
+        logger.error("Request error looking up arguments for key ".concat(key));
+        logger.errorObject(event);
+        reject(new Error("Request error looking up arguments for key ".concat(key)));
+      };
 
-            request = index.getAll(IDBKeyRange.only(key));
-            _context49.next = 9;
-            return new Promise(function (resolve, reject) {
-              request.onsuccess = function (event) {
-                resolve((0, _uniq.default)(event.target.result.map(function (x) {
-                  return x.jobId;
-                })));
-              };
-
-              request.onerror = function (event) {
-                logger.error("Request error looking up arguments for key ".concat(key));
-                logger.errorObject(event);
-                reject(new Error("Request error looking up arguments for key ".concat(key)));
-              };
-
-              store.transaction.commit();
-            });
-
-          case 9:
-            jobIds = _context49.sent;
-            _context49.next = 12;
-            return Promise.all(jobIds.map(_markJobCleanupAndRemoveInDatabase));
-
-          case 12:
-          case "end":
-            return _context49.stop();
-        }
-      }
-    }, _callee49);
-  }));
+      store.transaction.commit();
+    });
+    yield Promise.all(jobIds.map(markJobCleanupAndRemoveInDatabase));
+  });
   return _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase.apply(this, arguments);
 }
 
-function _lookupArgs2(_x62) {
+function lookupArgs(_x62) {
   return _lookupArgs.apply(this, arguments);
 }
 
 function _lookupArgs() {
-  _lookupArgs = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee50(key) {
-    var database, transaction, argLookupObjectStore, argLookupIndex, argLookupRequest, results;
-    return regeneratorRuntime.wrap(function _callee50$(_context50) {
-      while (1) {
-        switch (_context50.prev = _context50.next) {
-          case 0:
-            _context50.next = 2;
-            return _databasePromise;
+  _lookupArgs = _asyncToGenerator(function* (key) {
+    var database = yield databasePromise;
+    var transaction = database.transaction(['arg-lookup', 'jobs'], 'readonly', {
+      durability: 'relaxed'
+    });
+    var argLookupObjectStore = transaction.objectStore('arg-lookup');
 
-          case 2:
-            database = _context50.sent;
-            transaction = database.transaction(['arg-lookup', 'jobs'], 'readonly', {
-              durability: 'relaxed'
-            });
-            argLookupObjectStore = transaction.objectStore('arg-lookup');
+    transaction.onabort = function (event) {
+      logger.error('Read-only lookupArgs transaction was aborted');
+      logger.errorObject(event);
+    };
 
-            transaction.onabort = function (event) {
-              logger.error('Read-only lookupArgs transaction was aborted');
-              logger.errorObject(event);
-            };
+    transaction.onerror = function (event) {
+      logger.error('Error in read-only lookupArgs transaction');
+      logger.errorObject(event);
+    };
 
-            transaction.onerror = function (event) {
-              logger.error('Error in read-only lookupArgs transaction');
-              logger.errorObject(event);
-            };
+    var argLookupIndex = argLookupObjectStore.index('keyIndex'); // $FlowFixMe
 
-            argLookupIndex = argLookupObjectStore.index('keyIndex'); // $FlowFixMe
+    var argLookupRequest = argLookupIndex.getAll(IDBKeyRange.only(key));
+    var results = [];
+    return new Promise(function (resolve, reject) {
+      argLookupRequest.onsuccess = function (argLookupEvent) {
+        var argLookups = argLookupEvent.target.result;
 
-            argLookupRequest = argLookupIndex.getAll(IDBKeyRange.only(key));
-            results = [];
-            return _context50.abrupt("return", new Promise(function (resolve, reject) {
-              argLookupRequest.onsuccess = function (argLookupEvent) {
-                var argLookups = argLookupEvent.target.result;
-
-                if (argLookups.length === 0) {
-                  resolve([]);
-                  transaction.commit();
-                  return;
-                }
-
-                var jobsObjectStore = transaction.objectStore('jobs');
-
-                var _loop4 = function _loop4(i) {
-                  var _argLookups$i = argLookups[i],
-                      jobId = _argLookups$i.jobId,
-                      jsonPath = _argLookups$i.jsonPath;
-                  var jobRequest = jobsObjectStore.get(jobId);
-
-                  jobRequest.onsuccess = function () {
-                    if (typeof jobRequest.result === 'undefined') {
-                      return;
-                    }
-
-                    var args = jobRequest.result.args;
-
-                    var _iterator5 = _createForOfIteratorHelper((0, _jsonpathPlus.JSONPath)({
-                      path: jsonPath,
-                      json: args
-                    })),
-                        _step5;
-
-                    try {
-                      for (_iterator5.s(); !(_step5 = _iterator5.n()).done;) {
-                        var result = _step5.value;
-                        results.push(result);
-                      }
-                    } catch (err) {
-                      _iterator5.e(err);
-                    } finally {
-                      _iterator5.f();
-                    }
-
-                    if (i === argLookups.length - 1) {
-                      resolve(results);
-                    }
-                  };
-
-                  jobRequest.onerror = function (event) {
-                    logger.error("Request error while getting job ".concat(jobId));
-                    logger.errorObject(event);
-                    reject(new Error("Request error looking up jobs for key ".concat(key)));
-                  };
-                };
-
-                for (var i = 0; i < argLookups.length; i += 1) {
-                  _loop4(i);
-                }
-
-                transaction.commit();
-              };
-
-              argLookupRequest.onerror = function (event) {
-                logger.error("Request error looking up arguments for key ".concat(key));
-                logger.errorObject(event);
-                reject(new Error("Request error looking up arguments for key ".concat(key)));
-              };
-            }));
-
-          case 11:
-          case "end":
-            return _context50.stop();
+        if (argLookups.length === 0) {
+          resolve([]);
+          transaction.commit();
+          return;
         }
-      }
-    }, _callee50);
-  }));
+
+        var jobsObjectStore = transaction.objectStore('jobs');
+
+        var _loop4 = function _loop4(i) {
+          var _argLookups$i = argLookups[i],
+              jobId = _argLookups$i.jobId,
+              jsonPath = _argLookups$i.jsonPath;
+          var jobRequest = jobsObjectStore.get(jobId);
+
+          jobRequest.onsuccess = function () {
+            if (typeof jobRequest.result === 'undefined') {
+              return;
+            }
+
+            var args = jobRequest.result.args;
+
+            var _iterator5 = _createForOfIteratorHelper((0, _jsonpathPlus.JSONPath)({
+              path: jsonPath,
+              json: args
+            })),
+                _step5;
+
+            try {
+              for (_iterator5.s(); !(_step5 = _iterator5.n()).done;) {
+                var result = _step5.value;
+                results.push(result);
+              }
+            } catch (err) {
+              _iterator5.e(err);
+            } finally {
+              _iterator5.f();
+            }
+
+            if (i === argLookups.length - 1) {
+              resolve(results);
+            }
+          };
+
+          jobRequest.onerror = function (event) {
+            logger.error("Request error while getting job ".concat(jobId));
+            logger.errorObject(event);
+            reject(new Error("Request error looking up jobs for key ".concat(key)));
+          };
+        };
+
+        for (var i = 0; i < argLookups.length; i += 1) {
+          _loop4(i);
+        }
+
+        transaction.commit();
+      };
+
+      argLookupRequest.onerror = function (event) {
+        logger.error("Request error looking up arguments for key ".concat(key));
+        logger.errorObject(event);
+        reject(new Error("Request error looking up arguments for key ".concat(key)));
+      };
+    });
+  });
   return _lookupArgs.apply(this, arguments);
 }
 
-function _lookupArg2(_x63) {
+function lookupArg(_x63) {
   return _lookupArg.apply(this, arguments);
 }
 
 function _lookupArg() {
-  _lookupArg = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee51(key) {
-    var results;
-    return regeneratorRuntime.wrap(function _callee51$(_context51) {
-      while (1) {
-        switch (_context51.prev = _context51.next) {
-          case 0:
-            _context51.next = 2;
-            return _lookupArgs2(key);
-
-          case 2:
-            results = _context51.sent;
-            return _context51.abrupt("return", results[0]);
-
-          case 4:
-          case "end":
-            return _context51.stop();
-        }
-      }
-    }, _callee51);
-  }));
+  _lookupArg = _asyncToGenerator(function* (key) {
+    var results = yield lookupArgs(key);
+    return results[0];
+  });
   return _lookupArg.apply(this, arguments);
 }
 
@@ -3759,198 +2686,103 @@ function removeArgLookupsAndCleanupsForJob() {
 }
 
 function _removeArgLookupsAndCleanupsForJob() {
-  _removeArgLookupsAndCleanupsForJob = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee52() {
-    var jobIds, database, transaction, cleanupsObjectStore, argLookupObjectStore, argLookupJobIdIndex, _iterator6, _step6, _loop5;
+  _removeArgLookupsAndCleanupsForJob = _asyncToGenerator(function* () {
+    if (jobsArgLookupsAndCleanupsToRemove.length === 0) {
+      return;
+    }
 
-    return regeneratorRuntime.wrap(function _callee52$(_context52) {
-      while (1) {
-        switch (_context52.prev = _context52.next) {
-          case 0:
-            if (!(jobsArgLookupsAndCleanupsToRemove.length === 0)) {
-              _context52.next = 2;
-              break;
-            }
+    var jobIds = jobsArgLookupsAndCleanupsToRemove.slice();
+    jobsArgLookupsAndCleanupsToRemove.length = 0;
+    var database = yield databasePromise;
+    var transaction = database.transaction(['cleanups', 'arg-lookup'], 'readwrite', {
+      durability: 'relaxed'
+    });
 
-            return _context52.abrupt("return");
+    transaction.onabort = function (event) {
+      logger.error('Read-write "cleanups", and "arg-lookup" transaction was aborted');
+      logger.errorObject(event);
+    };
 
-          case 2:
-            jobIds = jobsArgLookupsAndCleanupsToRemove.slice();
-            jobsArgLookupsAndCleanupsToRemove.length = 0;
-            _context52.next = 6;
-            return _databasePromise;
+    transaction.onerror = function (event) {
+      logger.error('Error in read-write "cleanups" and "arg-lookup" transaction');
+      logger.errorObject(event);
+    };
 
-          case 6:
-            database = _context52.sent;
-            transaction = database.transaction(['cleanups', 'arg-lookup'], 'readwrite', {
-              durability: 'relaxed'
-            });
+    var cleanupsObjectStore = transaction.objectStore('cleanups');
+    var argLookupObjectStore = transaction.objectStore('arg-lookup');
+    var argLookupJobIdIndex = argLookupObjectStore.index('jobIdIndex');
 
-            transaction.onabort = function (event) {
-              logger.error('Read-write "cleanups", and "arg-lookup" transaction was aborted');
-              logger.errorObject(event);
-            };
+    var _iterator6 = _createForOfIteratorHelper(jobIds),
+        _step6;
 
-            transaction.onerror = function (event) {
-              logger.error('Error in read-write "cleanups" and "arg-lookup" transaction');
-              logger.errorObject(event);
-            };
+    try {
+      var _loop5 = function _loop5() {
+        var jobId = _step6.value;
+        var cleanupDeleteRequest = cleanupsObjectStore.delete(jobId);
 
-            cleanupsObjectStore = transaction.objectStore('cleanups');
-            argLookupObjectStore = transaction.objectStore('arg-lookup');
-            argLookupJobIdIndex = argLookupObjectStore.index('jobIdIndex');
-            _iterator6 = _createForOfIteratorHelper(jobIds);
-
-            try {
-              _loop5 = function _loop5() {
-                var jobId = _step6.value;
-                var cleanupDeleteRequest = cleanupsObjectStore.delete(jobId);
-
-                cleanupDeleteRequest.onerror = function (event) {
-                  logger.error("Request error while removing cleanups for job ".concat(jobId, " from database"));
-                  logger.errorObject(event);
-                }; // $FlowFixMe
+        cleanupDeleteRequest.onerror = function (event) {
+          logger.error("Request error while removing cleanups for job ".concat(jobId, " from database"));
+          logger.errorObject(event);
+        }; // $FlowFixMe
 
 
-                var argLookupJobRequest = argLookupJobIdIndex.getAllKeys(IDBKeyRange.only(jobId));
+        var argLookupJobRequest = argLookupJobIdIndex.getAllKeys(IDBKeyRange.only(jobId));
 
-                argLookupJobRequest.onsuccess = function (event) {
-                  var _iterator7 = _createForOfIteratorHelper(event.target.result),
-                      _step7;
+        argLookupJobRequest.onsuccess = function (event) {
+          var _iterator7 = _createForOfIteratorHelper(event.target.result),
+              _step7;
 
-                  try {
-                    for (_iterator7.s(); !(_step7 = _iterator7.n()).done;) {
-                      var id = _step7.value;
-                      var argLookupDeleteRequest = argLookupObjectStore.delete(id);
+          try {
+            for (_iterator7.s(); !(_step7 = _iterator7.n()).done;) {
+              var id = _step7.value;
+              var argLookupDeleteRequest = argLookupObjectStore.delete(id);
 
-                      argLookupDeleteRequest.onerror = function (deleteEvent) {
-                        logger.error("Delete request error while removing argument lookups for job ".concat(jobId, " from database"));
-                        logger.errorObject(deleteEvent);
-                      };
-                    }
-                  } catch (err) {
-                    _iterator7.e(err);
-                  } finally {
-                    _iterator7.f();
-                  }
-                };
-
-                argLookupJobRequest.onerror = function (event) {
-                  logger.error("Request error while removing argument lookups for job ".concat(jobId, " from database"));
-                  logger.errorObject(event);
-                };
+              argLookupDeleteRequest.onerror = function (deleteEvent) {
+                logger.error("Delete request error while removing argument lookups for job ".concat(jobId, " from database"));
+                logger.errorObject(deleteEvent);
               };
-
-              for (_iterator6.s(); !(_step6 = _iterator6.n()).done;) {
-                _loop5();
-              }
-            } catch (err) {
-              _iterator6.e(err);
-            } finally {
-              _iterator6.f();
             }
+          } catch (err) {
+            _iterator7.e(err);
+          } finally {
+            _iterator7.f();
+          }
+        };
 
-          case 15:
-          case "end":
-            return _context52.stop();
-        }
+        argLookupJobRequest.onerror = function (event) {
+          logger.error("Request error while removing argument lookups for job ".concat(jobId, " from database"));
+          logger.errorObject(event);
+        };
+      };
+
+      for (_iterator6.s(); !(_step6 = _iterator6.n()).done;) {
+        _loop5();
       }
-    }, _callee52);
-  }));
+    } catch (err) {
+      _iterator6.e(err);
+    } finally {
+      _iterator6.f();
+    }
+  });
   return _removeArgLookupsAndCleanupsForJob.apply(this, arguments);
 }
 
-function _removeArgLookupsAndCleanupsForJobAsMicrotask(jobId) {
+function removeArgLookupsAndCleanupsForJobAsMicrotask(jobId) {
   jobsArgLookupsAndCleanupsToRemove.push(jobId);
   self.queueMicrotask(removeArgLookupsAndCleanupsForJob);
 }
 
 var UNLOAD_DATA_ID = '_UNLOAD_DATA';
 
-function _updateUnloadDataInDatabase(transform) {
-  return _updateMetadataInDatabase2(UNLOAD_DATA_ID, transform);
+function updateUnloadDataInDatabase(transform) {
+  return updateMetadataInDatabase(UNLOAD_DATA_ID, transform);
 }
 
-function _getUnloadDataFromDatabase() {
-  return _getMetadataFromDatabase2(UNLOAD_DATA_ID);
+function getUnloadDataFromDatabase() {
+  return getMetadataFromDatabase(UNLOAD_DATA_ID);
 }
 
-function _clearUnloadDataInDatabase() {
-  return _clearMetadataInDatabase2(UNLOAD_DATA_ID);
+function clearUnloadDataInDatabase() {
+  return clearMetadataInDatabase(UNLOAD_DATA_ID);
 }
-
-export var localJobEmitter = exports.localJobEmitter;
-export var jobEmitter = exports.jobEmitter;
-export var JobDoesNotExistError = exports.JobDoesNotExistError;
-export var CleanupDoesNotExistError = exports.CleanupDoesNotExistError;
-export var QUEUE_ERROR_STATUS = exports.QUEUE_ERROR_STATUS;
-export var QUEUE_PENDING_STATUS = exports.QUEUE_PENDING_STATUS;
-export var QUEUE_COMPLETE_STATUS = exports.QUEUE_COMPLETE_STATUS;
-export var QUEUE_EMPTY_STATUS = exports.QUEUE_EMPTY_STATUS;
-export var JOB_ABORTED_STATUS = exports.JOB_ABORTED_STATUS;
-export var JOB_COMPLETE_STATUS = exports.JOB_COMPLETE_STATUS;
-export var JOB_PENDING_STATUS = exports.JOB_PENDING_STATUS;
-export var JOB_ERROR_STATUS = exports.JOB_ERROR_STATUS;
-export var JOB_CLEANUP_STATUS = exports.JOB_CLEANUP_STATUS;
-export var JOB_CLEANUP_AND_REMOVE_STATUS = exports.JOB_CLEANUP_AND_REMOVE_STATUS;
-export var databasePromise = exports.databasePromise;
-export var clearDatabase = exports.clearDatabase;
-export var removeJobsWithQueueIdAndTypeFromDatabase = exports.removeJobsWithQueueIdAndTypeFromDatabase;
-export var removeQueueFromDatabase = exports.removeQueueFromDatabase;
-export var removeCompletedExpiredItemsFromDatabase = exports.removeCompletedExpiredItemsFromDatabase;
-export var updateJobInDatabase = exports.updateJobInDatabase;
-export var getJobFromDatabase = exports.getJobFromDatabase;
-export var updateCleanupInDatabase = exports.updateCleanupInDatabase;
-export var removePathFromCleanupDataInDatabase = exports.removePathFromCleanupDataInDatabase;
-export var updateCleanupValuesInDatabase = exports.updateCleanupValuesInDatabase;
-export var silentlyRemoveJobFromDatabase = exports.silentlyRemoveJobFromDatabase;
-export var removeJobFromDatabase = exports.removeJobFromDatabase;
-export var removeCleanupFromDatabase = exports.removeCleanupFromDatabase;
-export var getCleanupFromDatabase = exports.getCleanupFromDatabase;
-export var getMetadataFromDatabase = exports.getMetadataFromDatabase;
-export var clearMetadataInDatabase = exports.clearMetadataInDatabase;
-export var setMetadataInDatabase = exports.setMetadataInDatabase;
-export var updateMetadataInDatabase = exports.updateMetadataInDatabase;
-export var markJobStatusInDatabase = exports.markJobStatusInDatabase;
-export var markJobCompleteInDatabase = exports.markJobCompleteInDatabase;
-export var markJobPendingInDatabase = exports.markJobPendingInDatabase;
-export var markJobErrorInDatabase = exports.markJobErrorInDatabase;
-export var markJobCleanupInDatabase = exports.markJobCleanupInDatabase;
-export var markJobAbortedInDatabase = exports.markJobAbortedInDatabase;
-export var markJobCompleteThenRemoveFromDatabase = exports.markJobCompleteThenRemoveFromDatabase;
-export var markJobCleanupAndRemoveInDatabase = exports.markJobCleanupAndRemoveInDatabase;
-export var markJobAsAbortedOrRemoveFromDatabase = exports.markJobAsAbortedOrRemoveFromDatabase;
-export var markJobStartAfterInDatabase = exports.markJobStartAfterInDatabase;
-export var markCleanupStartAfterInDatabase = exports.markCleanupStartAfterInDatabase;
-export var markQueueForCleanupInDatabase = exports.markQueueForCleanupInDatabase;
-export var markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase = exports.markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase;
-export var markQueueForCleanupAndRemoveInDatabase = exports.markQueueForCleanupAndRemoveInDatabase;
-export var markQueueJobsGreaterThanIdPendingInDatabase = exports.markQueueJobsGreaterThanIdPendingInDatabase;
-export var markQueuePendingInDatabase = exports.markQueuePendingInDatabase;
-export var getGreatestJobIdFromQueueInDatabase = exports.getGreatestJobIdFromQueueInDatabase;
-export var incrementJobAttemptInDatabase = exports.incrementJobAttemptInDatabase;
-export var incrementCleanupAttemptInDatabase = exports.incrementCleanupAttemptInDatabase;
-export var bulkEnqueueToDatabase = exports.bulkEnqueueToDatabase;
-export var enqueueToDatabase = exports.enqueueToDatabase;
-export var restoreJobToDatabaseForCleanupAndRemove = exports.restoreJobToDatabaseForCleanupAndRemove;
-export var dequeueFromDatabase = exports.dequeueFromDatabase;
-export var getContiguousIds = exports.getContiguousIds;
-export var dequeueFromDatabaseNotIn = exports.dequeueFromDatabaseNotIn;
-export var getJobsWithTypeFromDatabase = exports.getJobsWithTypeFromDatabase;
-export var getJobsInQueueFromDatabase = exports.getJobsInQueueFromDatabase;
-export var getJobsInDatabase = exports.getJobsInDatabase;
-export var getCompletedJobsCountFromDatabase = exports.getCompletedJobsCountFromDatabase;
-export var getCompletedJobsFromDatabase = exports.getCompletedJobsFromDatabase;
-export var storeAuthDataInDatabase = exports.storeAuthDataInDatabase;
-export var getAuthDataFromDatabase = exports.getAuthDataFromDatabase;
-export var removeAuthDataFromDatabase = exports.removeAuthDataFromDatabase;
-export var getQueueStatus = exports.getQueueStatus;
-export var addArgLookup = exports.addArgLookup;
-export var getArgLookupJobPathMap = exports.getArgLookupJobPathMap;
-export var markJobsWithArgLookupKeyCleanupAndRemoveInDatabase = exports.markJobsWithArgLookupKeyCleanupAndRemoveInDatabase;
-export var lookupArgs = exports.lookupArgs;
-export var lookupArg = exports.lookupArg;
-export var removeArgLookupsAndCleanupsForJobAsMicrotask = exports.removeArgLookupsAndCleanupsForJobAsMicrotask;
-export var updateUnloadDataInDatabase = exports.updateUnloadDataInDatabase;
-export var getUnloadDataFromDatabase = exports.getUnloadDataFromDatabase;
-export var clearUnloadDataInDatabase = exports.clearUnloadDataInDatabase;
 //# sourceMappingURL=database.js.map

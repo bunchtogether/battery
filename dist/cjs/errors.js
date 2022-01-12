@@ -1,19 +1,23 @@
 "use strict";
 
-function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (obj) { return typeof obj; } : function (obj) { return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }, _typeof(obj); }
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.FatalError = exports.TimeoutError = exports.AbortError = void 0;
+exports.TimeoutError = exports.FatalError = exports.AbortError = void 0;
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); Object.defineProperty(Constructor, "prototype", { writable: false }); return Constructor; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); Object.defineProperty(subClass, "prototype", { writable: false }); if (superClass) _setPrototypeOf(subClass, superClass); }
 
 function _createSuper(Derived) { var hasNativeReflectConstruct = _isNativeReflectConstruct(); return function _createSuperInternal() { var Super = _getPrototypeOf(Derived), result; if (hasNativeReflectConstruct) { var NewTarget = _getPrototypeOf(this).constructor; result = Reflect.construct(Super, arguments, NewTarget); } else { result = Super.apply(this, arguments); } return _possibleConstructorReturn(this, result); }; }
 
-function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } else if (call !== void 0) { throw new TypeError("Derived constructors may only return object or undefined"); } return _assertThisInitialized(self); }
 
 function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
 
@@ -30,7 +34,7 @@ function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || func
 function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
 
 // $FlowFixMe
-var _AbortError = /*#__PURE__*/function (_DOMException) {
+var AbortError = /*#__PURE__*/function (_DOMException) {
   _inherits(AbortError, _DOMException);
 
   var _super = _createSuper(AbortError);
@@ -41,13 +45,13 @@ var _AbortError = /*#__PURE__*/function (_DOMException) {
     return _super.call(this, message, 'AbortError');
   }
 
-  return AbortError;
+  return _createClass(AbortError);
 }( /*#__PURE__*/_wrapNativeSuper(DOMException)); // $FlowFixMe
 
 
-exports.AbortError = _AbortError;
+exports.AbortError = AbortError;
 
-var _TimeoutError = /*#__PURE__*/function (_DOMException2) {
+var TimeoutError = /*#__PURE__*/function (_DOMException2) {
   _inherits(TimeoutError, _DOMException2);
 
   var _super2 = _createSuper(TimeoutError);
@@ -58,12 +62,12 @@ var _TimeoutError = /*#__PURE__*/function (_DOMException2) {
     return _super2.call(this, message, 'TimeoutError');
   }
 
-  return TimeoutError;
+  return _createClass(TimeoutError);
 }( /*#__PURE__*/_wrapNativeSuper(DOMException));
 
-exports.TimeoutError = _TimeoutError;
+exports.TimeoutError = TimeoutError;
 
-var _FatalError = /*#__PURE__*/function (_Error) {
+var FatalError = /*#__PURE__*/function (_Error) {
   _inherits(FatalError, _Error);
 
   var _super3 = _createSuper(FatalError);
@@ -78,11 +82,8 @@ var _FatalError = /*#__PURE__*/function (_Error) {
     return _this;
   }
 
-  return FatalError;
+  return _createClass(FatalError);
 }( /*#__PURE__*/_wrapNativeSuper(Error));
 
-exports.FatalError = _FatalError;
-export var AbortError = exports.AbortError;
-export var TimeoutError = exports.TimeoutError;
-export var FatalError = exports.FatalError;
+exports.FatalError = FatalError;
 //# sourceMappingURL=errors.js.map

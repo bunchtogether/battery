@@ -6,6 +6,7 @@ const { babel } = require('@rollup/plugin-babel');
 const { nodeResolve } = require('@rollup/plugin-node-resolve');
 const nodePolyfills = require('rollup-plugin-polyfill-node');
 const replace = require('@rollup/plugin-replace');
+const commonjs = require('@rollup/plugin-commonjs');
 
 const proj = (filePath) => path.resolve(__dirname, filePath);
 
@@ -104,6 +105,7 @@ module.exports = function (config) {
     rollupPreprocessor: {
       plugins: [
         babel({ babelHelpers: 'bundled' }),
+        commonjs(),
         nodePolyfills(),
         nodeResolve({
           preferBuiltins: true,
