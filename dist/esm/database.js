@@ -228,6 +228,25 @@ async function getReadWriteJobCleanupAndArgLookupStores() {
   return [transaction.objectStore('jobs'), transaction.objectStore('cleanups'), transaction.objectStore('arg-lookup')];
 }
 
+async function getReadWriteJobAndCleanupStores() {
+  const database = await databasePromise;
+  const transaction = database.transaction(['jobs', 'cleanups'], 'readwrite', {
+    durability: 'relaxed'
+  });
+
+  transaction.onabort = event => {
+    logger.error('Read-write \'jobs\' and \'cleanups\' transaction was aborted');
+    logger.errorObject(event);
+  };
+
+  transaction.onerror = event => {
+    logger.error('Error in read-write \'jobs\' and \'cleanups\' transaction');
+    logger.errorObject(event);
+  };
+
+  return [transaction.objectStore('jobs'), transaction.objectStore('cleanups')];
+}
+
 async function getReadOnlyObjectStoreAndTransactionPromise(name) {
   const database = await databasePromise;
   const transaction = database.transaction([name], 'readonly', {
@@ -1399,6 +1418,195 @@ export async function bulkEnqueueToDatabase(items) {
   });
   return ids;
 }
+export async function importJobsAndCleanups(jobs, cleanups) {
+  // eslint-disable-line no-underscore-dangle
+  if (!Array.isArray(jobs)) {
+    throw new TypeError(`Unable to import jobs and cleanups into database, received invalid "jobs" argument type "${typeof jobs}"`);
+  }
+
+  if (!Array.isArray(cleanups)) {
+    throw new TypeError(`Unable to import jobs and cleanups into database, received invalid "cleanups" argument type "${typeof cleanups}"`);
+  }
+
+  for (const {
+    args,
+    attempt,
+    created,
+    id,
+    prioritize,
+    queueId,
+    startAfter,
+    status,
+    type
+  } of jobs) {
+    if (!Array.isArray(args)) {
+      throw new TypeError(`Unable to import jobs and cleanups into database, received invalid "args" argument type "${typeof args}", should be Array<any>`);
+    }
+
+    if (typeof attempt !== 'number') {
+      throw new TypeError(`Unable to import jobs and cleanups into database, received invalid "attempt" argument type "${typeof attempt}", should be number`);
+    }
+
+    if (typeof created !== 'number') {
+      throw new TypeError(`Unable to import jobs and cleanups into database, received invalid "created" argument type "${typeof created}", should be number`);
+    }
+
+    if (typeof id !== 'number') {
+      throw new TypeError(`Unable to import jobs and cleanups into database, received invalid "id" argument type "${typeof id}", should be number`);
+    }
+
+    if (typeof prioritize !== 'boolean') {
+      throw new TypeError(`Unable to import jobs and cleanups into database, received invalid "prioritize" argument type "${typeof prioritize}", should be boolean`);
+    }
+
+    if (typeof queueId !== 'string') {
+      throw new TypeError(`Unable to import jobs and cleanups into database, received invalid "queueId" argument type "${typeof queueId}", should be string`);
+    }
+
+    if (typeof startAfter !== 'number') {
+      throw new TypeError(`Unable to import jobs and cleanups into database, received invalid "startAfter" argument type "${typeof startAfter}", should be number`);
+    }
+
+    if (typeof status !== 'number') {
+      throw new TypeError(`Unable to import jobs and cleanups into database, received invalid "status" argument type "${typeof status}", should be number`);
+    }
+
+    if (typeof type !== 'string') {
+      throw new TypeError(`Unable to import jobs and cleanups into database, received invalid "type" argument type "${typeof type}", should be string`);
+    }
+  }
+
+  for (const {
+    attempt,
+    data,
+    id,
+    queueId,
+    startAfter
+  } of cleanups) {
+    if (typeof attempt !== 'number') {
+      throw new TypeError(`Unable to import jobs and cleanups into database, received invalid "attempt" argument type "${typeof attempt}", should be number`);
+    }
+
+    if (typeof data !== 'object') {
+      throw new TypeError(`Unable to import jobs and cleanups into database, received invalid "data" argument type "${typeof data}", should be object`);
+    }
+
+    if (typeof id !== 'number') {
+      throw new TypeError(`Unable to import jobs and cleanups into database, received invalid "id" argument type "${typeof id}", should be number`);
+    }
+
+    if (typeof queueId !== 'string') {
+      throw new TypeError(`Unable to import jobs and cleanups into database, received invalid "queueId" argument type "${typeof queueId}", should be string`);
+    }
+
+    if (typeof startAfter !== 'number') {
+      throw new TypeError(`Unable to import jobs and cleanups into database, received invalid "startAfter" argument type "${typeof startAfter}", should be number`);
+    }
+  }
+
+  const jobIdSet = new Set();
+
+  for (const {
+    id
+  } of jobs) {
+    jobIdSet.add(id);
+  }
+
+  const cleanupMap = new Map();
+
+  for (const cleanup of cleanups) {
+    if (jobIdSet.has(cleanup.id)) {
+      cleanupMap.set(cleanup.id, cleanup);
+    }
+  }
+
+  const [jobsObjectStore, cleanupsObjectStore] = await getReadWriteJobAndCleanupStores();
+  await new Promise((resolve, reject) => {
+    let didCommit = false;
+
+    for (let i = 0; i < jobs.length; i += 1) {
+      const {
+        args,
+        attempt,
+        created,
+        id,
+        prioritize,
+        queueId,
+        startAfter,
+        status,
+        type
+      } = jobs[i];
+      const value = {
+        args,
+        attempt,
+        created,
+        prioritize,
+        queueId,
+        startAfter,
+        status,
+        type
+      };
+      const request = jobsObjectStore.put(value);
+
+      request.onsuccess = function () {
+        // eslint-disable-line no-loop-func
+        const jobId = request.result;
+        const cleanupValue = cleanupMap.get(id);
+        cleanupMap.delete(id);
+
+        if (typeof cleanupValue === 'object') {
+          const {
+            attempt: cleanupAttempt,
+            data: cleanupData,
+            startAfter: cleanupStartAfter
+          } = cleanupValue;
+          const cleanupPutRequest = cleanupsObjectStore.put({
+            id: jobId,
+            queueId,
+            attempt: cleanupAttempt,
+            data: cleanupData,
+            startAfter: cleanupStartAfter
+          });
+
+          cleanupPutRequest.onsuccess = function () {
+            if (i === jobs.length - 1) {
+              resolve();
+            }
+          };
+
+          cleanupPutRequest.onerror = function (event) {
+            logger.error(`Request error while importing ${jobs.length} ${jobs.length === 1 ? 'job' : 'jobs'} in queue ${queueId}`);
+            logger.errorObject(event);
+            reject(new Error(`Request error while importing ${jobs.length} ${jobs.length === 1 ? 'job' : 'jobs'} in queue ${queueId}`));
+          };
+        } else {
+          localJobEmitter.emit('jobAdd', jobId, queueId, type);
+          jobEmitter.emit('jobAdd', jobId, queueId, type);
+
+          if (i === jobs.length - 1) {
+            resolve();
+          }
+        }
+
+        if (i === jobs.length - 1 && !didCommit) {
+          didCommit = true;
+          jobsObjectStore.transaction.commit();
+        }
+      };
+
+      request.onerror = function (event) {
+        logger.error(`Request error while importing ${jobs.length} ${jobs.length === 1 ? 'job' : 'jobs'} in queue ${queueId}`);
+        logger.errorObject(event);
+        reject(new Error(`Request error while importing ${jobs.length} ${jobs.length === 1 ? 'job' : 'jobs'} in queue ${queueId}`));
+      };
+    }
+
+    if (cleanupMap.size === 0) {
+      didCommit = true;
+      jobsObjectStore.transaction.commit();
+    }
+  });
+}
 export async function enqueueToDatabase(queueId, type, args, options = {}) {
   // eslint-disable-line no-underscore-dangle
   if (typeof queueId !== 'string') {
@@ -1609,6 +1817,31 @@ export async function getJobsWithTypeFromDatabase(type) {
     store.transaction.commit();
   });
 }
+export async function getCleanupsInQueueFromDatabase(queueId) {
+  // eslint-disable-line no-underscore-dangle
+  if (typeof queueId !== 'string') {
+    throw new TypeError(`Unable to get cleanups in queue from database, received invalid "queueId" argument type "${typeof queueId}"`);
+  }
+
+  const store = await getReadOnlyCleanupsObjectStore();
+  const index = store.index('queueIdIndex'); // $FlowFixMe
+
+  const request = index.getAll(IDBKeyRange.only(queueId));
+  const jobs = await new Promise((resolve, reject) => {
+    request.onsuccess = function (event) {
+      resolve(event.target.result);
+    };
+
+    request.onerror = function (event) {
+      logger.error(`Request error while getting cleanups in queue ${queueId}`);
+      logger.errorObject(event);
+      reject(new Error('Request error while getting cleanups in queue'));
+    };
+
+    store.transaction.commit();
+  });
+  return jobs;
+}
 export async function getJobsInQueueFromDatabase(queueId) {
   // eslint-disable-line no-underscore-dangle
   if (typeof queueId !== 'string') {
@@ -1625,9 +1858,9 @@ export async function getJobsInQueueFromDatabase(queueId) {
     };
 
     request.onerror = function (event) {
-      logger.error('Request error while dequeing');
+      logger.error(`Request error while getting jobs in queue ${queueId}`);
       logger.errorObject(event);
-      reject(new Error('Request error while dequeing'));
+      reject(new Error('Request error while getting jobs in queue'));
     };
 
     store.transaction.commit();

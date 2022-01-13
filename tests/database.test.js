@@ -6,6 +6,7 @@ import {
   enqueueToDatabase,
   bulkEnqueueToDatabase,
   getJobsInQueueFromDatabase,
+  getCleanupsInQueueFromDatabase,
   getJobsInDatabase,
   dequeueFromDatabase,
   dequeueFromDatabaseNotIn,
@@ -333,6 +334,14 @@ describe('IndexedDB Database', () => {
       startAfter: jasmine.any(Number),
     });
 
+    await expectAsync(getCleanupsInQueueFromDatabase(queueId)).toBeResolvedTo([{
+      id,
+      queueId,
+      data: data1,
+      attempt: 0,
+      startAfter: jasmine.any(Number),
+    }]);
+
     await updateCleanupValuesInDatabase(id, queueId, data2);
 
     await expectAsync(getCleanupFromDatabase(id)).toBeResolvedTo({
@@ -342,6 +351,14 @@ describe('IndexedDB Database', () => {
       attempt: 0,
       startAfter: jasmine.any(Number),
     });
+
+    await expectAsync(getCleanupsInQueueFromDatabase(queueId)).toBeResolvedTo([{
+      id,
+      queueId,
+      data: Object.assign({}, data1, data2),
+      attempt: 0,
+      startAfter: jasmine.any(Number),
+    }]);
 
     await removePathFromCleanupDataInDatabase(id, ['a']);
 
@@ -353,9 +370,19 @@ describe('IndexedDB Database', () => {
       startAfter: jasmine.any(Number),
     });
 
+    await expectAsync(getCleanupsInQueueFromDatabase(queueId)).toBeResolvedTo([{
+      id,
+      queueId,
+      data: data2,
+      attempt: 0,
+      startAfter: jasmine.any(Number),
+    }]);
+
     await removeCleanupFromDatabase(id);
 
     expect(await getCleanupFromDatabase(id)).toBeUndefined();
+
+    await expectAsync(getCleanupsInQueueFromDatabase(queueId)).toBeResolvedTo([]);
   });
 
   it('Marks cleanup start-after time in database', async () => {

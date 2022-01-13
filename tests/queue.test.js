@@ -5,8 +5,10 @@ import { AbortError, FatalError } from '../src/errors';
 import {
   jobEmitter,
   getJobsInQueueFromDatabase,
+  getCleanupsInQueueFromDatabase,
   silentlyRemoveJobFromDatabase,
   silentlyRemoveQueueFromDatabase,
+  importJobsAndCleanups,
   removeJobFromDatabase,
   enqueueToDatabase,
   getCompletedJobsCountFromDatabase,
@@ -937,6 +939,95 @@ describe('Queue', () => {
       status: JOB_COMPLETE_STATUS,
       startAfter: jasmine.any(Number),
       prioritize: false,
+    }]);
+  });
+
+  it('Imports jobs into the database', async () => {
+    const queueId = uuidv4();
+    const valueA = uuidv4();
+    const valueB = uuidv4();
+    const idA = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueA]);
+    const idB = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, valueB]);
+    await queue.onIdle();
+    const jobs1 = await getJobsInQueueFromDatabase(queueId);
+    const cleanups1 = await getCleanupsInQueueFromDatabase(queueId);
+
+    expect(jobs1).toEqual([{
+      id: idA,
+      queueId,
+      type: 'echo',
+      args: [TRIGGER_NO_ERROR, valueA],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_COMPLETE_STATUS,
+      startAfter: jasmine.any(Number),
+      prioritize: false,
+    }, {
+      id: idB,
+      queueId,
+      type: 'echo',
+      args: [TRIGGER_NO_ERROR, valueB],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_COMPLETE_STATUS,
+      startAfter: jasmine.any(Number),
+      prioritize: false,
+    }]);
+
+    expect(cleanups1).toEqual([{
+      id: idA,
+      queueId,
+      attempt: 0,
+      data: { value: valueA },
+      startAfter: jasmine.any(Number),
+    }, {
+      id: idB,
+      queueId,
+      attempt: 0,
+      data: { value: valueB },
+      startAfter: jasmine.any(Number),
+    }]);
+    await queue.clear();
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([]);
+    await expectAsync(getCleanupsInQueueFromDatabase(queueId)).toBeResolvedTo([]);
+    await importJobsAndCleanups(jobs1, cleanups1);
+    const jobs2 = await getJobsInQueueFromDatabase(queueId);
+    const cleanups2 = await getCleanupsInQueueFromDatabase(queueId);
+
+    expect(jobs2).toEqual([{
+      id: jasmine.any(Number),
+      queueId,
+      type: 'echo',
+      args: [TRIGGER_NO_ERROR, valueA],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_COMPLETE_STATUS,
+      startAfter: jasmine.any(Number),
+      prioritize: false,
+    }, {
+      id: jasmine.any(Number),
+      queueId,
+      type: 'echo',
+      args: [TRIGGER_NO_ERROR, valueB],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_COMPLETE_STATUS,
+      startAfter: jasmine.any(Number),
+      prioritize: false,
+    }]);
+
+    expect(cleanups2).toEqual([{
+      id: jobs2[0].id,
+      queueId,
+      attempt: 0,
+      data: { value: valueA },
+      startAfter: jasmine.any(Number),
+    }, {
+      id: jobs2[1].id,
+      queueId,
+      attempt: 0,
+      data: { value: valueB },
+      startAfter: jasmine.any(Number),
     }]);
   });
 
