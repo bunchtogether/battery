@@ -6,6 +6,7 @@ import {
   jobEmitter,
   getJobsInQueueFromDatabase,
   silentlyRemoveJobFromDatabase,
+  silentlyRemoveQueueFromDatabase,
   removeJobFromDatabase,
   enqueueToDatabase,
   getCompletedJobsCountFromDatabase,
@@ -1354,6 +1355,33 @@ describe('Queue', () => {
     const handler = async () => {
       if (typeof id === 'number') {
         await silentlyRemoveJobFromDatabase(id);
+      }
+      handlerCount += 1;
+    };
+    const cleanup = async () => {
+      cleanupCount += 1;
+    };
+    queue.setHandler(type, handler);
+    queue.setCleanup(type, cleanup);
+    const queueId = uuidv4();
+    id = await enqueueToDatabase(queueId, type, []);
+    await queue.onIdle();
+
+    expect(handlerCount).toEqual(1);
+    expect(cleanupCount).toEqual(1);
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([]);
+    queue.removeHandler(type);
+    queue.removeCleanup(type);
+  });
+
+  it('Cleanly removes all jobs in a queue without emitting jobDelete events while the handler runs', async () => {
+    let handlerCount = 0;
+    let cleanupCount = 0;
+    let id;
+    const type = uuidv4();
+    const handler = async () => {
+      if (typeof id === 'number') {
+        await silentlyRemoveQueueFromDatabase(queueId);
       }
       handlerCount += 1;
     };

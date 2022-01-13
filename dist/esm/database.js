@@ -258,10 +258,8 @@ function getReadOnlyJobsObjectStoreAndTransactionPromise() {
   return getReadOnlyObjectStoreAndTransactionPromise('jobs');
 }
 
-function removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId, onSuccess, onError) {
+function silentlyRemoveJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId, onSuccess, onError) {
   const jobDeleteRequest = jobsObjectStore.delete(jobId);
-  localJobEmitter.emit('jobDelete', jobId, queueId);
-  jobEmitter.emit('jobDelete', jobId, queueId);
 
   jobDeleteRequest.onerror = function (event) {
     logger.error(`Request error while removing job ${jobId} in queue ${queueId} from database`);
@@ -314,6 +312,14 @@ function removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argL
       onError(new Error(`Request error while removing argument lookups for job ${jobId} in queue ${queueId} from database`));
     }
   };
+}
+
+function removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId, onSuccess, onError) {
+  queueMicrotask(() => {
+    localJobEmitter.emit('jobDelete', jobId, queueId);
+    jobEmitter.emit('jobDelete', jobId, queueId);
+  });
+  return silentlyRemoveJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId, onSuccess, onError);
 }
 
 async function clearAllMetadataInDatabase() {
@@ -642,6 +648,36 @@ export async function updateCleanupValuesInDatabase(id, queueId, data) {
       attempt: 0,
       startAfter: Date.now(),
       data: combinedData
+    };
+  });
+}
+export async function silentlyRemoveQueueFromDatabase(queueId) {
+  const [jobsObjectStore, cleanupsObjectStore, argLookupObjectStore] = await getReadWriteJobCleanupAndArgLookupStores();
+  const index = jobsObjectStore.index('queueIdIndex'); // $FlowFixMe
+
+  const request = index.getAllKeys(IDBKeyRange.only(queueId));
+  await new Promise((resolve, reject) => {
+    request.onsuccess = function (event) {
+      const jobIds = event.target.result;
+
+      for (let i = 0; i < jobIds.length; i += 1) {
+        const jobId = jobIds[i];
+
+        if (i === jobIds.length - 1) {
+          silentlyRemoveJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId, () => {
+            jobsObjectStore.transaction.commit();
+            resolve();
+          }, reject);
+        } else {
+          silentlyRemoveJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId);
+        }
+      }
+    };
+
+    request.onerror = function (event) {
+      logger.error(`Request error while removing queue ${queueId} from jobs database`);
+      logger.errorObject(event);
+      reject(new Error(`Request error while removing queue ${queueId} from jobs database`));
     };
   });
 }

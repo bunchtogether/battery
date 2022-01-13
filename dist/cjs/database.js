@@ -60,6 +60,7 @@ exports.removeQueueFromDatabase = removeQueueFromDatabase;
 exports.restoreJobToDatabaseForCleanupAndRemove = restoreJobToDatabaseForCleanupAndRemove;
 exports.setMetadataInDatabase = setMetadataInDatabase;
 exports.silentlyRemoveJobFromDatabase = silentlyRemoveJobFromDatabase;
+exports.silentlyRemoveQueueFromDatabase = silentlyRemoveQueueFromDatabase;
 exports.storeAuthDataInDatabase = storeAuthDataInDatabase;
 exports.updateCleanupInDatabase = updateCleanupInDatabase;
 exports.updateCleanupValuesInDatabase = updateCleanupValuesInDatabase;
@@ -453,10 +454,8 @@ function getReadOnlyJobsObjectStoreAndTransactionPromise() {
   return getReadOnlyObjectStoreAndTransactionPromise('jobs');
 }
 
-function removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId, onSuccess, onError) {
+function silentlyRemoveJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId, onSuccess, onError) {
   var jobDeleteRequest = jobsObjectStore.delete(jobId);
-  localJobEmitter.emit('jobDelete', jobId, queueId);
-  jobEmitter.emit('jobDelete', jobId, queueId);
 
   jobDeleteRequest.onerror = function (event) {
     logger.error("Request error while removing job ".concat(jobId, " in queue ").concat(queueId, " from database"));
@@ -519,6 +518,14 @@ function removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argL
       onError(new Error("Request error while removing argument lookups for job ".concat(jobId, " in queue ").concat(queueId, " from database")));
     }
   };
+}
+
+function removeJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId, onSuccess, onError) {
+  queueMicrotask(function () {
+    localJobEmitter.emit('jobDelete', jobId, queueId);
+    jobEmitter.emit('jobDelete', jobId, queueId);
+  });
+  return silentlyRemoveJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId, onSuccess, onError);
 }
 
 function clearAllMetadataInDatabase() {
@@ -952,7 +959,50 @@ function _updateCleanupValuesInDatabase() {
   return _updateCleanupValuesInDatabase.apply(this, arguments);
 }
 
-function silentlyRemoveJobFromDatabase(_x18) {
+function silentlyRemoveQueueFromDatabase(_x18) {
+  return _silentlyRemoveQueueFromDatabase.apply(this, arguments);
+}
+
+function _silentlyRemoveQueueFromDatabase() {
+  _silentlyRemoveQueueFromDatabase = _asyncToGenerator(function* (queueId) {
+    var _yield$getReadWriteJo7 = yield getReadWriteJobCleanupAndArgLookupStores(),
+        _yield$getReadWriteJo8 = _slicedToArray(_yield$getReadWriteJo7, 3),
+        jobsObjectStore = _yield$getReadWriteJo8[0],
+        cleanupsObjectStore = _yield$getReadWriteJo8[1],
+        argLookupObjectStore = _yield$getReadWriteJo8[2];
+
+    var index = jobsObjectStore.index('queueIdIndex'); // $FlowFixMe
+
+    var request = index.getAllKeys(IDBKeyRange.only(queueId));
+    yield new Promise(function (resolve, reject) {
+      request.onsuccess = function (event) {
+        var jobIds = event.target.result;
+
+        for (var i = 0; i < jobIds.length; i += 1) {
+          var jobId = jobIds[i];
+
+          if (i === jobIds.length - 1) {
+            silentlyRemoveJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId, function () {
+              jobsObjectStore.transaction.commit();
+              resolve();
+            }, reject);
+          } else {
+            silentlyRemoveJobCleanupAndArgLookup(jobsObjectStore, cleanupsObjectStore, argLookupObjectStore, jobId, queueId);
+          }
+        }
+      };
+
+      request.onerror = function (event) {
+        logger.error("Request error while removing queue ".concat(queueId, " from jobs database"));
+        logger.errorObject(event);
+        reject(new Error("Request error while removing queue ".concat(queueId, " from jobs database")));
+      };
+    });
+  });
+  return _silentlyRemoveQueueFromDatabase.apply(this, arguments);
+}
+
+function silentlyRemoveJobFromDatabase(_x19) {
   return _silentlyRemoveJobFromDatabase.apply(this, arguments);
 }
 
@@ -977,17 +1027,17 @@ function _silentlyRemoveJobFromDatabase() {
   return _silentlyRemoveJobFromDatabase.apply(this, arguments);
 }
 
-function removeJobFromDatabase(_x19) {
+function removeJobFromDatabase(_x20) {
   return _removeJobFromDatabase.apply(this, arguments);
 }
 
 function _removeJobFromDatabase() {
   _removeJobFromDatabase = _asyncToGenerator(function* (jobId) {
-    var _yield$getReadWriteJo7 = yield getReadWriteJobCleanupAndArgLookupStores(),
-        _yield$getReadWriteJo8 = _slicedToArray(_yield$getReadWriteJo7, 3),
-        jobsObjectStore = _yield$getReadWriteJo8[0],
-        cleanupsObjectStore = _yield$getReadWriteJo8[1],
-        argLookupObjectStore = _yield$getReadWriteJo8[2];
+    var _yield$getReadWriteJo9 = yield getReadWriteJobCleanupAndArgLookupStores(),
+        _yield$getReadWriteJo10 = _slicedToArray(_yield$getReadWriteJo9, 3),
+        jobsObjectStore = _yield$getReadWriteJo10[0],
+        cleanupsObjectStore = _yield$getReadWriteJo10[1],
+        argLookupObjectStore = _yield$getReadWriteJo10[2];
 
     var request = jobsObjectStore.get(jobId);
     yield new Promise(function (resolve, reject) {
@@ -1016,7 +1066,7 @@ function _removeJobFromDatabase() {
   return _removeJobFromDatabase.apply(this, arguments);
 }
 
-function removeCleanupFromDatabase(_x20) {
+function removeCleanupFromDatabase(_x21) {
   return _removeCleanupFromDatabase.apply(this, arguments);
 }
 
@@ -1041,7 +1091,7 @@ function _removeCleanupFromDatabase() {
   return _removeCleanupFromDatabase.apply(this, arguments);
 }
 
-function getCleanupFromDatabase(_x21) {
+function getCleanupFromDatabase(_x22) {
   return _getCleanupFromDatabase.apply(this, arguments);
 }
 
@@ -1066,7 +1116,7 @@ function _getCleanupFromDatabase() {
   return _getCleanupFromDatabase.apply(this, arguments);
 }
 
-function getMetadataFromDatabase(_x22) {
+function getMetadataFromDatabase(_x23) {
   return _getMetadataFromDatabase.apply(this, arguments);
 }
 
@@ -1092,7 +1142,7 @@ function _getMetadataFromDatabase() {
   return _getMetadataFromDatabase.apply(this, arguments);
 }
 
-function clearMetadataInDatabase(_x23) {
+function clearMetadataInDatabase(_x24) {
   return _clearMetadataInDatabase.apply(this, arguments);
 }
 
@@ -1117,7 +1167,7 @@ function _clearMetadataInDatabase() {
   return _clearMetadataInDatabase.apply(this, arguments);
 }
 
-function setMetadataInDatabase(_x24, _x25) {
+function setMetadataInDatabase(_x25, _x26) {
   return _setMetadataInDatabase.apply(this, arguments);
 }
 
@@ -1145,7 +1195,7 @@ function _setMetadataInDatabase() {
   return _setMetadataInDatabase.apply(this, arguments);
 }
 
-function updateMetadataInDatabase(_x26, _x27) {
+function updateMetadataInDatabase(_x27, _x28) {
   return _updateMetadataInDatabase.apply(this, arguments);
 }
 
@@ -1244,17 +1294,17 @@ function markJobAbortedInDatabase(id) {
   return markJobStatusInDatabase(id, JOB_ABORTED_STATUS);
 }
 
-function markJobCompleteThenRemoveFromDatabase(_x28) {
+function markJobCompleteThenRemoveFromDatabase(_x29) {
   return _markJobCompleteThenRemoveFromDatabase.apply(this, arguments);
 }
 
 function _markJobCompleteThenRemoveFromDatabase() {
   _markJobCompleteThenRemoveFromDatabase = _asyncToGenerator(function* (id) {
-    var _yield$getReadWriteJo9 = yield getReadWriteJobCleanupAndArgLookupStores(),
-        _yield$getReadWriteJo10 = _slicedToArray(_yield$getReadWriteJo9, 3),
-        jobsObjectStore = _yield$getReadWriteJo10[0],
-        cleanupsObjectStore = _yield$getReadWriteJo10[1],
-        argLookupObjectStore = _yield$getReadWriteJo10[2];
+    var _yield$getReadWriteJo11 = yield getReadWriteJobCleanupAndArgLookupStores(),
+        _yield$getReadWriteJo12 = _slicedToArray(_yield$getReadWriteJo11, 3),
+        jobsObjectStore = _yield$getReadWriteJo12[0],
+        cleanupsObjectStore = _yield$getReadWriteJo12[1],
+        argLookupObjectStore = _yield$getReadWriteJo12[2];
 
     var request = jobsObjectStore.get(id);
     yield new Promise(function (resolve, reject) {
@@ -1361,7 +1411,7 @@ function markCleanupStartAfterInDatabase(id, startAfter) {
   });
 }
 
-function markQueueForCleanupInDatabase(_x29) {
+function markQueueForCleanupInDatabase(_x30) {
   return _markQueueForCleanupInDatabase.apply(this, arguments);
 }
 
@@ -1445,7 +1495,7 @@ function _markQueueForCleanupInDatabase() {
   return _markQueueForCleanupInDatabase.apply(this, arguments);
 }
 
-function markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase(_x30, _x31) {
+function markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase(_x31, _x32) {
   return _markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase.apply(this, arguments);
 }
 
@@ -1559,7 +1609,7 @@ function markQueueForCleanupAndRemoveInDatabase(queueId) {
   return markQueueJobsGreaterThanIdCleanupAndRemoveInDatabase(queueId, -1);
 }
 
-function markQueueJobsGreaterThanIdPendingInDatabase(_x32, _x33) {
+function markQueueJobsGreaterThanIdPendingInDatabase(_x33, _x34) {
   return _markQueueJobsGreaterThanIdPendingInDatabase.apply(this, arguments);
 }
 
@@ -1657,7 +1707,7 @@ function markQueuePendingInDatabase(queueId) {
   return markQueueJobsGreaterThanIdPendingInDatabase(queueId, -1);
 }
 
-function getGreatestJobIdFromQueueInDatabase(_x34) {
+function getGreatestJobIdFromQueueInDatabase(_x35) {
   return _getGreatestJobIdFromQueueInDatabase.apply(this, arguments);
 }
 
@@ -1690,7 +1740,7 @@ function _getGreatestJobIdFromQueueInDatabase() {
   return _getGreatestJobIdFromQueueInDatabase.apply(this, arguments);
 }
 
-function incrementJobAttemptInDatabase(_x35) {
+function incrementJobAttemptInDatabase(_x36) {
   return _incrementJobAttemptInDatabase.apply(this, arguments);
 }
 
@@ -1709,7 +1759,7 @@ function _incrementJobAttemptInDatabase() {
   return _incrementJobAttemptInDatabase.apply(this, arguments);
 }
 
-function incrementCleanupAttemptInDatabase(_x36, _x37) {
+function incrementCleanupAttemptInDatabase(_x37, _x38) {
   return _incrementCleanupAttemptInDatabase.apply(this, arguments);
 }
 
@@ -1737,7 +1787,7 @@ function _incrementCleanupAttemptInDatabase() {
   return _incrementCleanupAttemptInDatabase.apply(this, arguments);
 }
 
-function bulkEnqueueToDatabase(_x38) {
+function bulkEnqueueToDatabase(_x39) {
   return _bulkEnqueueToDatabase.apply(this, arguments);
 }
 
@@ -1840,7 +1890,7 @@ function _bulkEnqueueToDatabase() {
   return _bulkEnqueueToDatabase.apply(this, arguments);
 }
 
-function enqueueToDatabase(_x39, _x40, _x41) {
+function enqueueToDatabase(_x40, _x41, _x42) {
   return _enqueueToDatabase.apply(this, arguments);
 }
 
@@ -1904,7 +1954,7 @@ function _enqueueToDatabase() {
   return _enqueueToDatabase.apply(this, arguments);
 }
 
-function restoreJobToDatabaseForCleanupAndRemove(_x42, _x43, _x44, _x45) {
+function restoreJobToDatabaseForCleanupAndRemove(_x43, _x44, _x45, _x46) {
   return _restoreJobToDatabaseForCleanupAndRemove.apply(this, arguments);
 }
 
@@ -2021,7 +2071,7 @@ function getContiguousIds(ids) {
   return points;
 }
 
-function dequeueFromDatabaseNotIn(_x46) {
+function dequeueFromDatabaseNotIn(_x47) {
   return _dequeueFromDatabaseNotIn.apply(this, arguments);
 }
 
@@ -2091,7 +2141,7 @@ function _dequeueFromDatabaseNotIn() {
   return _dequeueFromDatabaseNotIn.apply(this, arguments);
 }
 
-function getJobsWithTypeFromDatabase(_x47) {
+function getJobsWithTypeFromDatabase(_x48) {
   return _getJobsWithTypeFromDatabase.apply(this, arguments);
 }
 
@@ -2118,7 +2168,7 @@ function _getJobsWithTypeFromDatabase() {
   return _getJobsWithTypeFromDatabase.apply(this, arguments);
 }
 
-function getJobsInQueueFromDatabase(_x48) {
+function getJobsInQueueFromDatabase(_x49) {
   return _getJobsInQueueFromDatabase.apply(this, arguments);
 }
 
@@ -2151,7 +2201,7 @@ function _getJobsInQueueFromDatabase() {
   return _getJobsInQueueFromDatabase.apply(this, arguments);
 }
 
-function getJobsInDatabase(_x49) {
+function getJobsInDatabase(_x50) {
   return _getJobsInDatabase.apply(this, arguments);
 }
 
@@ -2205,7 +2255,7 @@ function _getJobsInDatabase() {
   return _getJobsInDatabase.apply(this, arguments);
 }
 
-function getCompletedJobsCountFromDatabase(_x50) {
+function getCompletedJobsCountFromDatabase(_x51) {
   return _getCompletedJobsCountFromDatabase.apply(this, arguments);
 }
 
@@ -2218,7 +2268,7 @@ function _getCompletedJobsCountFromDatabase() {
   return _getCompletedJobsCountFromDatabase.apply(this, arguments);
 }
 
-function getCompletedJobsFromDatabase(_x51) {
+function getCompletedJobsFromDatabase(_x52) {
   return _getCompletedJobsFromDatabase.apply(this, arguments);
 }
 
@@ -2251,7 +2301,7 @@ function _getCompletedJobsFromDatabase() {
   return _getCompletedJobsFromDatabase.apply(this, arguments);
 }
 
-function storeAuthDataInDatabase(_x52, _x53) {
+function storeAuthDataInDatabase(_x53, _x54) {
   return _storeAuthDataInDatabase.apply(this, arguments);
 }
 
@@ -2288,7 +2338,7 @@ function _storeAuthDataInDatabase() {
   return _storeAuthDataInDatabase.apply(this, arguments);
 }
 
-function getAuthDataFromDatabase(_x54) {
+function getAuthDataFromDatabase(_x55) {
   return _getAuthDataFromDatabase.apply(this, arguments);
 }
 
@@ -2318,7 +2368,7 @@ function _getAuthDataFromDatabase() {
   return _getAuthDataFromDatabase.apply(this, arguments);
 }
 
-function removeAuthDataFromDatabase(_x55) {
+function removeAuthDataFromDatabase(_x56) {
   return _removeAuthDataFromDatabase.apply(this, arguments);
 }
 
@@ -2347,7 +2397,7 @@ function _removeAuthDataFromDatabase() {
   return _removeAuthDataFromDatabase.apply(this, arguments);
 }
 
-function getQueueStatus(_x56) {
+function getQueueStatus(_x57) {
   return _getQueueStatus.apply(this, arguments);
 }
 
@@ -2461,7 +2511,7 @@ function _getQueueStatus() {
   return _getQueueStatus.apply(this, arguments);
 }
 
-function addArgLookup(_x57, _x58, _x59) {
+function addArgLookup(_x58, _x59, _x60) {
   return _addArgLookup.apply(this, arguments);
 }
 
@@ -2502,7 +2552,7 @@ function _addArgLookup() {
   return _addArgLookup.apply(this, arguments);
 }
 
-function getArgLookupJobPathMap(_x60) {
+function getArgLookupJobPathMap(_x61) {
   return _getArgLookupJobPathMap.apply(this, arguments);
 }
 
@@ -2536,7 +2586,7 @@ function _getArgLookupJobPathMap() {
   return _getArgLookupJobPathMap.apply(this, arguments);
 }
 
-function markJobsWithArgLookupKeyCleanupAndRemoveInDatabase(_x61) {
+function markJobsWithArgLookupKeyCleanupAndRemoveInDatabase(_x62) {
   return _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase.apply(this, arguments);
 }
 
@@ -2570,7 +2620,7 @@ function _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase() {
   return _markJobsWithArgLookupKeyCleanupAndRemoveInDatabase.apply(this, arguments);
 }
 
-function lookupArgs(_x62) {
+function lookupArgs(_x63) {
   return _lookupArgs.apply(this, arguments);
 }
 
@@ -2667,7 +2717,7 @@ function _lookupArgs() {
   return _lookupArgs.apply(this, arguments);
 }
 
-function lookupArg(_x63) {
+function lookupArg(_x64) {
   return _lookupArg.apply(this, arguments);
 }
 
