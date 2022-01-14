@@ -40,8 +40,7 @@ export type Job = {
   prioritize: boolean
 };
 
-
-type Cleanup = {
+export type Cleanup = {
   id: number,
   queueId:string,
   data: Object,
