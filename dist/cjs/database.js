@@ -2069,6 +2069,7 @@ function _importJobsAndCleanups() {
         jobsObjectStore = _yield$getReadWriteJo14[0],
         cleanupsObjectStore = _yield$getReadWriteJo14[1];
 
+    var newJobs = [];
     yield new Promise(function (resolve, reject) {
       var didCommit = false;
 
@@ -2098,6 +2099,8 @@ function _importJobsAndCleanups() {
         request.onsuccess = function () {
           // eslint-disable-line no-loop-func
           var jobId = request.result;
+          value.id = jobId;
+          newJobs.push(value);
           var cleanupValue = cleanupMap.get(id);
           cleanupMap.delete(id);
 
@@ -2155,6 +2158,7 @@ function _importJobsAndCleanups() {
         jobsObjectStore.transaction.commit();
       }
     });
+    return newJobs;
   });
   return _importJobsAndCleanups.apply(this, arguments);
 }

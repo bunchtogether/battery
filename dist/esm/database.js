@@ -1521,6 +1521,7 @@ export async function importJobsAndCleanups(jobs, cleanups) {
   }
 
   const [jobsObjectStore, cleanupsObjectStore] = await getReadWriteJobAndCleanupStores();
+  const newJobs = [];
   await new Promise((resolve, reject) => {
     let didCommit = false;
 
@@ -1551,6 +1552,8 @@ export async function importJobsAndCleanups(jobs, cleanups) {
       request.onsuccess = function () {
         // eslint-disable-line no-loop-func
         const jobId = request.result;
+        value.id = jobId;
+        newJobs.push(value);
         const cleanupValue = cleanupMap.get(id);
         cleanupMap.delete(id);
 
@@ -1606,6 +1609,7 @@ export async function importJobsAndCleanups(jobs, cleanups) {
       jobsObjectStore.transaction.commit();
     }
   });
+  return newJobs;
 }
 export async function enqueueToDatabase(queueId, type, args, options = {}) {
   // eslint-disable-line no-underscore-dangle

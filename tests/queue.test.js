@@ -990,9 +990,11 @@ describe('Queue', () => {
     await queue.clear();
     await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([]);
     await expectAsync(getCleanupsInQueueFromDatabase(queueId)).toBeResolvedTo([]);
-    await importJobsAndCleanups(jobs1, cleanups1);
+    const newJobs = await importJobsAndCleanups(jobs1, cleanups1);
     const jobs2 = await getJobsInQueueFromDatabase(queueId);
     const cleanups2 = await getCleanupsInQueueFromDatabase(queueId);
+
+    expect(newJobs).toEqual(jobs2);
 
     expect(jobs2).toEqual([{
       id: jasmine.any(Number),

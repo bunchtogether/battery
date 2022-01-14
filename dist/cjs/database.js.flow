@@ -1317,11 +1317,12 @@ export async function importJobsAndCleanups(jobs:Array<Job>, cleanups:Array<Clea
     }
   }
   const [jobsObjectStore, cleanupsObjectStore] = await getReadWriteJobAndCleanupStores();
+  const newJobs = [];
   await new Promise((resolve, reject) => {
     let didCommit = false;
     for (let i = 0; i < jobs.length; i += 1) {
       const { args, attempt, created, id, prioritize, queueId, startAfter, status, type } = jobs[i];
-      const value = {
+      const value:Object = {
         args,
         attempt,
         created,
@@ -1334,6 +1335,8 @@ export async function importJobsAndCleanups(jobs:Array<Job>, cleanups:Array<Clea
       const request = jobsObjectStore.put(value);
       request.onsuccess = function () { // eslint-disable-line no-loop-func
         const jobId = request.result;
+        value.id = jobId;
+        newJobs.push(value);
         const cleanupValue = cleanupMap.get(id);
         cleanupMap.delete(id);
         if (typeof cleanupValue === 'object') {
@@ -1382,6 +1385,7 @@ export async function importJobsAndCleanups(jobs:Array<Job>, cleanups:Array<Clea
       jobsObjectStore.transaction.commit();
     }
   });
+  return newJobs;
 }
 
 export async function enqueueToDatabase(queueId: string, type: string, args: Array<any>, options?:EnqueueOptions = {}) { // eslint-disable-line no-underscore-dangle
