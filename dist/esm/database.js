@@ -1404,7 +1404,10 @@ export async function bulkEnqueueToDatabase(items) {
         ids.push(request.result);
         localJobEmitter.emit('jobAdd', id, queueId, type);
         jobEmitter.emit('jobAdd', id, queueId, type);
-        resolve(request.result);
+
+        if (i === items.length - 1) {
+          resolve();
+        }
       };
 
       request.onerror = function (event) {
@@ -1789,9 +1792,9 @@ export async function dequeueFromDatabaseNotIn(ids) {
         logger.error(`Request error while getting job ${id}`);
         logger.errorObject(event2);
       };
-    }
+    } // Do not commit the transaction here, will cause transaction promise to return before
+    // getRequest onsuccess completes
 
-    store.transaction.commit();
   };
 
   request.onerror = function (event) {
@@ -1893,9 +1896,10 @@ export async function getJobsInDatabase(jobIds) {
       logger.error(`Request error while getting job ${jobId}`);
       logger.errorObject(event);
     };
-  }
+  } // Do not commit the transaction here, will cause transaction promise to return before
+  // getRequest onsuccess completes
 
-  store.transaction.commit();
+
   await promise;
   return jobs;
 }

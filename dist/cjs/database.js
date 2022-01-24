@@ -1897,7 +1897,10 @@ function _bulkEnqueueToDatabase() {
           ids.push(request.result);
           localJobEmitter.emit('jobAdd', id, queueId, type);
           jobEmitter.emit('jobAdd', id, queueId, type);
-          resolve(request.result);
+
+          if (i === items.length - 1) {
+            resolve();
+          }
         };
 
         request.onerror = function (event) {
@@ -2393,14 +2396,14 @@ function _dequeueFromDatabaseNotIn() {
           var _ret = _loop3();
 
           if (_ret === "continue") continue;
-        }
+        } // Do not commit the transaction here, will cause transaction promise to return before
+        // getRequest onsuccess completes
+
       } catch (err) {
         _iterator7.e(err);
       } finally {
         _iterator7.f();
       }
-
-      store.transaction.commit();
     };
 
     request.onerror = function (event) {
@@ -2547,14 +2550,15 @@ function _getJobsInDatabase() {
 
       for (_iterator8.s(); !(_step8 = _iterator8.n()).done;) {
         _loop4();
-      }
+      } // Do not commit the transaction here, will cause transaction promise to return before
+      // getRequest onsuccess completes
+
     } catch (err) {
       _iterator8.e(err);
     } finally {
       _iterator8.f();
     }
 
-    store.transaction.commit();
     yield promise;
     return jobs;
   });
