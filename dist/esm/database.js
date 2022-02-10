@@ -1429,10 +1429,6 @@ export async function bulkEnqueueToDatabase(items) {
       }
 
       promise.then(hasAbortedJobs => {
-        console.log({
-          hasAbortedJobs
-        });
-
         if (hasAbortedJobs) {
           value.status = JOB_ABORTED_STATUS;
         }

@@ -1942,10 +1942,6 @@ function _bulkEnqueueToDatabase() {
         }
 
         promise.then(function (hasAbortedJobs) {
-          console.log({
-            hasAbortedJobs: hasAbortedJobs
-          });
-
           if (hasAbortedJobs) {
             value.status = JOB_ABORTED_STATUS;
           }
