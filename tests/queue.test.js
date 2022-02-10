@@ -19,6 +19,7 @@ import {
   JOB_CLEANUP_STATUS,
   JOB_CLEANUP_AND_REMOVE_STATUS,
   JOB_COMPLETE_STATUS,
+  JOB_ABORTED_STATUS,
   QUEUE_ERROR_STATUS,
   QUEUE_COMPLETE_STATUS,
   getQueueStatus,
@@ -1667,5 +1668,46 @@ describe('Queue', () => {
     expect(cleanupCount).toEqual(1);
     queue.removeHandler(type);
     queue.removeCleanup(type);
+  });
+
+  it('Aborts jobs if they are added to a queue containing aborted jobs', async () => {
+    const queueId = uuidv4();
+    const value = uuidv4();
+    const idA = await enqueueToDatabase(queueId, 'echo', [TRIGGER_FATAL_ERROR, value]);
+    await queue.onIdle();
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
+      id: idA,
+      queueId,
+      type: 'echo',
+      args: [TRIGGER_FATAL_ERROR, value],
+      attempt: 1,
+      created: jasmine.any(Number),
+      status: JOB_ABORTED_STATUS,
+      startAfter: jasmine.any(Number),
+      prioritize: false,
+    }]);
+    const idB = await enqueueToDatabase(queueId, 'echo', [TRIGGER_NO_ERROR, value]);
+    await queue.onIdle();
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
+      id: idA,
+      queueId,
+      type: 'echo',
+      args: [TRIGGER_FATAL_ERROR, value],
+      attempt: 1,
+      created: jasmine.any(Number),
+      status: JOB_ABORTED_STATUS,
+      startAfter: jasmine.any(Number),
+      prioritize: false,
+    }, {
+      id: idB,
+      queueId,
+      type: 'echo',
+      args: [TRIGGER_NO_ERROR, value],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_ABORTED_STATUS,
+      startAfter: jasmine.any(Number),
+      prioritize: false,
+    }]);
   });
 });

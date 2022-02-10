@@ -1382,6 +1382,30 @@ export async function bulkEnqueueToDatabase(items) {
 
   const ids = [];
   const store = await getReadWriteJobsObjectStore();
+  const index = store.index('statusQueueIdIndex');
+  const abortedQueueCheckPromiseMap = new Map();
+
+  for (const [queueId] of items) {
+    if (abortedQueueCheckPromiseMap.has(queueId)) {
+      continue;
+    } // $FlowFixMe
+
+
+    const abortedRequest = index.getAllKeys(IDBKeyRange.only([queueId, JOB_ABORTED_STATUS]));
+    const promise = new Promise((resolve, reject) => {
+      abortedRequest.onsuccess = function (e) {
+        resolve(e.target.result.length > 0);
+      };
+
+      abortedRequest.onerror = function (event) {
+        logger.error(`Request error while checking for aborted jobs while bulk enqueueing ${items.length} ${items.length === 1 ? 'job' : 'jobs'} in queue ${queueId}`);
+        logger.errorObject(event);
+        reject(new Error(`Request error while checking for aborted jobs while bulk enqueueing ${items.length} ${items.length === 1 ? 'job' : 'jobs'} in queue ${queueId}`));
+      };
+    });
+    abortedQueueCheckPromiseMap.set(queueId, promise);
+  }
+
   await new Promise((resolve, reject) => {
     for (let i = 0; i < items.length; i += 1) {
       const [queueId, type, args, options = {}] = items[i];
@@ -1397,27 +1421,45 @@ export async function bulkEnqueueToDatabase(items) {
         startAfter: Date.now() + delay,
         prioritize
       };
-      const request = store.put(value);
+      const promise = abortedQueueCheckPromiseMap.get(queueId);
 
-      request.onsuccess = function () {
-        const id = request.result;
-        ids.push(request.result);
-        localJobEmitter.emit('jobAdd', id, queueId, type);
-        jobEmitter.emit('jobAdd', id, queueId, type);
+      if (!promise) {
+        reject(new Error(`Aborted queue check does not exist while bulk enqueueing ${items.length} ${items.length === 1 ? 'job' : 'jobs'} in queue ${queueId}`));
+        return;
+      }
 
-        if (i === items.length - 1) {
-          resolve();
+      promise.then(hasAbortedJobs => {
+        console.log({
+          hasAbortedJobs
+        });
+
+        if (hasAbortedJobs) {
+          value.status = JOB_ABORTED_STATUS;
         }
-      };
 
-      request.onerror = function (event) {
-        logger.error(`Request error while bulk enqueueing ${items.length} ${items.length === 1 ? 'job' : 'jobs'} in queue ${queueId}`);
-        logger.errorObject(event);
-        reject(new Error(`Request error while bulk enqueueing ${items.length} ${items.length === 1 ? 'job' : 'jobs'} in queue ${queueId}`));
-      };
+        const request = store.put(value);
+
+        request.onsuccess = function () {
+          const id = request.result;
+          ids.push(request.result);
+
+          if (!hasAbortedJobs) {
+            localJobEmitter.emit('jobAdd', id, queueId, type);
+            jobEmitter.emit('jobAdd', id, queueId, type);
+          }
+
+          if (i === items.length - 1) {
+            resolve();
+          }
+        };
+
+        request.onerror = function (event) {
+          logger.error(`Request error while bulk enqueueing ${items.length} ${items.length === 1 ? 'job' : 'jobs'} in queue ${queueId}`);
+          logger.errorObject(event);
+          reject(new Error(`Request error while bulk enqueueing ${items.length} ${items.length === 1 ? 'job' : 'jobs'} in queue ${queueId}`));
+        };
+      }).catch(reject);
     }
-
-    store.transaction.commit();
   });
   return ids;
 }
@@ -1650,23 +1692,45 @@ export async function enqueueToDatabase(queueId, type, args, options = {}) {
     prioritize
   };
   const store = await getReadWriteJobsObjectStore();
-  const request = store.put(value);
-  const id = await new Promise((resolve, reject) => {
-    request.onsuccess = function () {
-      resolve(request.result);
+  const index = store.index('statusQueueIdIndex'); // $FlowFixMe
+
+  const abortedRequest = index.getAllKeys(IDBKeyRange.only([queueId, JOB_ABORTED_STATUS]));
+  return new Promise((resolve, reject) => {
+    abortedRequest.onsuccess = function (e) {
+      const hasAbortedJobs = e.target.result.length > 0;
+
+      if (hasAbortedJobs) {
+        value.status = JOB_ABORTED_STATUS;
+      }
+
+      const request = store.put(value);
+
+      request.onsuccess = function () {
+        const id = request.result;
+
+        if (!hasAbortedJobs) {
+          localJobEmitter.emit('jobAdd', id, queueId, type);
+          jobEmitter.emit('jobAdd', id, queueId, type);
+        }
+
+        resolve(id);
+      };
+
+      request.onerror = function (event) {
+        logger.error(`Request error while enqueueing ${type} job`);
+        logger.errorObject(event);
+        reject(new Error(`Request error while enqueueing ${type} job`));
+      };
+
+      store.transaction.commit();
     };
 
-    request.onerror = function (event) {
-      logger.error(`Request error while enqueueing ${type} job`);
+    abortedRequest.onerror = function (event) {
+      logger.error(`Request error while checking for aborted jobs in queue ${queueId} while enqueueing ${type} job`);
       logger.errorObject(event);
-      reject(new Error(`Request error while enqueueing ${type} job`));
+      reject(new Error(`Request error while checking for aborted jobs in queue ${queueId} while enqueueing ${type} job`));
     };
-
-    store.transaction.commit();
   });
-  localJobEmitter.emit('jobAdd', id, queueId, type);
-  jobEmitter.emit('jobAdd', id, queueId, type);
-  return id;
 }
 export async function restoreJobToDatabaseForCleanupAndRemove(id, queueId, type, args, options = {}) {
   // eslint-disable-line no-underscore-dangle

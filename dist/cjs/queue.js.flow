@@ -566,6 +566,7 @@ export default class BatteryQueue extends EventEmitter {
         throw new Error(`Unknown job status ${status} in job ${id} of queue ${queueId}`);
       }
     }
+
     for (const queueId of queueIds) {
       const queue = this.queueMap.get(queueId);
       if (typeof queue !== 'undefined') {

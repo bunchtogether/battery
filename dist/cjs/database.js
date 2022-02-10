@@ -1869,6 +1869,48 @@ function _bulkEnqueueToDatabase() {
 
     var ids = [];
     var store = yield getReadWriteJobsObjectStore();
+    var index = store.index('statusQueueIdIndex');
+    var abortedQueueCheckPromiseMap = new Map();
+
+    var _iterator3 = _createForOfIteratorHelper(items),
+        _step3;
+
+    try {
+      var _loop2 = function _loop2() {
+        var _step3$value = _slicedToArray(_step3.value, 1),
+            queueId = _step3$value[0];
+
+        if (abortedQueueCheckPromiseMap.has(queueId)) {
+          return "continue";
+        } // $FlowFixMe
+
+
+        var abortedRequest = index.getAllKeys(IDBKeyRange.only([queueId, JOB_ABORTED_STATUS]));
+        var promise = new Promise(function (resolve, reject) {
+          abortedRequest.onsuccess = function (e) {
+            resolve(e.target.result.length > 0);
+          };
+
+          abortedRequest.onerror = function (event) {
+            logger.error("Request error while checking for aborted jobs while bulk enqueueing ".concat(items.length, " ").concat(items.length === 1 ? 'job' : 'jobs', " in queue ").concat(queueId));
+            logger.errorObject(event);
+            reject(new Error("Request error while checking for aborted jobs while bulk enqueueing ".concat(items.length, " ").concat(items.length === 1 ? 'job' : 'jobs', " in queue ").concat(queueId)));
+          };
+        });
+        abortedQueueCheckPromiseMap.set(queueId, promise);
+      };
+
+      for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
+        var _ret2 = _loop2();
+
+        if (_ret2 === "continue") continue;
+      }
+    } catch (err) {
+      _iterator3.e(err);
+    } finally {
+      _iterator3.f();
+    }
+
     yield new Promise(function (resolve, reject) {
       var _loop = function _loop(i) {
         var _items$i = _slicedToArray(items[i], 4),
@@ -1890,31 +1932,53 @@ function _bulkEnqueueToDatabase() {
           startAfter: Date.now() + delay,
           prioritize: prioritize
         };
-        var request = store.put(value);
+        var promise = abortedQueueCheckPromiseMap.get(queueId);
 
-        request.onsuccess = function () {
-          var id = request.result;
-          ids.push(request.result);
-          localJobEmitter.emit('jobAdd', id, queueId, type);
-          jobEmitter.emit('jobAdd', id, queueId, type);
+        if (!promise) {
+          reject(new Error("Aborted queue check does not exist while bulk enqueueing ".concat(items.length, " ").concat(items.length === 1 ? 'job' : 'jobs', " in queue ").concat(queueId)));
+          return {
+            v: void 0
+          };
+        }
 
-          if (i === items.length - 1) {
-            resolve();
+        promise.then(function (hasAbortedJobs) {
+          console.log({
+            hasAbortedJobs: hasAbortedJobs
+          });
+
+          if (hasAbortedJobs) {
+            value.status = JOB_ABORTED_STATUS;
           }
-        };
 
-        request.onerror = function (event) {
-          logger.error("Request error while bulk enqueueing ".concat(items.length, " ").concat(items.length === 1 ? 'job' : 'jobs', " in queue ").concat(queueId));
-          logger.errorObject(event);
-          reject(new Error("Request error while bulk enqueueing ".concat(items.length, " ").concat(items.length === 1 ? 'job' : 'jobs', " in queue ").concat(queueId)));
-        };
+          var request = store.put(value);
+
+          request.onsuccess = function () {
+            var id = request.result;
+            ids.push(request.result);
+
+            if (!hasAbortedJobs) {
+              localJobEmitter.emit('jobAdd', id, queueId, type);
+              jobEmitter.emit('jobAdd', id, queueId, type);
+            }
+
+            if (i === items.length - 1) {
+              resolve();
+            }
+          };
+
+          request.onerror = function (event) {
+            logger.error("Request error while bulk enqueueing ".concat(items.length, " ").concat(items.length === 1 ? 'job' : 'jobs', " in queue ").concat(queueId));
+            logger.errorObject(event);
+            reject(new Error("Request error while bulk enqueueing ".concat(items.length, " ").concat(items.length === 1 ? 'job' : 'jobs', " in queue ").concat(queueId)));
+          };
+        }).catch(reject);
       };
 
       for (var i = 0; i < items.length; i += 1) {
-        _loop(i);
-      }
+        var _ret = _loop(i);
 
-      store.transaction.commit();
+        if (_typeof(_ret) === "object") return _ret.v;
+      }
     });
     return ids;
   });
@@ -1936,21 +2000,21 @@ function _importJobsAndCleanups() {
       throw new TypeError("Unable to import jobs and cleanups into database, received invalid \"cleanups\" argument type \"".concat(_typeof(cleanups), "\""));
     }
 
-    var _iterator3 = _createForOfIteratorHelper(jobs),
-        _step3;
+    var _iterator4 = _createForOfIteratorHelper(jobs),
+        _step4;
 
     try {
-      for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
-        var _step3$value = _step3.value,
-            args = _step3$value.args,
-            attempt = _step3$value.attempt,
-            created = _step3$value.created,
-            id = _step3$value.id,
-            prioritize = _step3$value.prioritize,
-            queueId = _step3$value.queueId,
-            startAfter = _step3$value.startAfter,
-            status = _step3$value.status,
-            type = _step3$value.type;
+      for (_iterator4.s(); !(_step4 = _iterator4.n()).done;) {
+        var _step4$value = _step4.value,
+            args = _step4$value.args,
+            attempt = _step4$value.attempt,
+            created = _step4$value.created,
+            id = _step4$value.id,
+            prioritize = _step4$value.prioritize,
+            queueId = _step4$value.queueId,
+            startAfter = _step4$value.startAfter,
+            status = _step4$value.status,
+            type = _step4$value.type;
 
         if (!Array.isArray(args)) {
           throw new TypeError("Unable to import jobs and cleanups into database, received invalid \"args\" argument type \"".concat(_typeof(args), "\", should be Array<any>"));
@@ -1989,22 +2053,22 @@ function _importJobsAndCleanups() {
         }
       }
     } catch (err) {
-      _iterator3.e(err);
+      _iterator4.e(err);
     } finally {
-      _iterator3.f();
+      _iterator4.f();
     }
 
-    var _iterator4 = _createForOfIteratorHelper(cleanups),
-        _step4;
+    var _iterator5 = _createForOfIteratorHelper(cleanups),
+        _step5;
 
     try {
-      for (_iterator4.s(); !(_step4 = _iterator4.n()).done;) {
-        var _step4$value = _step4.value,
-            _attempt = _step4$value.attempt,
-            data = _step4$value.data,
-            _id = _step4$value.id,
-            _queueId2 = _step4$value.queueId,
-            _startAfter = _step4$value.startAfter;
+      for (_iterator5.s(); !(_step5 = _iterator5.n()).done;) {
+        var _step5$value = _step5.value,
+            _attempt = _step5$value.attempt,
+            data = _step5$value.data,
+            _id = _step5$value.id,
+            _queueId2 = _step5$value.queueId,
+            _startAfter = _step5$value.startAfter;
 
         if (typeof _attempt !== 'number') {
           throw new TypeError("Unable to import jobs and cleanups into database, received invalid \"attempt\" argument type \"".concat(_typeof(_attempt), "\", should be number"));
@@ -2027,44 +2091,44 @@ function _importJobsAndCleanups() {
         }
       }
     } catch (err) {
-      _iterator4.e(err);
-    } finally {
-      _iterator4.f();
-    }
-
-    var jobIdSet = new Set();
-
-    var _iterator5 = _createForOfIteratorHelper(jobs),
-        _step5;
-
-    try {
-      for (_iterator5.s(); !(_step5 = _iterator5.n()).done;) {
-        var _id2 = _step5.value.id;
-        jobIdSet.add(_id2);
-      }
-    } catch (err) {
       _iterator5.e(err);
     } finally {
       _iterator5.f();
     }
 
-    var cleanupMap = new Map();
+    var jobIdSet = new Set();
 
-    var _iterator6 = _createForOfIteratorHelper(cleanups),
+    var _iterator6 = _createForOfIteratorHelper(jobs),
         _step6;
 
     try {
       for (_iterator6.s(); !(_step6 = _iterator6.n()).done;) {
-        var cleanup = _step6.value;
+        var _id2 = _step6.value.id;
+        jobIdSet.add(_id2);
+      }
+    } catch (err) {
+      _iterator6.e(err);
+    } finally {
+      _iterator6.f();
+    }
+
+    var cleanupMap = new Map();
+
+    var _iterator7 = _createForOfIteratorHelper(cleanups),
+        _step7;
+
+    try {
+      for (_iterator7.s(); !(_step7 = _iterator7.n()).done;) {
+        var cleanup = _step7.value;
 
         if (jobIdSet.has(cleanup.id)) {
           cleanupMap.set(cleanup.id, cleanup);
         }
       }
     } catch (err) {
-      _iterator6.e(err);
+      _iterator7.e(err);
     } finally {
-      _iterator6.f();
+      _iterator7.f();
     }
 
     var _yield$getReadWriteJo13 = yield getReadWriteJobAndCleanupStores(),
@@ -2076,7 +2140,7 @@ function _importJobsAndCleanups() {
     yield new Promise(function (resolve, reject) {
       var didCommit = false;
 
-      var _loop2 = function _loop2(i) {
+      var _loop3 = function _loop3(i) {
         var _jobs$i2 = jobs[i],
             args = _jobs$i2.args,
             attempt = _jobs$i2.attempt,
@@ -2153,7 +2217,7 @@ function _importJobsAndCleanups() {
       };
 
       for (var i = 0; i < jobs.length; i += 1) {
-        _loop2(i);
+        _loop3(i);
       }
 
       if (cleanupMap.size === 0) {
@@ -2209,23 +2273,45 @@ function _enqueueToDatabase() {
       prioritize: prioritize
     };
     var store = yield getReadWriteJobsObjectStore();
-    var request = store.put(value);
-    var id = yield new Promise(function (resolve, reject) {
-      request.onsuccess = function () {
-        resolve(request.result);
+    var index = store.index('statusQueueIdIndex'); // $FlowFixMe
+
+    var abortedRequest = index.getAllKeys(IDBKeyRange.only([queueId, JOB_ABORTED_STATUS]));
+    return new Promise(function (resolve, reject) {
+      abortedRequest.onsuccess = function (e) {
+        var hasAbortedJobs = e.target.result.length > 0;
+
+        if (hasAbortedJobs) {
+          value.status = JOB_ABORTED_STATUS;
+        }
+
+        var request = store.put(value);
+
+        request.onsuccess = function () {
+          var id = request.result;
+
+          if (!hasAbortedJobs) {
+            localJobEmitter.emit('jobAdd', id, queueId, type);
+            jobEmitter.emit('jobAdd', id, queueId, type);
+          }
+
+          resolve(id);
+        };
+
+        request.onerror = function (event) {
+          logger.error("Request error while enqueueing ".concat(type, " job"));
+          logger.errorObject(event);
+          reject(new Error("Request error while enqueueing ".concat(type, " job")));
+        };
+
+        store.transaction.commit();
       };
 
-      request.onerror = function (event) {
-        logger.error("Request error while enqueueing ".concat(type, " job"));
+      abortedRequest.onerror = function (event) {
+        logger.error("Request error while checking for aborted jobs in queue ".concat(queueId, " while enqueueing ").concat(type, " job"));
         logger.errorObject(event);
-        reject(new Error("Request error while enqueueing ".concat(type, " job")));
+        reject(new Error("Request error while checking for aborted jobs in queue ".concat(queueId, " while enqueueing ").concat(type, " job")));
       };
-
-      store.transaction.commit();
     });
-    localJobEmitter.emit('jobAdd', id, queueId, type);
-    jobEmitter.emit('jobAdd', id, queueId, type);
-    return id;
   });
   return _enqueueToDatabase.apply(this, arguments);
 }
@@ -2369,12 +2455,12 @@ function _dequeueFromDatabaseNotIn() {
     var request = index.getAllKeys(IDBKeyRange.bound(JOB_CLEANUP_AND_REMOVE_STATUS, JOB_PENDING_STATUS));
 
     request.onsuccess = function (event) {
-      var _iterator7 = _createForOfIteratorHelper(event.target.result),
-          _step7;
+      var _iterator8 = _createForOfIteratorHelper(event.target.result),
+          _step8;
 
       try {
-        var _loop3 = function _loop3() {
-          var id = _step7.value;
+        var _loop4 = function _loop4() {
+          var id = _step8.value;
 
           if (ids.includes(id)) {
             return "continue";
@@ -2392,17 +2478,17 @@ function _dequeueFromDatabaseNotIn() {
           };
         };
 
-        for (_iterator7.s(); !(_step7 = _iterator7.n()).done;) {
-          var _ret = _loop3();
+        for (_iterator8.s(); !(_step8 = _iterator8.n()).done;) {
+          var _ret3 = _loop4();
 
-          if (_ret === "continue") continue;
+          if (_ret3 === "continue") continue;
         } // Do not commit the transaction here, will cause transaction promise to return before
         // getRequest onsuccess completes
 
       } catch (err) {
-        _iterator7.e(err);
+        _iterator8.e(err);
       } finally {
-        _iterator7.f();
+        _iterator8.f();
       }
     };
 
@@ -2528,12 +2614,12 @@ function _getJobsInDatabase() {
 
     var jobs = [];
 
-    var _iterator8 = _createForOfIteratorHelper(jobIds),
-        _step8;
+    var _iterator9 = _createForOfIteratorHelper(jobIds),
+        _step9;
 
     try {
-      var _loop4 = function _loop4() {
-        var jobId = _step8.value;
+      var _loop5 = function _loop5() {
+        var jobId = _step9.value;
         var request = store.get(jobId);
 
         request.onsuccess = function () {
@@ -2548,15 +2634,15 @@ function _getJobsInDatabase() {
         };
       };
 
-      for (_iterator8.s(); !(_step8 = _iterator8.n()).done;) {
-        _loop4();
+      for (_iterator9.s(); !(_step9 = _iterator9.n()).done;) {
+        _loop5();
       } // Do not commit the transaction here, will cause transaction promise to return before
       // getRequest onsuccess completes
 
     } catch (err) {
-      _iterator8.e(err);
+      _iterator9.e(err);
     } finally {
-      _iterator8.f();
+      _iterator9.f();
     }
 
     yield promise;
@@ -2968,7 +3054,7 @@ function _lookupArgs() {
 
         var jobsObjectStore = transaction.objectStore('jobs');
 
-        var _loop5 = function _loop5(i) {
+        var _loop6 = function _loop6(i) {
           var _argLookups$i = argLookups[i],
               jobId = _argLookups$i.jobId,
               jsonPath = _argLookups$i.jsonPath;
@@ -2981,21 +3067,21 @@ function _lookupArgs() {
 
             var args = jobRequest.result.args;
 
-            var _iterator9 = _createForOfIteratorHelper((0, _jsonpathPlus.JSONPath)({
+            var _iterator10 = _createForOfIteratorHelper((0, _jsonpathPlus.JSONPath)({
               path: jsonPath,
               json: args
             })),
-                _step9;
+                _step10;
 
             try {
-              for (_iterator9.s(); !(_step9 = _iterator9.n()).done;) {
-                var result = _step9.value;
+              for (_iterator10.s(); !(_step10 = _iterator10.n()).done;) {
+                var result = _step10.value;
                 results.push(result);
               }
             } catch (err) {
-              _iterator9.e(err);
+              _iterator10.e(err);
             } finally {
-              _iterator9.f();
+              _iterator10.f();
             }
 
             if (i === argLookups.length - 1) {
@@ -3011,7 +3097,7 @@ function _lookupArgs() {
         };
 
         for (var i = 0; i < argLookups.length; i += 1) {
-          _loop5(i);
+          _loop6(i);
         }
 
         transaction.commit();
@@ -3072,12 +3158,12 @@ function _removeArgLookupsAndCleanupsForJob() {
     var argLookupObjectStore = transaction.objectStore('arg-lookup');
     var argLookupJobIdIndex = argLookupObjectStore.index('jobIdIndex');
 
-    var _iterator10 = _createForOfIteratorHelper(jobIds),
-        _step10;
+    var _iterator11 = _createForOfIteratorHelper(jobIds),
+        _step11;
 
     try {
-      var _loop6 = function _loop6() {
-        var jobId = _step10.value;
+      var _loop7 = function _loop7() {
+        var jobId = _step11.value;
         var cleanupDeleteRequest = cleanupsObjectStore.delete(jobId);
 
         cleanupDeleteRequest.onerror = function (event) {
@@ -3089,12 +3175,12 @@ function _removeArgLookupsAndCleanupsForJob() {
         var argLookupJobRequest = argLookupJobIdIndex.getAllKeys(IDBKeyRange.only(jobId));
 
         argLookupJobRequest.onsuccess = function (event) {
-          var _iterator11 = _createForOfIteratorHelper(event.target.result),
-              _step11;
+          var _iterator12 = _createForOfIteratorHelper(event.target.result),
+              _step12;
 
           try {
-            for (_iterator11.s(); !(_step11 = _iterator11.n()).done;) {
-              var id = _step11.value;
+            for (_iterator12.s(); !(_step12 = _iterator12.n()).done;) {
+              var id = _step12.value;
               var argLookupDeleteRequest = argLookupObjectStore.delete(id);
 
               argLookupDeleteRequest.onerror = function (deleteEvent) {
@@ -3103,9 +3189,9 @@ function _removeArgLookupsAndCleanupsForJob() {
               };
             }
           } catch (err) {
-            _iterator11.e(err);
+            _iterator12.e(err);
           } finally {
-            _iterator11.f();
+            _iterator12.f();
           }
         };
 
@@ -3115,13 +3201,13 @@ function _removeArgLookupsAndCleanupsForJob() {
         };
       };
 
-      for (_iterator10.s(); !(_step10 = _iterator10.n()).done;) {
-        _loop6();
+      for (_iterator11.s(); !(_step11 = _iterator11.n()).done;) {
+        _loop7();
       }
     } catch (err) {
-      _iterator10.e(err);
+      _iterator11.e(err);
     } finally {
-      _iterator10.f();
+      _iterator11.f();
     }
   });
   return _removeArgLookupsAndCleanupsForJob.apply(this, arguments);

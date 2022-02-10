@@ -110,6 +110,11 @@ describe('IndexedDB Database', () => {
 
     await expectAsync(jobAddPromiseA).toBeResolvedTo([idA, queueId, type]);
 
+    const jobAddPromiseB = getNextEmit(jobEmitter, 'jobAdd');
+    const [idF] = await bulkEnqueueToDatabase([[queueId, type, [], {}]]);
+
+    await expectAsync(jobAddPromiseB).toBeResolvedTo([idF, queueId, type]);
+
     const jobDeletePromiseA = getNextEmit(jobEmitter, 'jobDelete');
     await removeJobsWithQueueIdAndTypeFromDatabase(queueId, type);
 
@@ -147,14 +152,8 @@ describe('IndexedDB Database', () => {
 
     await expectAsync(jobUpdatePromiseB).toBeResolvedTo([idE, queueId, type, JOB_ABORTED_STATUS]);
 
-    const jobAddPromiseB = getNextEmit(jobEmitter, 'jobAdd');
-    const [idF] = await bulkEnqueueToDatabase([[queueId, type, [], {}]]);
-
-    await expectAsync(jobAddPromiseB).toBeResolvedTo([idF, queueId, type]);
-
     const jobsClearPromise = getNextEmit(jobEmitter, 'jobsClear');
     await clearDatabase();
-
     await expectAsync(jobsClearPromise).toBeResolvedTo([]);
   });
 
@@ -1853,5 +1852,86 @@ describe('IndexedDB Database', () => {
     await clearUnloadDataInDatabase();
 
     expect(await getUnloadDataFromDatabase()).toBeUndefined();
+  });
+
+
+  it('Aborts jobs if they are added to a queue containing aborted jobs', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const idA = await enqueueToDatabase(queueId, type, []);
+    await markJobAbortedInDatabase(idA);
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
+      id: idA,
+      queueId,
+      type,
+      args: [],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_ABORTED_STATUS,
+      startAfter: jasmine.any(Number),
+      prioritize: false,
+    }]);
+    const idB = await enqueueToDatabase(queueId, type, []);
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
+      id: idA,
+      queueId,
+      type,
+      args: [],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_ABORTED_STATUS,
+      startAfter: jasmine.any(Number),
+      prioritize: false,
+    }, {
+      id: idB,
+      queueId,
+      type,
+      args: [],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_ABORTED_STATUS,
+      startAfter: jasmine.any(Number),
+      prioritize: false,
+    }]);
+  });
+
+  it('Aborts jobs if they are added to a queue containing aborted jobs', async () => {
+    const queueId = uuidv4();
+    const type = uuidv4();
+    const idA = await enqueueToDatabase(queueId, type, []);
+    await markJobAbortedInDatabase(idA);
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
+      id: idA,
+      queueId,
+      type,
+      args: [],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_ABORTED_STATUS,
+      startAfter: jasmine.any(Number),
+      prioritize: false,
+    }]);
+    const [idB] = await bulkEnqueueToDatabase([[queueId, type, [], {}]]);
+    await expectAsync(getJobsInQueueFromDatabase(queueId)).toBeResolvedTo([{
+      id: idA,
+      queueId,
+      type,
+      args: [],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_ABORTED_STATUS,
+      startAfter: jasmine.any(Number),
+      prioritize: false,
+    }, {
+      id: idB,
+      queueId,
+      type,
+      args: [],
+      attempt: 0,
+      created: jasmine.any(Number),
+      status: JOB_ABORTED_STATUS,
+      startAfter: jasmine.any(Number),
+      prioritize: false,
+    }]);
   });
 });
