@@ -1,5 +1,6 @@
 import EventEmitter from 'events';
 import makeLogger from './logger';
+import { ControllerNotAvailableError } from './errors';
 import { jobEmitter, localJobEmitter } from './database';
 const canUseSyncManager = 'serviceWorker' in navigator && 'SyncManager' in window;
 
@@ -28,7 +29,9 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
     } = serviceWorker;
 
     if (!controller) {
-      throw new Error('Service worker controller not available');
+      const error = new ControllerNotAvailableError('Service worker controller not available');
+      this.emit('error', error);
+      throw error;
     }
 
     while (controller.state !== 'activated') {
@@ -1230,7 +1233,12 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
       });
     } catch (error) {
       this.logger.error('Unable to sync');
-      this.emit('error', error);
+
+      if (error.name !== 'ControllerNotAvailableError') {
+        // ControllerNotAvailableError errors are emitted immediately
+        this.emit('error', error);
+      }
+
       this.logger.errorStack(error);
     }
 

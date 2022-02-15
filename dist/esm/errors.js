@@ -19,4 +19,11 @@ export class FatalError extends Error {
   }
 
 }
+export class ControllerNotAvailableError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'ControllerNotAvailableError';
+  }
+
+}
 //# sourceMappingURL=errors.js.map

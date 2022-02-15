@@ -20,3 +20,10 @@ export class FatalError extends Error {
     this.name = 'FatalError';
   }
 }
+
+export class ControllerNotAvailableError extends Error {
+  constructor(message:string) {
+    super(message);
+    this.name = 'ControllerNotAvailableError';
+  }
+}

@@ -3,6 +3,7 @@
 import EventEmitter from 'events';
 import type { Logger } from './logger';
 import makeLogger from './logger';
+import { ControllerNotAvailableError } from './errors';
 import { jobEmitter, localJobEmitter } from './database';
 
 type Options = {
@@ -50,7 +51,9 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
     const { controller } = serviceWorker;
 
     if (!controller) {
-      throw new Error('Service worker controller not available');
+      const error = new ControllerNotAvailableError('Service worker controller not available');
+      this.emit('error', error);
+      throw error;
     }
 
     while (controller.state !== 'activated') {
@@ -996,7 +999,9 @@ export default class BatteryQueueServiceWorkerInterface extends EventEmitter {
       });
     } catch (error) {
       this.logger.error('Unable to sync');
-      this.emit('error', error);
+      if (error.name !== 'ControllerNotAvailableError') { // ControllerNotAvailableError errors are emitted immediately
+        this.emit('error', error);
+      }
       this.logger.errorStack(error);
     }
     this.isSyncing = false;

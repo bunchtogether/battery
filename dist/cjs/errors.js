@@ -5,7 +5,7 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.TimeoutError = exports.FatalError = exports.AbortError = void 0;
+exports.TimeoutError = exports.FatalError = exports.ControllerNotAvailableError = exports.AbortError = void 0;
 
 function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
 
@@ -86,4 +86,24 @@ var FatalError = /*#__PURE__*/function (_Error) {
 }( /*#__PURE__*/_wrapNativeSuper(Error));
 
 exports.FatalError = FatalError;
+
+var ControllerNotAvailableError = /*#__PURE__*/function (_Error2) {
+  _inherits(ControllerNotAvailableError, _Error2);
+
+  var _super4 = _createSuper(ControllerNotAvailableError);
+
+  function ControllerNotAvailableError(message) {
+    var _this2;
+
+    _classCallCheck(this, ControllerNotAvailableError);
+
+    _this2 = _super4.call(this, message);
+    _this2.name = 'ControllerNotAvailableError';
+    return _this2;
+  }
+
+  return _createClass(ControllerNotAvailableError);
+}( /*#__PURE__*/_wrapNativeSuper(Error));
+
+exports.ControllerNotAvailableError = ControllerNotAvailableError;
 //# sourceMappingURL=errors.js.map

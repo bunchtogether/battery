@@ -9,6 +9,8 @@ var _events = _interopRequireDefault(require("events"));
 
 var _logger = _interopRequireDefault(require("./logger"));
 
+var _errors = require("./errors");
+
 var _database = require("./database");
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
@@ -119,7 +121,9 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
         var controller = serviceWorker.controller;
 
         if (!controller) {
-          throw new Error('Service worker controller not available');
+          var error = new _errors.ControllerNotAvailableError('Service worker controller not available');
+          this.emit('error', error);
+          throw error;
         }
 
         var _loop = function* _loop() {
@@ -1766,7 +1770,12 @@ var BatteryQueueServiceWorkerInterface = /*#__PURE__*/function (_EventEmitter) {
           });
         } catch (error) {
           this.logger.error('Unable to sync');
-          this.emit('error', error);
+
+          if (error.name !== 'ControllerNotAvailableError') {
+            // ControllerNotAvailableError errors are emitted immediately
+            this.emit('error', error);
+          }
+
           this.logger.errorStack(error);
         }
 
